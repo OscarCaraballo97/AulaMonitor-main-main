@@ -110,7 +110,6 @@ export class MainLayoutPage implements OnInit, OnDestroy {
       { title: 'Edificios', icon: 'business-outline', route: '/app/buildings', roles: [Rol.ADMIN] },
       { title: 'Aulas (Gestión)', icon: 'school-outline', route: '/app/classrooms', roles: [Rol.ADMIN] },
       { title: 'Usuarios (Gestión)', icon: 'people-circle-outline', route: '/app/users', roles: [Rol.ADMIN] },
-      { title: 'Todas las Reservas (Admin)', icon: 'list-circle-outline', route: '/app/reservations/all', roles: [Rol.ADMIN] },
       { title: 'Mi Perfil', icon: 'person-outline', route: '/app/profile', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
     ];
   }
