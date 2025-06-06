@@ -11,6 +11,7 @@ import com.backend.IMonitoring.security.UserDetailsImpl;
 import com.backend.IMonitoring.exceptions.InvalidReservationException; 
 import com.backend.IMonitoring.exceptions.ResourceNotFoundException;
 import com.backend.IMonitoring.exceptions.UnauthorizedAccessException;
+import com.backend.IMonitoring.exceptions.UserAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -36,7 +37,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new IllegalArgumentException("El correo electrónico ya está registrado.");
+            throw new UserAlreadyExistsException("El correo electrónico ya está registrado. Por favor, revisa tu bandeja de entrada para verificar tu cuenta o intenta iniciar sesión.");
         }
 
         var user = User.builder()

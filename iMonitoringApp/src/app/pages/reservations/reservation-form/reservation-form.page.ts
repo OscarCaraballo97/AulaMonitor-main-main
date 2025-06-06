@@ -34,8 +34,11 @@ export function dateTimeOrderValidator(): ValidatorFn {
     }
     if (endControl?.hasError('dateTimeOrder')) {
       const errors = { ...endControl.errors };
-      delete errors['dateTimeOrder'];
-      endControl.setErrors(Object.keys(errors).length > 0 ? errors : null);
+      if (errors) { 
+        delete errors['dateTimeOrder'];
+        if (Object.keys(errors).length === 0) endControl.setErrors(null);
+        else endControl.setErrors(errors);
+      }
     }
     return null;
   };
@@ -88,11 +91,14 @@ export class ReservationFormPage implements OnInit, OnDestroy {
   public reservationOwnerName: string | null = null;
   private originalReservationDataForEdit: Reservation | null = null;
 
-  readonly SLOT_DURATION_MINUTES = 45;
+  readonly SLOT_DURATION_MINUTES = 60;
   allAvailableDurations: { value: number, display: string }[] = [
-    { value: 1, display: `45 min (1 bloque)` }, { value: 2, display: `1h 30m (2 bloques)` },
-    { value: 3, display: `2h 15m (3 bloques)` }, { value: 4, display: `3h (4 bloques)` },
-    { value: 5, display: `3h 45m (5 bloques)` }, { value: 6, display: `4h 30m (6 bloques)` },
+    { value: 1, display: `1 hora (1 bloque)` }, 
+    { value: 2, display: `2 horas (2 bloques)` },
+    { value: 3, display: `3 horas (3 bloques)` }, 
+    { value: 4, display: `4 horas (4 bloques)` },
+    { value: 5, display: `5 horas (5 bloques)` }, 
+    { value: 6, display: `6 horas (6 bloques)` },
   ];
   filteredAvailableDurations: { value: number, display: string }[] = [...this.allAvailableDurations];
   selectedDurationBlocks: number = 1;
@@ -278,14 +284,15 @@ export class ReservationFormPage implements OnInit, OnDestroy {
       this.availableStartTimes = []; this.cdr.detectChanges(); return;
     }
     const slots: { value: string, display: string }[] = [];
-    const openingHour = 7; let dayClosingHour = 22;
+    const openingHour = 7; 
+    let dayClosingHour = 22;
     const dateParts = this.selectedDateForTimeSlots.split('-').map(Number);
     const utcYear = dateParts[0], utcMonth = dateParts[1] - 1, utcDay = dateParts[2];
     
     const dayOfWeek = new Date(Date.UTC(utcYear, utcMonth, utcDay)).getUTCDay();
 
-    if (dayOfWeek === 0) { this.availableStartTimes = []; this.cdr.detectChanges(); return; }
-    if (dayOfWeek === 6) dayClosingHour = 12;
+    if (dayOfWeek === 0) { this.availableStartTimes = []; this.cdr.detectChanges(); return; } 
+    if (dayOfWeek === 6) dayClosingHour = 12; 
 
     const now = new Date();
     const selectedDateStartOfDayUTC = new Date(Date.UTC(utcYear, utcMonth, utcDay));
@@ -302,23 +309,26 @@ export class ReservationFormPage implements OnInit, OnDestroy {
         const slotStartUTC = new Date(Date.UTC(utcYear, utcMonth, utcDay, hour, minute));
         const slotStartTimestamp = slotStartUTC.getTime();
 
-        if (isSelectedDateTodayUTC && slotStartTimestamp < now.getTime()) continue;
+        if (isSelectedDateTodayUTC && slotStartTimestamp < now.getTime()) {
+            continue;
+        }
+
+        const slotEndUTC = new Date(slotStartUTC.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
+
+        if (slotEndUTC.getUTCHours() > dayClosingHour || 
+           (slotEndUTC.getUTCHours() === dayClosingHour && slotEndUTC.getUTCMinutes() > 0)) {
+           continue; 
+        }
 
         let isOccupied = false;
         for (const res of existingReservationTimes) {
-          if (slotStartTimestamp >= res.start && slotStartTimestamp < res.end) {
-            isOccupied = true; break;
+          if (slotStartTimestamp < res.end && slotEndUTC.getTime() > res.start) {
+            isOccupied = true; 
+            break;
           }
         }
         if (isOccupied) continue;
 
-        const firstBlockEndTime = new Date(slotStartTimestamp + this.SLOT_DURATION_MINUTES * 60 * 1000);
-        if (firstBlockEndTime.getUTCHours() >= dayClosingHour && (firstBlockEndTime.getUTCHours() > dayClosingHour || firstBlockEndTime.getUTCMinutes() > 0)) {
-          if (!(dayOfWeek === 6 && firstBlockEndTime.getUTCHours() === 12 && firstBlockEndTime.getUTCMinutes() === 0)) {
-             continue;
-          }
-        }
-        
         slots.push({
           value: slotStartUTC.toISOString(),
           display: this.datePipe.transform(slotStartUTC, 'HH:mm', 'America/Bogota') || ''
@@ -339,13 +349,14 @@ export class ReservationFormPage implements OnInit, OnDestroy {
 
   filterAvailableDurations(startTimeISO: string) {
     const dayOfWeek = new Date(startTimeISO).getUTCDay();
-    let dayClosingHour = (dayOfWeek === 6) ? 12 : 22;
+    let dayClosingHour = (dayOfWeek === 6) ? 22 : 22;
 
     this.filteredAvailableDurations = this.allAvailableDurations.filter(durationOption => {
         const totalDurationMinutes = durationOption.value * this.SLOT_DURATION_MINUTES;
         const potentialEndTimeUTC = new Date(new Date(startTimeISO).getTime() + totalDurationMinutes * 60 * 1000);
 
-        if (potentialEndTimeUTC.getUTCHours() > dayClosingHour || (potentialEndTimeUTC.getUTCHours() === dayClosingHour && potentialEndTimeUTC.getUTCMinutes() > 0)) {
+        if (potentialEndTimeUTC.getUTCHours() > dayClosingHour || 
+           (potentialEndTimeUTC.getUTCHours() === dayClosingHour && potentialEndTimeUTC.getUTCMinutes() > 0)) {
             return false;
         }
         

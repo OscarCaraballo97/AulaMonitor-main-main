@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, of } from 'rxjs';
 import { takeUntil, catchError, tap, finalize } from 'rxjs/operators';
-
 import { ClassroomService } from '../../../services/classroom.service';
 import { ReservationService } from '../../../services/reservation.service';
 import { Classroom } from '../../../models/classroom.model';
@@ -61,7 +60,7 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   readonly OPENING_HOUR = 7;
   readonly CLOSING_HOUR = 22;
   readonly SATURDAY_CLOSING_HOUR = 12;
-  readonly SLOT_DURATION_MINUTES = 45;
+  readonly SLOT_DURATION_MINUTES = 60;
 
   constructor(
     private classroomService: ClassroomService,
@@ -147,7 +146,7 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   onDateTimeChanged(isoStringValue: string | string[] | null | undefined) {
     let newDateStrYYYYMMDD: string | null = null;
     if (typeof isoStringValue === 'string') {
-        newDateStrYYYYMMDD = this.datePipe.transform(isoStringValue, 'yyyy-MM-dd', 'UTC');
+        newDateStrYYYYMMDD = this.datePipe.transform(isoStringValue, 'yyyy-MM-dd', 'UTC') || '';
     }
     
     if (newDateStrYYYYMMDD && this.isValidDate(newDateStrYYYYMMDD)) {
@@ -231,22 +230,26 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
 
     let currentClosingHour = this.CLOSING_HOUR;
     if (dayOfWeek === 0) return [];
-    if (dayOfWeek === 6) currentClosingHour = this.SATURDAY_CLOSING_HOUR;
+    if (dayOfWeek === 6) currentClosingHour = this.SATURDAY_CLOSING_HOUR; 
 
     for (let hour = this.OPENING_HOUR; hour < currentClosingHour; hour++) {
       for (let minute = 0; minute < 60; minute += this.SLOT_DURATION_MINUTES) {
         const slotStart = new Date(Date.UTC(selectedDateUTC.getUTCFullYear(), selectedDateUTC.getUTCMonth(), selectedDateUTC.getUTCDate(), hour, minute));
         const slotEnd = new Date(slotStart.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
+        
+        if (slotEnd.getUTCHours() > currentClosingHour || 
+           (slotEnd.getUTCHours() === currentClosingHour && slotEnd.getUTCMinutes() > 0)) {
+           continue; 
+        }
+
         const displayTime = formatDate(slotStart, 'HH:mm', 'es-CO', 'America/Bogota');
         
         let isReserved = false;
         let reservationInfo: string | undefined;
 
         for (const res of reservations) {
-          // *** LA CORRECCIÓN MÁS IMPORTANTE ***
-          // Añadir 'Z' para asegurar que los strings se interpreten como UTC
-          const resStart = new Date(res.startTime + 'Z');
-          const resEnd = new Date(res.endTime + 'Z');
+          const resStart = new Date(res.startTime + 'Z'); 
+          const resEnd = new Date(res.endTime + 'Z');     
 
           if (slotStart.getTime() < resEnd.getTime() && slotEnd.getTime() > resStart.getTime()) {
             isReserved = true;

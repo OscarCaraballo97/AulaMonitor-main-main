@@ -1,3 +1,4 @@
+// iMonitoringApp/src/app/pages/reservations/reservation-list/reservation-list.page.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, formatDate, TitleCasePipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -17,7 +18,7 @@ import { ClassroomType as ReservationClassroomTypeEnum } from '../../../models/c
 import {
   IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent, IonSegment, IonSegmentButton,
   IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner, IonInput, IonSelect, IonSelectOption,
-  IonRefresher, IonRefresherContent // IonRefresher e IonRefresherContent
+  IonRefresher, IonRefresherContent 
 } from '@ionic/angular/standalone';
 import { LoadingController, ToastController, AlertController, NavController } from '@ionic/angular/standalone';
 
@@ -84,12 +85,9 @@ export class ReservationListPage implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.authService.currentUser.pipe(takeUntil(this.destroy$)).subscribe(user => {
-      this.currentUser = user;
-      this.userRole = user?.role || null;
-      this.determineInitialSegment();
-    });
-    this.loadClassroomsForFilter();
+     this.authService.getCurrentUserRole().pipe(takeUntil(this.destroy$)).subscribe(role => {
+        this.userRole = role;
+     });
   }
 
   ionViewWillEnter() {
@@ -210,7 +208,7 @@ export class ReservationListPage implements OnInit, OnDestroy {
     if (!this.currentUser || !reservation.user?.id) return false;
     if (this.userRole === Rol.ADMIN) return true;
     if (this.userRole === Rol.COORDINADOR &&
-        (reservation.user.id === this.currentUser.id || reservation.user?.role === Rol.ESTUDIANTE || reservation.user?.role === Rol.PROFESOR || reservation.user?.role === Rol.TUTOR) &&
+        (reservation.user.id === this.currentUser.id || reservation.user?.role === Rol.ESTUDIANTE || reservation.user?.role === Rol.TUTOR || reservation.user?.role === Rol.PROFESOR) &&
         (reservation.status === ReservationStatus.PENDIENTE || reservation.status === ReservationStatus.CONFIRMADA)) {
       return true;
     }
@@ -319,12 +317,12 @@ export class ReservationListPage implements OnInit, OnDestroy {
       return;
     }
     const classroomDetails: ReservationClassroomDetails | undefined = reservation.classroom;
-    const startTime = reservation.startTime ? formatDate(new Date(reservation.startTime.endsWith('Z') ? reservation.startTime : reservation.startTime + 'Z'), 'dd/MM/yyyy, HH:mm', 'es-CO', 'America/Bogota') : 'N/A';
-    const endTime = reservation.endTime ? formatDate(new Date(reservation.endTime.endsWith('Z') ? reservation.endTime : reservation.endTime + 'Z'), 'HH:mm', 'es-CO', 'America/Bogota') : 'N/A';
+    const startTime = reservation.startTime ? formatDate(new Date(reservation.startTime + 'Z'), 'dd/MM/yyyy, HH:mm', 'es-CO', 'America/Bogota') : 'N/A';
+    const endTime = reservation.endTime ? formatDate(new Date(reservation.endTime + 'Z'), 'HH:mm', 'es-CO', 'America/Bogota') : 'N/A';
     const statusDisplay = reservation.status ? (reservation.status as string).charAt(0).toUpperCase() + (reservation.status as string).slice(1).toLowerCase().replace(/_/g, ' ') : 'N/A';
 
     const message = `Motivo: ${reservation.purpose || 'No especificado'}\n` +
-                   `Aula: ${classroomDetails?.name || 'N/A'} (${classroomDetails?.buildingName || 'N/A'})\n` + // Corregido
+                   `Aula: ${classroomDetails?.name || 'N/A'} (${classroomDetails?.buildingName || 'N/A'})\n` +
                    `Inicio: ${startTime}\n` +
                    `Fin: ${endTime}\n` +
                    `Estado: ${statusDisplay}\n` +
@@ -343,7 +341,6 @@ export class ReservationListPage implements OnInit, OnDestroy {
 
 
   getEventColor(status: ReservationStatus | undefined): string {
-    // ... (sin cambios)
     switch (status) {
       case ReservationStatus.CONFIRMADA: return 'var(--ion-color-success, #2dd36f)';
       case ReservationStatus.PENDIENTE: return 'var(--ion-color-warning, #ffc409)';

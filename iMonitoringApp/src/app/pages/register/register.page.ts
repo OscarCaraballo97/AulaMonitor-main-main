@@ -112,18 +112,64 @@ export class RegisterPage implements OnInit {
         
         const successMessage = response.message || '¡Registro exitoso! Por favor, revisa tu correo electrónico para verificar tu cuenta.';
         await this.presentSuccessAlert(successMessage);
+        this.navCtrl.navigateRoot('/login'); 
       },
-      error: async (err: Error) => { 
+      error: async (err: any) => {
         this.isLoading = false;
         await loading.dismiss();
-        this.errorMessage = err.message || 'Ocurrió un error durante el registro. Intenta de nuevo.';
+        
+        if (err.error && err.error.message) {
+          this.errorMessage = err.error.message;
+        } else if (err.message) {
+          this.errorMessage = err.message;
+        } else {
+          this.errorMessage = 'Ocurrió un error inesperado durante el registro. Intenta de nuevo.';
+        }
+
+        if (err.status === 409) {
+          this.errorMessage = this.errorMessage || 'El correo electrónico ya está registrado. Por favor, revisa tu bandeja de entrada o intenta iniciar sesión.';
+        } else if (err.status === 500) {
+          this.errorMessage = this.errorMessage || 'Ocurrió un error inesperado en el servidor. Por favor, intenta de nuevo más tarde.';
+        }
+
         await this.presentToast(this.errorMessage, 'danger', 'close-circle-outline');
       }
     });
   }
 
-  private markFormGroupTouched(formGroup: FormGroup) { /* ... */ }
-  async presentToast(message: string, color: 'success' | 'danger' | 'warning', iconName?: string) { /* ... */ }
-  async presentSuccessAlert(message: string) { /* ... */ }
+  private markFormGroupTouched(formGroup: FormGroup) {
+    Object.values(formGroup.controls).forEach(control => {
+      control.markAsTouched();
+      if (control instanceof FormGroup) {
+        this.markFormGroupTouched(control);
+      }
+    });
+  }
+
+  async presentToast(message: string, color: 'success' | 'danger' | 'warning', iconName?: string) {
+    const toast = await this.toastCtrl.create({
+      message: message,
+      duration: 3000,
+      position: 'top',
+      color: color,
+      icon: iconName
+    });
+    toast.present();
+  }
+
+  async presentSuccessAlert(message: string) {
+    const alert = await this.alertCtrl.create({
+      header: 'Registro Exitoso',
+      message: message,
+      buttons: [{
+        text: 'OK',
+        role: 'cancel',
+        handler: () => {
+        },
+      }],
+    });
+    await alert.present();
+  }
+
   goToLogin() { this.navCtrl.navigateBack('/login'); }
 }
