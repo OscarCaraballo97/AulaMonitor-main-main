@@ -4,6 +4,11 @@
       <ion-back-button defaultHref="/app/dashboard"></ion-back-button>
     </ion-buttons>
     <ion-title class="text-gray-900 dark:text-kwd-light font-bold">Gestión de Reservas</ion-title>
+    <ion-buttons slot="end">
+      <ion-button routerLink="/app/reservations/new">
+        <ion-icon name="add-circle-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -55,35 +60,37 @@
         <div *ngIf="isLoadingPending" class="flex justify-center items-center h-48">
           <ion-spinner name="circles" color="primary"></ion-spinner>
         </div>
-        <div *ngIf="!isLoadingPending && pendingReservations.length === 0" class="text-center text-gray-600 dark:text-gray-400 p-4">
+        <div *ngIf="!isLoadingPending && filteredPendingReservations.length === 0" class="text-center text-gray-600 dark:text-gray-400 p-4">
           <p>{{ errorMessage || 'No hay reservas pendientes que mostrar.' }}</p>
         </div>
-        <ion-list *ngIf="!isLoadingPending && pendingReservations.length > 0" lines="none" class="space-y-3">
-          <ion-card *ngFor="let res of pendingReservations" class="dark:bg-kwd-darker shadow-lg rounded-xl overflow-hidden transition-shadow hover:shadow-xl">
-            <ion-item lines="none" class="dark:bg-kwd-darker p-3 cursor-pointer" (click)="viewReservationDetails(res)" detail="false">
-              <ion-icon [name]="res.classroom?.type === ReservationClassroomTypeEnum.LABORATORIO ? 'flask-outline' : (res.classroom?.type === ReservationClassroomTypeEnum.AUDITORIO ? 'megaphone-outline' : 'easel-outline')" slot="start" class="text-3xl opacity-80" [style.color]="getEventColor(res.status)"></ion-icon>
-              <ion-label class="dark:text-gray-200">
-                <h2 class="font-bold text-md">{{ res.purpose || 'Reserva sin motivo' }}</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="business-outline" class="mr-1 align-middle"></ion-icon> {{ res.classroom?.name }} ({{ res.classroom?.buildingName || 'N/A' }})</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="person-outline" class="mr-1 align-middle"></ion-icon> {{ res.user?.name || 'N/A' }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                    <ion-icon name="calendar-outline" class="mr-1 align-middle"></ion-icon>
-                    {{ res.startTime + 'Z' | date:'dd/MM/yy, HH:mm':'America/Bogota':'es-CO' }} - {{ res.endTime + 'Z' | date:'HH:mm':'America/Bogota':'es-CO' }}
-                </p>
-                <p class="text-xs mt-1"><ion-icon name="hourglass-outline" class="mr-1 align-middle"></ion-icon> <span class="font-semibold py-0.5 px-1.5 rounded-md text-white text-[0.65rem]" [style.backgroundColor]="getEventColor(res.status)">{{ res.status | titlecase }}</span></p>
-              </ion-label>
-            </ion-item>
-            <div class="flex justify-end p-3 space-x-2 bg-gray-50 dark:bg-kwd-darker">
-              <ion-button *ngIf="canApproveOrReject(res)" color="success" size="small" (click)="confirmAction(res, 'confirm')">
-                <ion-icon name="checkmark-outline"></ion-icon> Aprobar
-              </ion-button>
-              <ion-button *ngIf="canApproveOrReject(res)" color="danger" size="small" (click)="confirmAction(res, 'reject')">
-                <ion-icon name="close-outline"></ion-icon> Rechazar
-              </ion-button>
-              <ion-button *ngIf="canEditReservation(res)" color="warning" size="small" (click)="navigateToEdit(res.id)">
-                <ion-icon name="create-outline"></ion-icon> Editar
-              </ion-button>
-            </div>
+        <ion-list *ngIf="!isLoadingPending && filteredPendingReservations.length > 0" lines="none" class="space-y-3">
+          <ion-card *ngFor="let res of filteredPendingReservations" class="dark:bg-kwd-darker shadow-lg rounded-xl overflow-hidden transition-shadow hover:shadow-xl">
+            <ion-item-sliding>
+              <ion-item lines="none" class="dark:bg-kwd-darker p-3 cursor-pointer" (click)="viewReservationDetails(res)" detail="false">
+                <ion-icon [name]="res.classroom?.type === ClassroomType.LABORATORIO ? 'flask-outline' : (res.classroom?.type === ClassroomType.AUDITORIO ? 'megaphone-outline' : 'easel-outline')" slot="start" class="text-3xl opacity-80" [style.color]="getStatusColor(res.status)"></ion-icon>
+                <ion-label class="dark:text-gray-200">
+                  <h2 class="font-bold text-md">{{ res.purpose || 'Reserva sin motivo' }}</h2>
+                  <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="business-outline" class="mr-1 align-middle"></ion-icon> {{ res.classroom?.name }} ({{ res.classroom?.buildingName || 'N/A' }})</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="person-outline" class="mr-1 align-middle"></ion-icon> {{ res.user?.name || 'N/A' }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                      <ion-icon name="calendar-outline" class="mr-1 align-middle"></ion-icon>
+                      {{ res.startTime + 'Z' | date:'dd/MM/yy, HH:mm':'UTC':'es-CO' }} - {{ res.endTime + 'Z' | date:'HH:mm':'UTC':'es-CO' }}
+                  </p>
+                  <p class="text-xs mt-1"><ion-icon name="hourglass-outline" class="mr-1 align-middle"></ion-icon> <span class="font-semibold py-0.5 px-1.5 rounded-md text-white text-[0.65rem]" [style.backgroundColor]="getStatusColor(res.status)">{{ res.status | titlecase }}</span></p>
+                </ion-label>
+              </ion-item>
+              <div class="flex justify-end p-3 space-x-2 bg-gray-50 dark:bg-kwd-darker">
+                <ion-button *ngIf="canApproveOrReject(res)" color="success" size="small" (click)="confirmAction(res, 'confirm')">
+                  <ion-icon name="checkmark-outline"></ion-icon> Aprobar
+                </ion-button>
+                <ion-button *ngIf="canApproveOrReject(res)" color="danger" size="small" (click)="confirmAction(res, 'reject')">
+                  <ion-icon name="close-outline"></ion-icon> Rechazar
+                </ion-button>
+                <ion-button *ngIf="canEditReservation(res)" color="warning" size="small" (click)="navigateToEdit(res.id)">
+                  <ion-icon name="create-outline"></ion-icon> Editar
+                </ion-button>
+              </div>
+            </ion-item-sliding>
           </ion-card>
         </ion-list>
       </div>
@@ -93,31 +100,33 @@
           <ion-spinner name="circles" color="primary"></ion-spinner>
         </div>
         <div *ngIf="!isLoadingMyReservations && filteredMyReservations.length === 0" class="text-center text-gray-600 dark:text-gray-400 p-4">
-           <p>{{ errorMessage || 'No tienes reservas en esta categoría.' }}</p>
+            <p>{{ errorMessage || 'No tienes reservas en esta categoría.' }}</p>
         </div>
         <ion-list *ngIf="!isLoadingMyReservations && filteredMyReservations.length > 0" lines="none" class="space-y-3">
           <ion-card *ngFor="let res of filteredMyReservations" class="dark:bg-kwd-darker shadow-lg rounded-xl overflow-hidden transition-shadow hover:shadow-xl">
-            <ion-item lines="none" class="dark:bg-kwd-darker p-3 cursor-pointer" (click)="viewReservationDetails(res)" detail="false">
-              <ion-icon [name]="res.classroom?.type === ReservationClassroomTypeEnum.LABORATORIO ? 'flask-outline' : (res.classroom?.type === ReservationClassroomTypeEnum.AUDITORIO ? 'megaphone-outline' : 'easel-outline')" slot="start" class="text-3xl opacity-80" [style.color]="getEventColor(res.status)"></ion-icon>
-              <ion-label class="dark:text-gray-200">
-                <h2 class="font-bold text-md">{{ res.purpose || 'Reserva sin motivo' }}</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="business-outline" class="mr-1 align-middle"></ion-icon> {{ res.classroom?.name }} ({{ res.classroom?.buildingName || 'N/A' }})</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="person-outline" class="mr-1 align-middle"></ion-icon> {{ res.user?.name || 'N/A' }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                    <ion-icon name="calendar-outline" class="mr-1 align-middle"></ion-icon>
-                    {{ res.startTime + 'Z' | date:'dd/MM/yy, HH:mm':'America/Bogota':'es-CO' }} - {{ res.endTime + 'Z' | date:'HH:mm':'America/Bogota':'es-CO' }}
-                </p>
-                <p class="text-xs mt-1"><ion-icon name="hourglass-outline" class="mr-1 align-middle"></ion-icon> <span class="font-semibold py-0.5 px-1.5 rounded-md text-white text-[0.65rem]" [style.backgroundColor]="getEventColor(res.status)">{{ res.status | titlecase }}</span></p>
-              </ion-label>
-            </ion-item>
-            <div class="flex justify-end p-3 space-x-2 bg-gray-50 dark:bg-kwd-darker">
-              <ion-button *ngIf="canCancelReservation(res)" color="danger" size="small" (click)="confirmAction(res, 'cancel')">
-                <ion-icon name="close-circle-outline"></ion-icon> Cancelar
-              </ion-button>
-              <ion-button *ngIf="canEditReservation(res)" color="warning" size="small" (click)="navigateToEdit(res.id)">
-                <ion-icon name="create-outline"></ion-icon> Editar
-              </ion-button>
-            </div>
+            <ion-item-sliding>
+              <ion-item button detail="false" class="dark:bg-kwd-darker p-3 cursor-pointer" (click)="viewReservationDetails(res)">
+                <ion-icon [name]="res.classroom?.type === ClassroomType.LABORATORIO ? 'flask-outline' : (res.classroom?.type === ClassroomType.AUDITORIO ? 'megaphone-outline' : 'easel-outline')" slot="start" class="text-3xl opacity-80" [style.color]="getStatusColor(res.status)"></ion-icon>
+                <ion-label class="dark:text-gray-200">
+                  <h2 class="font-bold text-md">{{ res.purpose || 'Reserva sin motivo' }}</h2>
+                  <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="business-outline" class="mr-1 align-middle"></ion-icon> {{ res.classroom?.name }} ({{ res.classroom?.buildingName || 'N/A' }})</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="person-outline" class="mr-1 align-middle"></ion-icon> {{ res.user?.name || 'N/A' }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                      <ion-icon name="calendar-outline" class="mr-1 align-middle"></ion-icon>
+                      {{ res.startTime + 'Z' | date:'dd/MM/yy, HH:mm':'UTC':'es-CO' }} - {{ res.endTime + 'Z' | date:'HH:mm':'UTC':'es-CO' }}
+                  </p>
+                  <p class="text-xs mt-1"><ion-icon name="hourglass-outline" class="mr-1 align-middle"></ion-icon> <span class="font-semibold py-0.5 px-1.5 rounded-md text-white text-[0.65rem]" [style.backgroundColor]="getStatusColor(res.status)">{{ res.status | titlecase }}</span></p>
+                </ion-label>
+              </ion-item>
+              <ion-item-options side="end">
+                <ion-item-option color="warning" (click)="navigateToEdit(res.id)" *ngIf="canEditReservation(res)">
+                  <ion-icon slot="icon-only" name="create"></ion-icon>
+                </ion-item-option>
+                <ion-item-option color="danger" (click)="confirmAction(res, 'cancel')" *ngIf="canCancelReservation(res)">
+                  <ion-icon slot="icon-only" name="close-circle"></ion-icon>
+                </ion-item-option>
+              </ion-item-options>
+            </ion-item-sliding>
           </ion-card>
         </ion-list>
       </div>
@@ -131,33 +140,35 @@
         </div>
         <ion-list *ngIf="!isLoadingAllReservations && filteredAllReservations.length > 0" lines="none" class="space-y-3">
           <ion-card *ngFor="let res of filteredAllReservations" class="dark:bg-kwd-darker shadow-lg rounded-xl overflow-hidden transition-shadow hover:shadow-xl">
-            <ion-item lines="none" class="dark:bg-kwd-darker p-3 cursor-pointer" (click)="viewReservationDetails(res)" detail="false">
-              <ion-icon [name]="res.classroom?.type === ReservationClassroomTypeEnum.LABORATORIO ? 'flask-outline' : (res.classroom?.type === ReservationClassroomTypeEnum.AUDITORIO ? 'megaphone-outline' : 'easel-outline')" slot="start" class="text-3xl opacity-80" [style.color]="getEventColor(res.status)"></ion-icon>
-              <ion-label class="dark:text-gray-200">
-                <h2 class="font-bold text-md">{{ res.purpose || 'Reserva sin motivo' }}</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="business-outline" class="mr-1 align-middle"></ion-icon> {{ res.classroom?.name }} ({{ res.classroom?.buildingName || 'N/A' }})</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="person-outline" class="mr-1 align-middle"></ion-icon> {{ res.user?.name || 'N/A' }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                    <ion-icon name="calendar-outline" class="mr-1 align-middle"></ion-icon>
-                    {{ res.startTime + 'Z' | date:'dd/MM/yy, HH:mm':'America/Bogota':'es-CO' }} - {{ res.endTime + 'Z' | date:'HH:mm':'America/Bogota':'es-CO' }}
-                </p>
-                <p class="text-xs mt-1"><ion-icon name="hourglass-outline" class="mr-1 align-middle"></ion-icon> <span class="font-semibold py-0.5 px-1.5 rounded-md text-white text-[0.65rem]" [style.backgroundColor]="getEventColor(res.status)">{{ res.status | titlecase }}</span></p>
-              </ion-label>
-            </ion-item>
-            <div class="flex justify-end p-3 space-x-2 bg-gray-50 dark:bg-kwd-darker">
-              <ion-button *ngIf="canApproveOrReject(res)" color="success" size="small" (click)="confirmAction(res, 'confirm')">
-                <ion-icon name="checkmark-outline"></ion-icon> Aprobar
-              </ion-button>
-              <ion-button *ngIf="canApproveOrReject(res)" color="danger" size="small" (click)="confirmAction(res, 'reject')">
-                <ion-icon name="close-outline"></ion-icon> Rechazar
-              </ion-button>
-              <ion-button *ngIf="canCancelReservation(res)" color="danger" size="small" (click)="confirmAction(res, 'cancel')">
-                <ion-icon name="close-circle-outline"></ion-icon> Cancelar
-              </ion-button>
-              <ion-button *ngIf="canEditReservation(res)" color="warning" size="small" (click)="navigateToEdit(res.id)">
-                <ion-icon name="create-outline"></ion-icon> Editar
-              </ion-button>
-            </div>
+            <ion-item-sliding>
+              <ion-item button detail="false" class="dark:bg-kwd-darker p-3 cursor-pointer" (click)="viewReservationDetails(res)">
+                <ion-icon [name]="res.classroom?.type === ClassroomType.LABORATORIO ? 'flask-outline' : (res.classroom?.type === ClassroomType.AUDITORIO ? 'megaphone-outline' : 'easel-outline')" slot="start" class="text-3xl opacity-80" [style.color]="getStatusColor(res.status)"></ion-icon>
+                <ion-label class="dark:text-gray-200">
+                  <h2 class="font-bold text-md">{{ res.purpose || 'Reserva sin motivo' }}</h2>
+                  <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="business-outline" class="mr-1 align-middle"></ion-icon> {{ res.classroom?.name }} ({{ res.classroom?.buildingName || 'N/A' }})</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400"><ion-icon name="person-outline" class="mr-1 align-middle"></ion-icon> {{ res.user?.name || 'N/A' }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                      <ion-icon name="calendar-outline" class="mr-1 align-middle"></ion-icon>
+                      {{ res.startTime + 'Z' | date:'dd/MM/yy, HH:mm':'UTC':'es-CO' }} - {{ res.endTime + 'Z' | date:'HH:mm':'UTC':'es-CO' }}
+                  </p>
+                  <p class="text-xs mt-1"><ion-icon name="hourglass-outline" class="mr-1 align-middle"></ion-icon> <span class="font-semibold py-0.5 px-1.5 rounded-md text-white text-[0.65rem]" [style.backgroundColor]="getStatusColor(res.status)">{{ res.status | titlecase }}</span></p>
+                </ion-label>
+              </ion-item>
+              <ion-item-options side="end">
+                <ion-button *ngIf="canApproveOrReject(res)" color="success" size="small" (click)="confirmAction(res, 'confirm')">
+                  <ion-icon name="checkmark-outline"></ion-icon> Aprobar
+                </ion-button>
+                <ion-button *ngIf="canApproveOrReject(res)" color="danger" size="small" (click)="confirmAction(res, 'reject')">
+                  <ion-icon name="close-outline"></ion-icon> Rechazar
+                </ion-button>
+                <ion-button *ngIf="canCancelReservation(res)" color="danger" size="small" (click)="confirmAction(res, 'cancel')">
+                  <ion-icon name="close-circle-outline"></ion-icon> Cancelar
+                </ion-button>
+                <ion-button *ngIf="canEditReservation(res)" color="warning" size="small" (click)="navigateToEdit(res.id)">
+                  <ion-icon name="create-outline"></ion-icon> Editar
+                </ion-button>
+              </ion-item-options>
+            </ion-item-sliding>
           </ion-card>
         </ion-list>
       </div>

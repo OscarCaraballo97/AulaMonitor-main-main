@@ -284,39 +284,63 @@ export class ReservationFormPage implements OnInit, OnDestroy {
       this.availableStartTimes = []; this.cdr.detectChanges(); return;
     }
     const slots: { value: string, display: string }[] = [];
-    const openingHour = 7; 
-    let dayClosingHour = 22;
+    const openingHour = 7; // Corresponds to 7:00 AM UTC
+    let dayClosingHour = 22; // Corresponds to 10:00 PM UTC
     const dateParts = this.selectedDateForTimeSlots.split('-').map(Number);
     const utcYear = dateParts[0], utcMonth = dateParts[1] - 1, utcDay = dateParts[2];
     
     const dayOfWeek = new Date(Date.UTC(utcYear, utcMonth, utcDay)).getUTCDay();
 
+    // Sundays (0) are not reservable
     if (dayOfWeek === 0) { this.availableStartTimes = []; this.cdr.detectChanges(); return; } 
+    // Saturdays (6) close at 12:00 PM UTC
     if (dayOfWeek === 6) dayClosingHour = 12; 
 
-    const now = new Date();
-    const selectedDateStartOfDayUTC = new Date(Date.UTC(utcYear, utcMonth, utcDay));
-    const todayStartOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const isSelectedDateTodayUTC = selectedDateStartOfDayUTC.getTime() === todayStartOfDayUTC.getTime();
-    
+    const now = new Date(); // Local Date object
+    // MODIFICACION AQUI: Obtener el timestamp UTC del momento actual
+    // Esto asegura que la comparación se haga entre dos timestamps UTC
+    const nowInUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds(), now.getUTCMilliseconds());
+
+    // *** AÑADIR ESTOS LOGS ANTES DEL BUCLE ***
+    console.log(`--- DEBUG generateAvailableTimeSlots ---`);
+    console.log(`Selected Date (YYYY-MM-DD UTC): ${this.selectedDateForTimeSlots}`);
+    console.log(`Current Day of Week (0=Sun, 6=Sat): ${dayOfWeek}`);
+    console.log(`Opening Hour (UTC): ${openingHour}`);
+    console.log(`Calculated Day Closing Hour (UTC): ${dayClosingHour}`);
+    console.log(`Current Time (Local): ${now.toString()}`);
+    console.log(`Current Time (UTC Timestamp): ${new Date(nowInUTC).toISOString()}`); // Convert timestamp back to ISO for readability
+    console.log(`Is selected date today?: ${new Date(Date.UTC(utcYear, utcMonth, utcDay)).getTime() === new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime()}`);
+
+
     const existingReservationTimes = this.existingReservationsForDay.map(res => ({
-      start: new Date(res.startTime + 'Z').getTime(),
+      start: new Date(res.startTime + 'Z').getTime(), // Ensure UTC interpretation
       end: new Date(res.endTime + 'Z').getTime()
     }));
+    console.log(`Existing Reservations for Day (UTC Timestamps and ISO strings):`);
+    existingReservationTimes.forEach(res => {
+        console.log(`  - Start: ${new Date(res.start).toISOString()}, End: ${new Date(res.end).toISOString()}`);
+    });
 
     for (let hour = openingHour; hour < dayClosingHour; hour++) {
       for (let minute = 0; minute < 60; minute += this.SLOT_DURATION_MINUTES) {
         const slotStartUTC = new Date(Date.UTC(utcYear, utcMonth, utcDay, hour, minute));
-        const slotStartTimestamp = slotStartUTC.getTime();
+        const slotStartTimestamp = slotStartUTC.getTime(); // This is UTC timestamp
 
-        if (isSelectedDateTodayUTC && slotStartTimestamp < now.getTime()) {
+        // *** AÑADIR ESTOS LOGS DENTRO DEL BUCLE ***
+        console.log(`DEBUG: Loop - Processing slot: ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}, UTC ISO: ${slotStartUTC.toISOString()}`);
+        console.log(`DEBUG: Filter Check - isSelectedDateTodayUTC: ${new Date(Date.UTC(utcYear, utcMonth, utcDay)).getTime() === new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime()}, slotStartTimestamp (${slotStartTimestamp}) < nowInUTC (${nowInUTC}): ${slotStartTimestamp < nowInUTC}`);
+        
+        if (new Date(Date.UTC(utcYear, utcMonth, utcDay)).getTime() === new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime() && slotStartTimestamp < nowInUTC) {
+            console.log(`DEBUG: FILTERED - Past time for today: ${slotStartUTC.toISOString()}`);
             continue;
         }
 
         const slotEndUTC = new Date(slotStartUTC.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
 
+        console.log(`DEBUG: Closing Hour Check - slotEndUTC.getUTCHours(): ${slotEndUTC.getUTCHours()}, dayClosingHour: ${dayClosingHour}`);
         if (slotEndUTC.getUTCHours() > dayClosingHour || 
            (slotEndUTC.getUTCHours() === dayClosingHour && slotEndUTC.getUTCMinutes() > 0)) {
+           console.log(`DEBUG: FILTERED - Exceeds closing hour: ${slotEndUTC.toISOString()}`);
            continue; 
         }
 
@@ -327,16 +351,22 @@ export class ReservationFormPage implements OnInit, OnDestroy {
             break;
           }
         }
-        if (isOccupied) continue;
+        if (isOccupied) {
+            console.log(`DEBUG: FILTERED - Occupied by existing reservation. Slot: ${slotStartUTC.toISOString()}`);
+            continue;
+        }
 
+        console.log(`DEBUG: ADDING SLOT: ${slotStartUTC.toISOString()}, Display: ${`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`}`);
         slots.push({
           value: slotStartUTC.toISOString(),
-          display: this.datePipe.transform(slotStartUTC, 'HH:mm', 'America/Bogota') || ''
+          display: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
         });
       }
     }
     this.availableStartTimes = slots;
     this.cdr.detectChanges();
+    console.log(`--- END DEBUG generateAvailableTimeSlots ---`);
+    console.log(`Final Available Slots:`, this.availableStartTimes);
   }
 
   onStartTimeSelected(selectedStartTimeISO_UTC: string | null) {
@@ -349,14 +379,14 @@ export class ReservationFormPage implements OnInit, OnDestroy {
 
   filterAvailableDurations(startTimeISO: string) {
     const dayOfWeek = new Date(startTimeISO).getUTCDay();
-    let dayClosingHour = (dayOfWeek === 6) ? 22 : 22;
+    const dayClosingHourUTC = (dayOfWeek === 6) ? 12 : 22; 
 
     this.filteredAvailableDurations = this.allAvailableDurations.filter(durationOption => {
         const totalDurationMinutes = durationOption.value * this.SLOT_DURATION_MINUTES;
         const potentialEndTimeUTC = new Date(new Date(startTimeISO).getTime() + totalDurationMinutes * 60 * 1000);
 
-        if (potentialEndTimeUTC.getUTCHours() > dayClosingHour || 
-           (potentialEndTimeUTC.getUTCHours() === dayClosingHour && potentialEndTimeUTC.getUTCMinutes() > 0)) {
+        if (potentialEndTimeUTC.getUTCHours() > dayClosingHourUTC || 
+           (potentialEndTimeUTC.getUTCHours() === dayClosingHourUTC && potentialEndTimeUTC.getUTCMinutes() > 0)) {
             return false;
         }
         
@@ -453,8 +483,8 @@ export class ReservationFormPage implements OnInit, OnDestroy {
             durationBlocks: durationInBlocks,
             reservationDateControl: dateUTCISO,
             status: res.status,
-            userId: res.user?.id,
-            startTime: res.startTime.endsWith('Z') ? res.startTime : res.startTime + 'Z'
+            startTime: res.startTime.endsWith('Z') ? res.startTime : res.startTime + 'Z',
+            userId: res.user?.id
         }, { emitEvent: true });
         this.configureFormBasedOnRoleAndMode();
       },

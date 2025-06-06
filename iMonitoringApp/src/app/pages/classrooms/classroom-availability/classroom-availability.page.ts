@@ -12,8 +12,7 @@ import { Reservation, ReservationStatus } from '../../../models/reservation.mode
 import {
   IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent, IonButton, IonIcon,
   IonSpinner, IonCard, IonCardContent, IonChip, IonLabel, IonSelect, IonSelectOption, IonItem,
-  IonPopover, IonDatetime
-} from '@ionic/angular/standalone';
+  IonPopover, IonDatetime, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { ToastController, LoadingController } from '@ionic/angular/standalone';
 
 interface TimeSlot {
@@ -45,7 +44,7 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
 
   selectedDateYYYYMMDD: string = '';
   selectedDateTimeISO: string = '';
-
+  
   allClassrooms: Classroom[] = [];
   selectedClassroomId: string | null = null;
 
@@ -138,7 +137,7 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
           this.loadSlotsForSelectedClassroom();
         }
       } else {
-         this.presentToast("No hay aulas configuradas.", "warning");
+          this.presentToast("No hay aulas configuradas.", "warning");
       }
     });
   }
@@ -229,7 +228,7 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
     const dayOfWeek = selectedDateUTC.getUTCDay();
 
     let currentClosingHour = this.CLOSING_HOUR;
-    if (dayOfWeek === 0) return [];
+    if (dayOfWeek === 0) return []; 
     if (dayOfWeek === 6) currentClosingHour = this.SATURDAY_CLOSING_HOUR; 
 
     for (let hour = this.OPENING_HOUR; hour < currentClosingHour; hour++) {
@@ -242,14 +241,15 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
            continue; 
         }
 
-        const displayTime = formatDate(slotStart, 'HH:mm', 'es-CO', 'America/Bogota');
+       
+        const displayTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         
         let isReserved = false;
         let reservationInfo: string | undefined;
 
         for (const res of reservations) {
-          const resStart = new Date(res.startTime + 'Z'); 
-          const resEnd = new Date(res.endTime + 'Z');     
+          const resStart = new Date(res.startTime + 'Z');
+          const resEnd = new Date(res.endTime + 'Z'); 
 
           if (slotStart.getTime() < resEnd.getTime() && slotEnd.getTime() > resStart.getTime()) {
             isReserved = true;
@@ -286,14 +286,17 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   }
 
   changeDay(offset: number) {
-    const currentDateObj = new Date(this.selectedDateYYYYMMDD + 'T12:00:00Z');
+    const currentDateObj = new Date(this.selectedDateYYYYMMDD + 'T12:00:00Z'); 
     currentDateObj.setUTCDate(currentDateObj.getUTCDate() + offset);
     const newSelectedYYYYMMDD = this.datePipe.transform(currentDateObj, 'yyyy-MM-dd', 'UTC');
     
     if (newSelectedYYYYMMDD && (!this.minDate || newSelectedYYYYMMDD >= this.minDate) && (!this.maxDate || newSelectedYYYYMMDD <= this.maxDate)) {
-        const newIsoForPicker = new Date(newSelectedYYYYMMDD + 'T00:00:00.000Z').toISOString();
-        this.selectedDateTimeISO = newIsoForPicker;
-        this.onDateTimeChanged(this.selectedDateTimeISO);
+        this.selectedDateYYYYMMDD = newSelectedYYYYMMDD;
+        this.selectedDateTimeISO = new Date(this.selectedDateYYYYMMDD + 'T00:00:00.000Z').toISOString(); 
+        this.updateUrlQueryParams(); 
+        if (this.selectedClassroomId) {
+            this.loadSlotsForSelectedClassroom();
+        }
     } else {
         this.presentToast(offset > 0 ? "No se puede avanzar más allá de la fecha máxima." : "No se puede retroceder más allá de la fecha mínima.", "warning");
     }
