@@ -20,6 +20,18 @@ import { Observable, Subject, forkJoin, of, combineLatest } from 'rxjs';
 import { takeUntil, catchError, tap, finalize, take, switchMap, map, distinctUntilChanged, startWith, filter } from 'rxjs/operators';
 import { Rol } from 'src/app/models/rol.model';
 
+
+function toLocalISOString(date: Date): string {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
 export function dateTimeOrderValidator(): ValidatorFn {
   return (group: AbstractControl): ValidationErrors | null => {
     const startControl = group.get('startTime');
@@ -355,12 +367,12 @@ export class ReservationFormPage implements OnInit, OnDestroy {
         }
 
         
-        const slotStartUTCISO = slotStartLocal.toISOString();
-        const slotEndUTCISO = slotEndLocal.toISOString();
+        const slotStartLocalISO = toLocalISOString(slotStartLocal);
+        const slotEndLocalISO = toLocalISOString(slotEndLocal);
 
         let isOccupied = false;
         for (const res of existingReservationTimestamps) {
-          if (new Date(slotStartUTCISO).getTime() < res.end && new Date(slotEndUTCISO).getTime() > res.start) {
+          if (new Date(slotStartLocalISO).getTime() < res.end && new Date(slotEndLocalISO).getTime() > res.start) {
             isOccupied = true;
             break;
           }
@@ -371,7 +383,7 @@ export class ReservationFormPage implements OnInit, OnDestroy {
         }
 
         slots.push({
-          value: slotStartUTCISO,
+          value: slotStartLocalISO,
           display: this.datePipe.transform(slotStartLocal, 'HH:mm', 'local') || ''
         });
       }
@@ -438,10 +450,12 @@ export class ReservationFormPage implements OnInit, OnDestroy {
       return;
     }
 
-    const startTimeUTC = new Date(startTimeISO);
+    const startTimeLocal = new Date(startTimeISO);
     const totalDurationMinutes = durationBlocksValue * this.SLOT_DURATION_MINUTES;
-    const endTimeUTC = new Date(startTimeUTC.getTime() + totalDurationMinutes * 60 * 1000); // This is still UTC
-    this.reservationForm.patchValue({ endTime: endTimeUTC.toISOString() }, { emitEvent: false });
+    const endTimeLocal = new Date(startTimeLocal.getTime() + totalDurationMinutes * 60 * 1000);
+
+    this.reservationForm.patchValue({ endTime: toLocalISOString(endTimeLocal) }, { emitEvent: false });
+
     this.reservationForm.get('endTime')?.updateValueAndValidity({ emitEvent: false });
     this.cdr.detectChanges();
   }
