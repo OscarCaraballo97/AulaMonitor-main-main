@@ -35,7 +35,7 @@ interface TimeSlot {
     TitleCasePipe,
     IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent, IonButton, IonIcon,
     IonSpinner, IonCard, IonCardContent, IonChip, IonLabel, IonSelect, IonSelectOption, IonItem,
-    IonPopover, IonDatetime, IonRefresher, IonRefresherContent
+    IonPopover, IonDatetime
   ],
   providers: [DatePipe]
 })
