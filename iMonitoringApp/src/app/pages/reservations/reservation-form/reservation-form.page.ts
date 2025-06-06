@@ -34,7 +34,7 @@ export function dateTimeOrderValidator(): ValidatorFn {
     }
     if (endControl?.hasError('dateTimeOrder')) {
       const errors = { ...endControl.errors };
-      if (errors) { 
+      if (errors) {
         delete errors['dateTimeOrder'];
         if (Object.keys(errors).length === 0) endControl.setErrors(null);
         else endControl.setErrors(errors);
@@ -84,20 +84,24 @@ export class ReservationFormPage implements OnInit, OnDestroy {
   availableStatuses = Object.values(ReservationStatus);
 
   selectableDates: SelectableDate[] = [];
-  selectedDateForTimeSlots: string = '';
-  availableStartTimes: { value: string, display: string }[] = [];
+  selectedDateForTimeSlots: string = ''; 
+  availableStartTimes: { value: string, display: string }[] = []; 
   isLoadingTimes = false;
   existingReservationsForDay: Reservation[] = [];
   public reservationOwnerName: string | null = null;
   private originalReservationDataForEdit: Reservation | null = null;
 
+  readonly OPENING_HOUR_LOCAL = 7;
+  readonly CLOSING_HOUR_LOCAL = 22; 
+  readonly SATURDAY_CLOSING_HOUR_LOCAL = 12; 
   readonly SLOT_DURATION_MINUTES = 60;
+
   allAvailableDurations: { value: number, display: string }[] = [
-    { value: 1, display: `1 hora (1 bloque)` }, 
+    { value: 1, display: `1 hora (1 bloque)` },
     { value: 2, display: `2 horas (2 bloques)` },
-    { value: 3, display: `3 horas (3 bloques)` }, 
+    { value: 3, display: `3 horas (3 bloques)` },
     { value: 4, display: `4 horas (4 bloques)` },
-    { value: 5, display: `5 horas (5 bloques)` }, 
+    { value: 5, display: `5 horas (5 bloques)` },
     { value: 6, display: `6 horas (6 bloques)` },
   ];
   filteredAvailableDurations: { value: number, display: string }[] = [...this.allAvailableDurations];
@@ -132,20 +136,33 @@ export class ReservationFormPage implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  private formatDateToLocalYYYYMMDD(date: Date): string {
+      return formatDate(date, 'yyyy-MM-dd', 'en-US', 'local');
+  }
+
   generateSelectableDates() {
     const dates: SelectableDate[] = [];
-    const todayForIteration = new Date();
+    const todayLocal = new Date();
+    todayLocal.setHours(0, 0, 0, 0); 
+
     for (let i = 0; i < 30; i++) {
-      const currentDateLocal = new Date(todayForIteration);
-      currentDateLocal.setDate(todayForIteration.getDate() + i);
-      currentDateLocal.setHours(0, 0, 0, 0);
-      if (currentDateLocal.getDay() !== 0) {
-        const dateValueUTCString = new Date(Date.UTC(currentDateLocal.getFullYear(), currentDateLocal.getMonth(), currentDateLocal.getDate())).toISOString();
-        dates.push({
-          value: dateValueUTCString,
-          display: formatDate(currentDateLocal, 'EEEE, d \'de\' MMMM \'de\' y', 'es-CO', 'America/Bogota')
-        });
-      }
+      const currentDateLocal = new Date(todayLocal);
+      currentDateLocal.setDate(todayLocal.getDate() + i);
+
+
+      if (currentDateLocal.getDay() === 0) continue;
+
+
+      const dateValueUTCString = new Date(Date.UTC(
+          currentDateLocal.getFullYear(),
+          currentDateLocal.getMonth(),
+          currentDateLocal.getDate()
+      )).toISOString();
+
+      dates.push({
+        value: dateValueUTCString,
+        display: formatDate(currentDateLocal, 'EEEE, d \'de\' MMMM \'de\' y', 'es-CO', 'America/Bogota') // Display in local time
+      });
     }
     this.selectableDates = dates;
   }
@@ -155,17 +172,19 @@ export class ReservationFormPage implements OnInit, OnDestroy {
     if (this.selectableDates.length > 0) {
       defaultDateISOForControl = this.selectableDates[0].value;
     } else {
-      const todayForFallback = new Date();
-      defaultDateISOForControl = new Date(Date.UTC(todayForFallback.getFullYear(), todayForFallback.getMonth(), todayForFallback.getDate())).toISOString();
+      
+      const today = new Date();
+      defaultDateISOForControl = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())).toISOString();
     }
-    this.selectedDateForTimeSlots = formatDate(new Date(defaultDateISOForControl), 'yyyy-MM-dd', 'en-US', 'UTC');
+
+    this.selectedDateForTimeSlots = formatDate(defaultDateISOForControl, 'yyyy-MM-dd', 'en-US', 'UTC');
 
     this.reservationForm = this.fb.group({
       classroomId: [null, Validators.required],
       userId: [null],
-      reservationDateControl: [defaultDateISOForControl, Validators.required],
-      startTime: [{ value: null, disabled: true }, Validators.required],
-      endTime: [null, Validators.required],
+      reservationDateControl: [defaultDateISOForControl, Validators.required], 
+      startTime: [{ value: null, disabled: true }, Validators.required], 
+      endTime: [null, Validators.required],                           
       durationBlocks: [this.selectedDurationBlocks, Validators.required],
       status: [{ value: ReservationStatus.PENDIENTE, disabled: true }, Validators.required],
       purpose: ['', [Validators.required, Validators.maxLength(255)]],
@@ -212,11 +231,15 @@ export class ReservationFormPage implements OnInit, OnDestroy {
                 }
                 const classroomIdFromParams = this.route.snapshot.queryParamMap.get('classroomId');
                 const startTimeFromParams = this.route.snapshot.queryParamMap.get('startTime');
+                
                 if (classroomIdFromParams) this.reservationForm.get('classroomId')?.patchValue(classroomIdFromParams, { emitEvent: true });
                 if (startTimeFromParams) {
-                    const selectedDate = new Date(startTimeFromParams);
-                    const dateUTCForControl = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate())).toISOString();
-                    this.reservationForm.get('reservationDateControl')?.patchValue(dateUTCForControl, { emitEvent: true });
+                    
+                    const startTimeAsDate = new Date(startTimeFromParams);
+                  
+                    const datePartUTCISO = new Date(Date.UTC(startTimeAsDate.getUTCFullYear(), startTimeAsDate.getUTCMonth(), startTimeAsDate.getUTCDate())).toISOString();
+                    this.reservationForm.get('reservationDateControl')?.patchValue(datePartUTCISO, { emitEvent: true });
+                    this.reservationForm.get('startTime')?.patchValue(startTimeFromParams, { emitEvent: true });
                 }
             }
         },
@@ -240,15 +263,22 @@ export class ReservationFormPage implements OnInit, OnDestroy {
           this.reservationForm.get('startTime')?.setValue(null, { emitEvent: false });
           this.cdr.detectChanges();
         }),
-        switchMap(([classroomId, dateStrUTC]) => 
-          this.reservationService.getReservationsByClassroomAndDateRange(classroomId, dateStrUTC.substring(0, 10))
+        switchMap(([classroomId, dateStrUTC]) => {
+          const startOfDayUTC = new Date(dateStrUTC);
+          const endOfDayUTC = new Date(startOfDayUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
+
+          return this.reservationService.getReservationsByClassroomAndDateRange(
+            classroomId,
+            startOfDayUTC.toISOString(), 
+            endOfDayUTC.toISOString() 
+          )
             .pipe(
               catchError(err => {
                 this.presentToast("Error cargando reservas existentes.", "danger");
                 return of([] as Reservation[]);
               })
-            )
-        )
+            );
+        })
       ).subscribe(reservations => {
         this.existingReservationsForDay = reservations.filter(r =>
             r.id !== this.reservationId &&
@@ -256,12 +286,12 @@ export class ReservationFormPage implements OnInit, OnDestroy {
         );
         this.generateAvailableTimeSlots();
         this.isLoadingTimes = false;
-        
+
         if (this.availableStartTimes.length > 0) {
             this.reservationForm.get('startTime')?.enable({ emitEvent: false });
         }
         this.cdr.detectChanges();
-        
+
         const startTimeFromParams = this.route.snapshot.queryParamMap.get('startTime');
         if (startTimeFromParams && this.availableStartTimes.some(slot => slot.value === startTimeFromParams)) {
             this.reservationForm.get('startTime')?.patchValue(startTimeFromParams, { emitEvent: true });
@@ -269,104 +299,85 @@ export class ReservationFormPage implements OnInit, OnDestroy {
       });
 
       combineLatest([
-        this.reservationForm.get('startTime')!.valueChanges.pipe(startWith(this.reservationForm.get('startTime')?.value)),
-        this.reservationForm.get('durationBlocks')!.valueChanges.pipe(startWith(this.reservationForm.get('durationBlocks')?.value))
+        this.reservationForm.get('startTime')!.valueChanges.pipe(startWith(this.reservationForm.get('startTime')?.value as string | null)), // Explicit cast
+        this.reservationForm.get('durationBlocks')!.valueChanges.pipe(startWith(this.reservationForm.get('durationBlocks')?.value as number | null)) // Explicit cast
       ]).pipe(takeUntil(this.destroy$))
         .subscribe(([startTimeISO, durationBlocks]) => {
-          this.selectedDurationBlocks = durationBlocks || 1;
-          this.updateEndTimeAndValidateFullSlot(startTimeISO);
-          if (startTimeISO) this.filterAvailableDurations(startTimeISO);
+          const currentStartTimeISO: string | null = startTimeISO;
+          const currentDurationBlocks: number = durationBlocks || 1; 
+
+          this.selectedDurationBlocks = currentDurationBlocks;
+          this.updateEndTimeAndValidateFullSlot(currentStartTimeISO);
+          if (currentStartTimeISO) this.filterAvailableDurations(currentStartTimeISO);
       });
   }
 
   generateAvailableTimeSlots() {
     if (!this.selectedDateForTimeSlots || !this.reservationForm.get('classroomId')?.value) {
-      this.availableStartTimes = []; this.cdr.detectChanges(); return;
+      this.availableStartTimes = [];
+      this.cdr.detectChanges();
+      return;
     }
+
     const slots: { value: string, display: string }[] = [];
-    const openingHour = 7; // Corresponds to 7:00 AM UTC
-    let dayClosingHour = 22; // Corresponds to 10:00 PM UTC
-    const dateParts = this.selectedDateForTimeSlots.split('-').map(Number);
-    const utcYear = dateParts[0], utcMonth = dateParts[1] - 1, utcDay = dateParts[2];
-    
-    const dayOfWeek = new Date(Date.UTC(utcYear, utcMonth, utcDay)).getUTCDay();
+    const selectedLocalDayStart = new Date(this.selectedDateForTimeSlots + 'T00:00:00');
+    const dayOfWeekLocal = selectedLocalDayStart.getDay();
 
-    // Sundays (0) are not reservable
-    if (dayOfWeek === 0) { this.availableStartTimes = []; this.cdr.detectChanges(); return; } 
-    // Saturdays (6) close at 12:00 PM UTC
-    if (dayOfWeek === 6) dayClosingHour = 12; 
+    let currentClosingHourLocal = this.CLOSING_HOUR_LOCAL;
+    if (dayOfWeekLocal === 0) {
+      this.availableStartTimes = [];
+      this.cdr.detectChanges();
+      return;
+    }
+    if (dayOfWeekLocal === 6) currentClosingHourLocal = this.SATURDAY_CLOSING_HOUR_LOCAL;
 
-    const now = new Date(); // Local Date object
-    // MODIFICACION AQUI: Obtener el timestamp UTC del momento actual
-    // Esto asegura que la comparación se haga entre dos timestamps UTC
-    const nowInUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds(), now.getUTCMilliseconds());
+    const nowLocal = new Date();
 
-    // *** AÑADIR ESTOS LOGS ANTES DEL BUCLE ***
-    console.log(`--- DEBUG generateAvailableTimeSlots ---`);
-    console.log(`Selected Date (YYYY-MM-DD UTC): ${this.selectedDateForTimeSlots}`);
-    console.log(`Current Day of Week (0=Sun, 6=Sat): ${dayOfWeek}`);
-    console.log(`Opening Hour (UTC): ${openingHour}`);
-    console.log(`Calculated Day Closing Hour (UTC): ${dayClosingHour}`);
-    console.log(`Current Time (Local): ${now.toString()}`);
-    console.log(`Current Time (UTC Timestamp): ${new Date(nowInUTC).toISOString()}`); // Convert timestamp back to ISO for readability
-    console.log(`Is selected date today?: ${new Date(Date.UTC(utcYear, utcMonth, utcDay)).getTime() === new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime()}`);
-
-
-    const existingReservationTimes = this.existingReservationsForDay.map(res => ({
-      start: new Date(res.startTime + 'Z').getTime(), // Ensure UTC interpretation
-      end: new Date(res.endTime + 'Z').getTime()
+    const existingReservationTimestamps = this.existingReservationsForDay.map(res => ({
+      start: new Date(res.startTime).getTime(),
+      end: new Date(res.endTime).getTime()
     }));
-    console.log(`Existing Reservations for Day (UTC Timestamps and ISO strings):`);
-    existingReservationTimes.forEach(res => {
-        console.log(`  - Start: ${new Date(res.start).toISOString()}, End: ${new Date(res.end).toISOString()}`);
-    });
 
-    for (let hour = openingHour; hour < dayClosingHour; hour++) {
+    for (let hour = this.OPENING_HOUR_LOCAL; hour < currentClosingHourLocal; hour++) {
       for (let minute = 0; minute < 60; minute += this.SLOT_DURATION_MINUTES) {
-        const slotStartUTC = new Date(Date.UTC(utcYear, utcMonth, utcDay, hour, minute));
-        const slotStartTimestamp = slotStartUTC.getTime(); // This is UTC timestamp
+        const slotStartLocal = new Date(selectedLocalDayStart.getFullYear(), selectedLocalDayStart.getMonth(), selectedLocalDayStart.getDate(), hour, minute);
+        const slotEndLocal = new Date(slotStartLocal.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
 
-        // *** AÑADIR ESTOS LOGS DENTRO DEL BUCLE ***
-        console.log(`DEBUG: Loop - Processing slot: ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}, UTC ISO: ${slotStartUTC.toISOString()}`);
-        console.log(`DEBUG: Filter Check - isSelectedDateTodayUTC: ${new Date(Date.UTC(utcYear, utcMonth, utcDay)).getTime() === new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime()}, slotStartTimestamp (${slotStartTimestamp}) < nowInUTC (${nowInUTC}): ${slotStartTimestamp < nowInUTC}`);
         
-        if (new Date(Date.UTC(utcYear, utcMonth, utcDay)).getTime() === new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).getTime() && slotStartTimestamp < nowInUTC) {
-            console.log(`DEBUG: FILTERED - Past time for today: ${slotStartUTC.toISOString()}`);
+        const isSelectedDateTodayLocal = this.formatDateToLocalYYYYMMDD(selectedLocalDayStart) === this.formatDateToLocalYYYYMMDD(nowLocal);
+        if (isSelectedDateTodayLocal && slotEndLocal.getTime() <= nowLocal.getTime()) {
             continue;
         }
 
-        const slotEndUTC = new Date(slotStartUTC.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
-
-        console.log(`DEBUG: Closing Hour Check - slotEndUTC.getUTCHours(): ${slotEndUTC.getUTCHours()}, dayClosingHour: ${dayClosingHour}`);
-        if (slotEndUTC.getUTCHours() > dayClosingHour || 
-           (slotEndUTC.getUTCHours() === dayClosingHour && slotEndUTC.getUTCMinutes() > 0)) {
-           console.log(`DEBUG: FILTERED - Exceeds closing hour: ${slotEndUTC.toISOString()}`);
-           continue; 
+        if (slotEndLocal.getHours() > currentClosingHourLocal ||
+           (slotEndLocal.getHours() === currentClosingHourLocal && slotEndLocal.getMinutes() > 0)) {
+           continue;
         }
 
+        
+        const slotStartUTCISO = slotStartLocal.toISOString();
+        const slotEndUTCISO = slotEndLocal.toISOString();
+
         let isOccupied = false;
-        for (const res of existingReservationTimes) {
-          if (slotStartTimestamp < res.end && slotEndUTC.getTime() > res.start) {
-            isOccupied = true; 
+        for (const res of existingReservationTimestamps) {
+          if (new Date(slotStartUTCISO).getTime() < res.end && new Date(slotEndUTCISO).getTime() > res.start) {
+            isOccupied = true;
             break;
           }
         }
+
         if (isOccupied) {
-            console.log(`DEBUG: FILTERED - Occupied by existing reservation. Slot: ${slotStartUTC.toISOString()}`);
             continue;
         }
 
-        console.log(`DEBUG: ADDING SLOT: ${slotStartUTC.toISOString()}, Display: ${`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`}`);
         slots.push({
-          value: slotStartUTC.toISOString(),
-          display: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+          value: slotStartUTCISO,
+          display: this.datePipe.transform(slotStartLocal, 'HH:mm', 'local') || ''
         });
       }
     }
     this.availableStartTimes = slots;
     this.cdr.detectChanges();
-    console.log(`--- END DEBUG generateAvailableTimeSlots ---`);
-    console.log(`Final Available Slots:`, this.availableStartTimes);
   }
 
   onStartTimeSelected(selectedStartTimeISO_UTC: string | null) {
@@ -377,26 +388,35 @@ export class ReservationFormPage implements OnInit, OnDestroy {
     this.filterAvailableDurations(selectedStartTimeISO_UTC);
   }
 
-  filterAvailableDurations(startTimeISO: string) {
-    const dayOfWeek = new Date(startTimeISO).getUTCDay();
-    const dayClosingHourUTC = (dayOfWeek === 6) ? 12 : 22; 
+  filterAvailableDurations(startTimeISO_UTC: string) {
+   
+    const startTimeLocal = new Date(startTimeISO_UTC);
+
+    const dayOfWeekLocal = startTimeLocal.getDay();
+    const dayClosingHourLocal = (dayOfWeekLocal === 6) ? this.SATURDAY_CLOSING_HOUR_LOCAL : this.CLOSING_HOUR_LOCAL;
 
     this.filteredAvailableDurations = this.allAvailableDurations.filter(durationOption => {
         const totalDurationMinutes = durationOption.value * this.SLOT_DURATION_MINUTES;
-        const potentialEndTimeUTC = new Date(new Date(startTimeISO).getTime() + totalDurationMinutes * 60 * 1000);
+        const potentialEndTimeLocal = new Date(startTimeLocal.getTime() + totalDurationMinutes * 60 * 1000);
 
-        if (potentialEndTimeUTC.getUTCHours() > dayClosingHourUTC || 
-           (potentialEndTimeUTC.getUTCHours() === dayClosingHourUTC && potentialEndTimeUTC.getUTCMinutes() > 0)) {
+        if (potentialEndTimeLocal.getHours() > dayClosingHourLocal ||
+           (potentialEndTimeLocal.getHours() === dayClosingHourLocal && potentialEndTimeLocal.getMinutes() > 0)) {
             return false;
         }
         
+        const potentialEndTimeUTC = new Date(potentialEndTimeLocal.toISOString());
+
         for (let i = 0; i < durationOption.value; i++) {
-            const currentMiniBlockStart = new Date(new Date(startTimeISO).getTime() + i * this.SLOT_DURATION_MINUTES * 60 * 1000);
-            const currentMiniBlockEnd = new Date(currentMiniBlockStart.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
+            const currentMiniBlockStartLocal = new Date(startTimeLocal.getTime() + i * this.SLOT_DURATION_MINUTES * 60 * 1000);
+            const currentMiniBlockEndLocal = new Date(currentMiniBlockStartLocal.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
+
+            const currentMiniBlockStartUTC = new Date(currentMiniBlockStartLocal.toISOString());
+            const currentMiniBlockEndUTC = new Date(currentMiniBlockEndLocal.toISOString());
+
             for (const res of this.existingReservationsForDay) {
-                const resStartTime = new Date(res.startTime + 'Z').getTime();
-                const resEndTime = new Date(res.endTime + 'Z').getTime();
-                if (currentMiniBlockStart.getTime() < resEndTime && currentMiniBlockEnd.getTime() > resStartTime) {
+                const resStartTimeUTC = new Date(res.startTime).getTime();
+                const resEndTimeUTC = new Date(res.endTime).getTime();
+                if (currentMiniBlockStartUTC.getTime() < resEndTimeUTC && currentMiniBlockEndUTC.getTime() > resStartTimeUTC) {
                     return false;
                 }
             }
@@ -420,7 +440,7 @@ export class ReservationFormPage implements OnInit, OnDestroy {
 
     const startTimeUTC = new Date(startTimeISO);
     const totalDurationMinutes = durationBlocksValue * this.SLOT_DURATION_MINUTES;
-    const endTimeUTC = new Date(startTimeUTC.getTime() + totalDurationMinutes * 60 * 1000);
+    const endTimeUTC = new Date(startTimeUTC.getTime() + totalDurationMinutes * 60 * 1000); // This is still UTC
     this.reservationForm.patchValue({ endTime: endTimeUTC.toISOString() }, { emitEvent: false });
     this.reservationForm.get('endTime')?.updateValueAndValidity({ emitEvent: false });
     this.cdr.detectChanges();
@@ -470,10 +490,12 @@ export class ReservationFormPage implements OnInit, OnDestroy {
           return;
         }
         this.reservationOwnerName = res.user?.name ?? null;
-        const startTimeUTC = new Date(res.startTime + 'Z');
-        const endTimeUTC = new Date(res.endTime + 'Z');
+        const startTimeUTC = new Date(res.startTime);
+        const endTimeUTC = new Date(res.endTime);
         const durationMillis = endTimeUTC.getTime() - startTimeUTC.getTime();
         const durationInBlocks = Math.max(1, Math.round(durationMillis / (this.SLOT_DURATION_MINUTES * 60 * 1000)));
+        
+       
         const dateUTCISO = new Date(Date.UTC(startTimeUTC.getUTCFullYear(), startTimeUTC.getUTCMonth(), startTimeUTC.getUTCDate())).toISOString();
         
         this.selectedDurationBlocks = durationInBlocks;
@@ -483,7 +505,7 @@ export class ReservationFormPage implements OnInit, OnDestroy {
             durationBlocks: durationInBlocks,
             reservationDateControl: dateUTCISO,
             status: res.status,
-            startTime: res.startTime.endsWith('Z') ? res.startTime : res.startTime + 'Z',
+            startTime: res.startTime, 
             userId: res.user?.id
         }, { emitEvent: true });
         this.configureFormBasedOnRoleAndMode();

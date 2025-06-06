@@ -17,6 +17,7 @@ export interface ReservationListFilters {
   sortDirection?: 'asc' | 'desc';
   page?: number;
   size?: number;
+  futureOnly?: boolean;
 }
 
 @Injectable({
@@ -56,11 +57,7 @@ export class ReservationService {
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          if (key === 'status') { 
-            params = params.append(key, String(value));
-          } else {
-            params = params.append(key, value as string | number | boolean);
-          }
+          params = params.append(key, String(value));
         }
       });
     }
@@ -75,7 +72,7 @@ export class ReservationService {
     if (filters) {
        Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          params = params.append(key, value as string | number | boolean);
+          params = params.append(key, String(value));
         }
       });
     }
@@ -129,15 +126,11 @@ export class ReservationService {
     );
   }
 
-  getReservationsByClassroomAndDateRange(classroomId: string, dateOnly: string, endDateOnly?: string): Observable<Reservation[]> {
-    const startDate = `${dateOnly}T00:00:00.000Z`;
-    const effectiveEndDateOnly = endDateOnly || dateOnly;
-    const endDate = `${effectiveEndDateOnly}T23:59:59.999Z`;
-
+  getReservationsByClassroomAndDateRange(classroomId: string, startDateISO: string, endDateISO: string): Observable<Reservation[]> {
     const filters: ReservationListFilters = {
       classroomId: classroomId,
-      startDate: startDate,
-      endDate: endDate,
+      startDate: startDateISO, 
+      endDate: endDateISO,   
       sortField: 'startTime',
       sortDirection: 'asc'
     };
@@ -145,11 +138,11 @@ export class ReservationService {
 
     return this.getAllReservations(filters).pipe(
       tap(reservations => {
-        console.log(`[ReservationService] Aula ${classroomId}: ${reservations ? reservations.length : 0} reservas recibidas del backend para el rango [${startDate}, ${endDate}].`);
+        console.log(`[ReservationService] Aula ${classroomId}: ${reservations ? reservations.length : 0} reservas recibidas del backend para el rango [${startDateISO}, ${endDateISO}].`);
       }),
       catchError(err => {
-        console.error(`[ReservationService] Error en getReservationsByClassroomAndDateRange para aula ${classroomId} en rango [${startDate}, ${endDate}]:`, err);
-        return throwError(() => err); 
+        console.error(`[ReservationService] Error en getReservationsByClassroomAndDateRange para aula ${classroomId} en rango [${startDateISO}, ${endDateISO}]:`, err);
+        return throwError(() => this.handleError(err, 'obtener reservas por aula y rango de fecha')); 
       })
     );
   }

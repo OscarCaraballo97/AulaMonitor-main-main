@@ -35,7 +35,7 @@ interface TimeSlot {
     TitleCasePipe,
     IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent, IonButton, IonIcon,
     IonSpinner, IonCard, IonCardContent, IonChip, IonLabel, IonSelect, IonSelectOption, IonItem,
-    IonPopover, IonDatetime
+    IonPopover, IonDatetime, IonRefresher, IonRefresherContent
   ],
   providers: [DatePipe]
 })
@@ -43,8 +43,8 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   selectedDateYYYYMMDD: string = '';
-  selectedDateTimeISO: string = '';
-  
+  selectedDateTimeISO: string = ''; 
+
   allClassrooms: Classroom[] = [];
   selectedClassroomId: string | null = null;
 
@@ -56,9 +56,9 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   minDate: string = '';
   maxDate: string = '';
 
-  readonly OPENING_HOUR = 7;
-  readonly CLOSING_HOUR = 22;
-  readonly SATURDAY_CLOSING_HOUR = 12;
+  readonly OPENING_HOUR_LOCAL = 7;
+  readonly CLOSING_HOUR_LOCAL = 22; 
+  readonly SATURDAY_CLOSING_HOUR_LOCAL = 12;
   readonly SLOT_DURATION_MINUTES = 60;
 
   constructor(
@@ -71,32 +71,45 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
     private toastCtrl: ToastController,
     private loadingCtrl: LoadingController
   ) {
-    const today = new Date();
-    const todayYYYYMMDD = this.datePipe.transform(today, 'yyyy-MM-dd', 'UTC') || '';
-    this.minDate = todayYYYYMMDD;
+    const todayLocal = new Date();
 
-    const maxDateCalc = new Date();
-    maxDateCalc.setUTCDate(today.getUTCDate() + 30);
-    this.maxDate = this.datePipe.transform(maxDateCalc, 'yyyy-MM-dd', 'UTC') || '';
+    this.minDate = this.formatDateToLocalYYYYMMDD(todayLocal);
+
+    const maxDateCalc = new Date(todayLocal);
+    maxDateCalc.setDate(todayLocal.getDate() + 30);
+    this.maxDate = this.formatDateToLocalYYYYMMDD(maxDateCalc);
 
     const dateFromParams = this.route.snapshot.queryParamMap.get('date');
     const classroomIdFromParams = this.route.snapshot.queryParamMap.get('classroomId');
 
-    this.selectedDateYYYYMMDD = (dateFromParams && this.isValidDate(dateFromParams)) ? dateFromParams : todayYYYYMMDD;
-    this.selectedDateTimeISO = new Date(this.selectedDateYYYYMMDD + 'T00:00:00.000Z').toISOString();
+
+    if (dateFromParams && this.isValidDate(dateFromParams)) {
+
+        this.selectedDateYYYYMMDD = dateFromParams;
+
+        this.selectedDateTimeISO = new Date(this.selectedDateYYYYMMDD + 'T00:00:00').toISOString(); 
+    } else {
+        this.selectedDateYYYYMMDD = this.formatDateToLocalYYYYMMDD(todayLocal);
+        this.selectedDateTimeISO = todayLocal.toISOString(); 
+    }
     
     if (classroomIdFromParams) {
       this.selectedClassroomId = classroomIdFromParams;
     }
   }
 
+  private formatDateToLocalYYYYMMDD(date: Date): string {
+      return formatDate(date, 'yyyy-MM-dd', 'en-US', 'local');
+  }
+
   isValidDate(dateString: string): boolean {
     const regEx = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateString.match(regEx)) return false;
-    const d = new Date(dateString + "T00:00:00Z");
+
+    const d = new Date(dateString + "T00:00:00");
     const dNum = d.getTime();
     if (isNaN(dNum)) return false;
-    return d.toISOString().slice(0, 10) === dateString;
+    return this.formatDateToLocalYYYYMMDD(d) === dateString;
   }
 
   ngOnInit() {
@@ -143,15 +156,16 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   }
 
   onDateTimeChanged(isoStringValue: string | string[] | null | undefined) {
-    let newDateStrYYYYMMDD: string | null = null;
+    let newDateStrLocal: string | null = null;
     if (typeof isoStringValue === 'string') {
-        newDateStrYYYYMMDD = this.datePipe.transform(isoStringValue, 'yyyy-MM-dd', 'UTC') || '';
+        
+        newDateStrLocal = this.formatDateToLocalYYYYMMDD(new Date(isoStringValue)) || '';
     }
-    
-    if (newDateStrYYYYMMDD && this.isValidDate(newDateStrYYYYMMDD)) {
-      if (newDateStrYYYYMMDD !== this.selectedDateYYYYMMDD) {
-        this.selectedDateYYYYMMDD = newDateStrYYYYMMDD;
-        this.selectedDateTimeISO = new Date(this.selectedDateYYYYMMDD + 'T00:00:00.000Z').toISOString();
+
+    if (newDateStrLocal && this.isValidDate(newDateStrLocal)) {
+      if (newDateStrLocal !== this.selectedDateYYYYMMDD) {
+        this.selectedDateYYYYMMDD = newDateStrLocal;
+        this.selectedDateTimeISO = new Date(this.selectedDateYYYYMMDD + 'T00:00:00').toISOString();
         this.updateUrlQueryParams();
         if (this.selectedClassroomId) {
           this.loadSlotsForSelectedClassroom();
@@ -175,7 +189,7 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   private updateUrlQueryParams() {
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { 
+      queryParams: {
         date: this.selectedDateYYYYMMDD, 
         classroomId: this.selectedClassroomId || undefined
       },
@@ -197,7 +211,17 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
     this.timeSlotsForSelectedClassroom = [];
     this.cdr.detectChanges();
 
-    this.reservationService.getReservationsByClassroomAndDateRange(this.selectedClassroomId, this.selectedDateYYYYMMDD, this.selectedDateYYYYMMDD)
+    const localStartDate = new Date(this.selectedDateYYYYMMDD + 'T00:00:00');
+    const localEndDate = new Date(this.selectedDateYYYYMMDD + 'T23:59:59.999');
+
+    const utcStartDateISO = localStartDate.toISOString(); 
+    const utcEndDateISO = localEndDate.toISOString();   
+
+    this.reservationService.getReservationsByClassroomAndDateRange(
+      this.selectedClassroomId,
+      utcStartDateISO,
+      utcEndDateISO   
+    )
       .pipe(
         takeUntil(this.destroy$),
         finalize(() => {
@@ -214,7 +238,7 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
         this.timeSlotsForSelectedClassroom = this.generateTimeSlotsForDay(this.selectedDateYYYYMMDD, reservations);
       });
   }
-  
+
   public getSelectedClassroomDetails(): Classroom | undefined {
     if (!this.selectedClassroomId || !this.allClassrooms) {
       return undefined;
@@ -224,40 +248,65 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
 
   generateTimeSlotsForDay(dateStrYYYYMMDD: string, reservations: Reservation[]): TimeSlot[] {
     const slots: TimeSlot[] = [];
-    const selectedDateUTC = new Date(dateStrYYYYMMDD + 'T00:00:00.000Z');
-    const dayOfWeek = selectedDateUTC.getUTCDay();
 
-    let currentClosingHour = this.CLOSING_HOUR;
-    if (dayOfWeek === 0) return []; 
-    if (dayOfWeek === 6) currentClosingHour = this.SATURDAY_CLOSING_HOUR; 
+    const selectedLocalDayStart = new Date(dateStrYYYYMMDD + 'T00:00:00');
+    const dayOfWeekLocal = selectedLocalDayStart.getDay();
 
-    for (let hour = this.OPENING_HOUR; hour < currentClosingHour; hour++) {
+    let currentClosingHourLocal = this.CLOSING_HOUR_LOCAL;
+    if (dayOfWeekLocal === 0) return [];
+    if (dayOfWeekLocal === 6) currentClosingHourLocal = this.SATURDAY_CLOSING_HOUR_LOCAL;
+
+    const nowLocal = new Date();
+
+    const relevantReservationTimestamps = reservations.filter(res =>
+        res.status === ReservationStatus.CONFIRMADA || res.status === ReservationStatus.PENDIENTE
+    ).map(res => ({
+        start: new Date(res.startTime).getTime(),
+        end: new Date(res.endTime).getTime()
+    }));
+
+    for (let hour = this.OPENING_HOUR_LOCAL; hour < currentClosingHourLocal; hour++) {
       for (let minute = 0; minute < 60; minute += this.SLOT_DURATION_MINUTES) {
-        const slotStart = new Date(Date.UTC(selectedDateUTC.getUTCFullYear(), selectedDateUTC.getUTCMonth(), selectedDateUTC.getUTCDate(), hour, minute));
-        const slotEnd = new Date(slotStart.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
-        
-        if (slotEnd.getUTCHours() > currentClosingHour || 
-           (slotEnd.getUTCHours() === currentClosingHour && slotEnd.getUTCMinutes() > 0)) {
-           continue; 
-        }
-
-       
-        const displayTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        
         let isReserved = false;
         let reservationInfo: string | undefined;
 
-        for (const res of reservations) {
-          const resStart = new Date(res.startTime + 'Z');
-          const resEnd = new Date(res.endTime + 'Z'); 
 
-          if (slotStart.getTime() < resEnd.getTime() && slotEnd.getTime() > resStart.getTime()) {
+        const slotStartLocal = new Date(selectedLocalDayStart.getFullYear(), selectedLocalDayStart.getMonth(), selectedLocalDayStart.getDate(), hour, minute);
+        const slotEndLocal = new Date(slotStartLocal.getTime() + this.SLOT_DURATION_MINUTES * 60 * 1000);
+
+     
+        const isSelectedDateTodayLocal = this.formatDateToLocalYYYYMMDD(selectedLocalDayStart) === this.formatDateToLocalYYYYMMDD(nowLocal);
+        if (isSelectedDateTodayLocal && slotEndLocal.getTime() <= nowLocal.getTime()) {
+            continue;
+        }
+
+        if (slotEndLocal.getHours() > currentClosingHourLocal ||
+           (slotEndLocal.getHours() === currentClosingHourLocal && slotEndLocal.getMinutes() > 0)) {
+            if (slotEndLocal.getHours() === currentClosingHourLocal && slotEndLocal.getMinutes() === 0 && this.SLOT_DURATION_MINUTES === 60) {
+            } else {
+                continue;
+            }
+        }
+
+        const slotStartUTCISO = slotStartLocal.toISOString();
+        const slotEndUTCISO = slotEndLocal.toISOString();
+
+        for (const resTimestamp of relevantReservationTimestamps) {
+          if (new Date(slotStartUTCISO).getTime() < resTimestamp.end && new Date(slotEndUTCISO).getTime() > resTimestamp.start) {
             isReserved = true;
-            reservationInfo = res.purpose || 'Reservado';
+            const originalRes = reservations.find(r => new Date(r.startTime).getTime() === resTimestamp.start);
+            reservationInfo = originalRes?.purpose || 'Reservado';
             break;
           }
         }
-        slots.push({ time: displayTime, isReserved, reservationInfo, startISO: slotStart.toISOString(), endISO: slotEnd.toISOString() });
+      
+        slots.push({
+          time: this.datePipe.transform(slotStartLocal, 'HH:mm', 'local') || '', 
+          isReserved,
+          reservationInfo,
+          startISO: slotStartUTCISO,
+          endISO: slotEndUTCISO
+        });
       }
     }
     return slots;
@@ -286,19 +335,29 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   }
 
   changeDay(offset: number) {
-    const currentDateObj = new Date(this.selectedDateYYYYMMDD + 'T12:00:00Z'); 
-    currentDateObj.setUTCDate(currentDateObj.getUTCDate() + offset);
-    const newSelectedYYYYMMDD = this.datePipe.transform(currentDateObj, 'yyyy-MM-dd', 'UTC');
+
+    const currentDateObjLocal = new Date(this.selectedDateYYYYMMDD + 'T12:00:00'); 
+    currentDateObjLocal.setDate(currentDateObjLocal.getDate() + offset);
+
+    const newSelectedYYYYMMDD = this.formatDateToLocalYYYYMMDD(currentDateObjLocal);
     
-    if (newSelectedYYYYMMDD && (!this.minDate || newSelectedYYYYMMDD >= this.minDate) && (!this.maxDate || newSelectedYYYYMMDD <= this.maxDate)) {
+    const minDateObj = new Date(this.minDate + 'T00:00:00');
+    const maxDateObj = new Date(this.maxDate + 'T23:59:59');
+
+    if (currentDateObjLocal.getTime() >= minDateObj.getTime() && currentDateObjLocal.getTime() <= maxDateObj.getTime()) {
         this.selectedDateYYYYMMDD = newSelectedYYYYMMDD;
-        this.selectedDateTimeISO = new Date(this.selectedDateYYYYMMDD + 'T00:00:00.000Z').toISOString(); 
-        this.updateUrlQueryParams(); 
+        this.selectedDateTimeISO = currentDateObjLocal.toISOString();
+        this.updateUrlQueryParams();
         if (this.selectedClassroomId) {
             this.loadSlotsForSelectedClassroom();
         }
     } else {
         this.presentToast(offset > 0 ? "No se puede avanzar más allá de la fecha máxima." : "No se puede retroceder más allá de la fecha mínima.", "warning");
     }
+  }
+
+  async handleRefresh(event: any) {
+    await this.loadAllClassrooms();
+    event.target.complete();
   }
 }

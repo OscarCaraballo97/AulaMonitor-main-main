@@ -2,7 +2,7 @@ package com.backend.IMonitoring.service;
 
 import com.backend.IMonitoring.dto.ClassroomAvailabilitySummaryDTO;
 import com.backend.IMonitoring.dto.AvailabilityRequest;
-import com.backend.IMonitoring.dto.ClassroomDTO; // Importar ClassroomDTO
+import com.backend.IMonitoring.dto.ClassroomDTO; 
 import com.backend.IMonitoring.dto.ClassroomRequestDTO;
 import com.backend.IMonitoring.model.Classroom;
 import com.backend.IMonitoring.model.ClassroomType;
@@ -18,8 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset; 
 import java.util.List;
-import java.util.stream.Collectors; // Importar Collectors
+import java.util.stream.Collectors; 
 
 @Service
 @RequiredArgsConstructor
@@ -30,14 +31,13 @@ public class ClassroomService {
     private final ReservationRepository reservationRepository;
 
     @Transactional
-    public List<ClassroomDTO> getAllClassroomsDTO() { // Modificado para devolver List<ClassroomDTO>
+    public List<ClassroomDTO> getAllClassroomsDTO() { 
         List<Classroom> classrooms = classroomRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
         return classrooms.stream()
-                .map(this::convertToDTO) // Mapear cada entidad a DTO
+                .map(this::convertToDTO) 
                 .collect(Collectors.toList());
     }
 
-    // Nuevo método para convertir entidad Classroom a ClassroomDTO
     private ClassroomDTO convertToDTO(Classroom classroom) {
         if (classroom == null) {
             return null;
@@ -111,11 +111,11 @@ public class ClassroomService {
     }
 
     public List<Classroom> getAvailableNow() {
-        return classroomRepository.findAvailableNow(LocalDateTime.now());
+        return classroomRepository.findAvailableNow(LocalDateTime.now(ZoneOffset.UTC));
     }
 
     public List<Classroom> getUnavailableNow() {
-        return classroomRepository.findUnavailableNow(LocalDateTime.now());
+        return classroomRepository.findUnavailableNow(LocalDateTime.now(ZoneOffset.UTC));
     }
 
     public boolean checkAvailability(AvailabilityRequest request) {
@@ -124,8 +124,8 @@ public class ClassroomService {
         }
         return classroomRepository.isAvailableConsideringAllStatuses(
                 request.getClassroomId(),
-                request.getStartTime(),
-                request.getEndTime()
+                request.getStartTime(), 
+                request.getEndTime()    
         );
     }
 
