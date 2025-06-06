@@ -39,11 +39,9 @@ public class Reservation {
     private User user;
 
     @Column(nullable = false, columnDefinition = "TIMESTAMP")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     private LocalDateTime startTime;
 
     @Column(nullable = false, columnDefinition = "TIMESTAMP")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     private LocalDateTime endTime;
 
     @Column(nullable = false)

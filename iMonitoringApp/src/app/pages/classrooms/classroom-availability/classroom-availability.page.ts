@@ -15,6 +15,18 @@ import {
   IonPopover, IonDatetime, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { ToastController, LoadingController } from '@ionic/angular/standalone';
 
+function toLocalISOString(date: Date): string {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
+
 interface TimeSlot {
   time: string;
   isReserved: boolean;
@@ -288,11 +300,11 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
             }
         }
 
-        const slotStartUTCISO = slotStartLocal.toISOString();
-        const slotEndUTCISO = slotEndLocal.toISOString();
+        const slotStartLocalISO = toLocalISOString(slotStartLocal);
+        const slotEndLocalISO = toLocalISOString(slotEndLocal);
 
         for (const resTimestamp of relevantReservationTimestamps) {
-          if (new Date(slotStartUTCISO).getTime() < resTimestamp.end && new Date(slotEndUTCISO).getTime() > resTimestamp.start) {
+          if (new Date(slotStartLocalISO).getTime() < resTimestamp.end && new Date(slotEndLocalISO).getTime() > resTimestamp.start) {
             isReserved = true;
             const originalRes = reservations.find(r => new Date(r.startTime).getTime() === resTimestamp.start);
             reservationInfo = originalRes?.purpose || 'Reservado';
@@ -304,8 +316,8 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
           time: this.datePipe.transform(slotStartLocal, 'HH:mm', 'local') || '', 
           isReserved,
           reservationInfo,
-          startISO: slotStartUTCISO,
-          endISO: slotEndUTCISO
+          startISO: slotStartLocalISO,
+          endISO: slotEndLocalISO
         });
       }
     }
