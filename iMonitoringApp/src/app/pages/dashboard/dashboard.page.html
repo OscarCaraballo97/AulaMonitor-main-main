@@ -50,7 +50,7 @@
               </div>
             </div>
           </div>
-          </div>
+        </div>
       </div>
 
       <h2 class="mt-8 mb-3 text-lg font-semibold text-gray-700 dark:text-kwd-light">Reservas Pendientes por Aprobar</h2>
@@ -81,7 +81,37 @@
           </div>
         </ion-item>
       </ion-list>
-      </div>
+    </div>
+
+    <div *ngIf="userRole === RolEnum.COORDINADOR">
+        <h1 class="mb-6 text-2xl font-semibold text-gray-800 dark:text-kwd-light">Dashboard del Coordinador</h1>
+        <div *ngIf="isLoadingReservationsToApprove" class="text-center mb-6">
+          <ion-spinner name="dots"></ion-spinner>
+          <p>Cargando datos del dashboard...</p>
+        </div>
+  
+        <h2 class="mt-8 mb-3 text-lg font-semibold text-gray-700 dark:text-kwd-light">Reservas de Estudiantes Pendientes</h2>
+        <div *ngIf="!isLoadingReservationsToApprove && reservationsToApprove.length === 0" class="p-4 text-center text-gray-500 bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-gray-400">
+          No hay reservas de estudiantes pendientes de aprobación.
+        </div>
+        <ion-list *ngIf="!isLoadingReservationsToApprove && reservationsToApprove.length > 0" class="rounded-lg shadow-md dark:bg-kwd-darker">
+          <ion-item *ngFor="let res of reservationsToApprove" lines="full" class="dark:bg-kwd-darker dark:text-kwd-light">
+            <ion-label>
+              <h2 class="font-semibold">{{ res.classroom?.name }}</h2>
+              <p>Estudiante: {{ res.user?.name }}</p>
+              <p>Fechas: {{ res.startTime | date:'short':'America/Bogota':'es-CO' }} - {{ res.endTime | date:'shortTime':'America/Bogota':'es-CO' }}</p>
+            </ion-label>
+            <div slot="end" class="flex space-x-2">
+              <ion-button size="small" fill="outline" color="success" (click)="confirmReservationAction(res.id, ReservationStatusEnum.CONFIRMADA)">
+                Aprobar
+              </ion-button>
+              <ion-button size="small" fill="outline" color="danger" (click)="confirmReservationAction(res.id, ReservationStatusEnum.RECHAZADA)">
+                Rechazar
+              </ion-button>
+            </div>
+          </ion-item>
+        </ion-list>
+    </div>
 
     <div *ngIf="userRole === RolEnum.PROFESOR || userRole === RolEnum.TUTOR || userRole === RolEnum.ESTUDIANTE">
       <h1 class="mb-6 text-2xl font-semibold text-gray-800 dark:text-kwd-light">
@@ -136,7 +166,7 @@
         <ion-button *ngIf="userRole === RolEnum.PROFESOR || userRole === RolEnum.TUTOR || userRole === RolEnum.ESTUDIANTE" expand="block" routerLink="/app/reservations/new" color="primary" class="dark:text-white">
           {{ userRole === RolEnum.PROFESOR ? 'Crear Nueva Reserva' : (userRole === RolEnum.TUTOR ? 'Programar Tutoría' : 'Solicitar Reserva') }}
         </ion-button>
-        <ion-button expand="block" routerLink="/app/reservations/list" [queryParams]="{ view: 'my-reservations' }" color="secondary" class="dark:text-white">Ver Todas Mis Reservas</ion-button>
+        <ion-button expand="block" routerLink="/app/reservations/my-list" color="secondary" class="dark:text-white">Ver Todas Mis Reservas</ion-button>
         <ion-button expand="block" routerLink="/app/classrooms/availability" color="tertiary" class="dark:text-white">Ver Disponibilidad de Aulas</ion-button>
       </div>
     </div>
