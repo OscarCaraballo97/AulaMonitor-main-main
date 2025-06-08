@@ -268,11 +268,16 @@ export class ReservationFormPage implements OnInit, OnDestroy {
       classroomAndDate$.pipe(
         takeUntil(this.destroy$),
         filter(([classroomId, dateStrUTC]) => !!classroomId && !!dateStrUTC),
-        tap(() => {
+        tap(([classroomId, dateStrUTC]) => {
           this.isLoadingTimes = true;
           this.availableStartTimes = [];
           this.reservationForm.get('startTime')?.disable({ emitEvent: false });
           this.reservationForm.get('startTime')?.setValue(null, { emitEvent: false });
+          
+          if (dateStrUTC) {
+            this.selectedDateForTimeSlots = formatDate(dateStrUTC, 'yyyy-MM-dd', 'en-US', 'UTC');
+          }
+          
           this.cdr.detectChanges();
         }),
         switchMap(([classroomId, dateStrUTC]) => {
@@ -341,7 +346,9 @@ export class ReservationFormPage implements OnInit, OnDestroy {
       this.cdr.detectChanges();
       return;
     }
-    if (dayOfWeekLocal === 6) currentClosingHourLocal = this.SATURDAY_CLOSING_HOUR_LOCAL;
+    if (dayOfWeekLocal === 6) { 
+      currentClosingHourLocal = this.SATURDAY_CLOSING_HOUR_LOCAL;
+    }
 
     const nowLocal = new Date();
 
