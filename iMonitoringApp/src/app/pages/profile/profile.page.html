@@ -50,7 +50,7 @@
             <ion-item class="profile-item dark:bg-kwd-darker">
               <ion-icon name="mail-outline" slot="start" class="profile-item-icon"></ion-icon>
               <ion-label position="stacked" class="profile-label">Correo Electrónico</ion-label>
-              <ion-input type="email" formControlName="email" class="profile-input dark:text-kwd-light" [readonly]="!isEditing"></ion-input>
+              <ion-input type="email" formControlName="email" class="profile-input dark:text-kwd-light" [readonly]="true"></ion-input>
             </ion-item>
             <div *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched" class="error-message">
               <small *ngIf="profileForm.get('email')?.errors?.['required']">El correo es requerido.</small>

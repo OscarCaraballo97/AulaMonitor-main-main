@@ -56,11 +56,13 @@ export class ProfilePage implements OnInit, OnDestroy {
   initProfileForm() {
     this.profileForm = this.fb.group({
       name: [this.currentUser?.name || '', Validators.required],
-      email: [this.currentUser?.email || '', [Validators.required, Validators.email]],
+      email: [{ value: this.currentUser?.email || '', disabled: true }, [Validators.required, Validators.email]],
       avatarUrl: [this.currentUser?.avatarUrl || '']
     });
     if (!this.isEditing) {
         this.profileForm.disable();
+    } else {
+      this.profileForm.get('email')?.disable();
     }
   }
 
@@ -84,7 +86,10 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   toggleEdit() {
     this.isEditing = !this.isEditing;
-    if (this.isEditing) this.profileForm.enable();
+    if (this.isEditing) {
+      this.profileForm.enable();
+      this.profileForm.get('email')?.disable();
+    }
     else {
       this.profileForm.disable();
       this.initProfileForm();
@@ -96,7 +101,7 @@ export class ProfilePage implements OnInit, OnDestroy {
       await this.presentToast('Error: Usuario no identificado.', 'danger');
       return;
     }
-    if (this.profileForm.invalid) {
+    if (this.profileForm.getRawValue().name === '') {
       await this.presentToast('Por favor, completa los campos requeridos.', 'warning');
       return;
     }
@@ -107,7 +112,6 @@ export class ProfilePage implements OnInit, OnDestroy {
 
     const updatedData: Partial<User> = {
       name: this.profileForm.value.name,
-      email: this.profileForm.value.email,
       avatarUrl: this.profileForm.value.avatarUrl
     };
 
@@ -230,8 +234,6 @@ export class ProfilePage implements OnInit, OnDestroy {
   }
 
   goBack() {
-
     this.navCtrl.back({ animated: true, animationDirection: 'back' });
-
   }
 }
