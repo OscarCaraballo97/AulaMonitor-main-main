@@ -1,7 +1,24 @@
+:host {
+  ion-content {
+    --background: var(--ion-color-light, #f4f5f7);
+    
+    &.dark {
+      --background: var(--kwd-dark, #152e4d);
+    }
+  }
+}
+
+ion-content::part(scroll) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
 
 .error-message {
-    color: var(--ion-color-danger);
-    font-size: 0.8em;
-    padding-left: 16px;
-    padding-top: 4px;
-  }
+  color: var(--ion-color-danger);
+  font-size: 0.8em;
+  padding-left: 16px;
+  padding-top: 4px;
+}
