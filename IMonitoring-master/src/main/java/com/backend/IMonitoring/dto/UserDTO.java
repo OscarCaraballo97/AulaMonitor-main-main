@@ -31,10 +31,7 @@ public class UserDTO {
     @NotNull(message = "El rol es obligatorio")
     private Rol role;
 
-    // Para la creación, el password se manejaría en un DTO específico o se pasaría en texto plano aquí.
-    // Si se pasa aquí, el servicio se encargaría de encriptarlo.
-    // No se incluye en las respuestas GET para seguridad.
-    private String password; // Opcional, solo para creación/actualización si se permite
+    private String password;
 
     private String avatarUrl;
 
@@ -52,7 +49,6 @@ public class UserDTO {
                 .role(user.getRole())
                 .avatarUrl(user.getAvatarUrl())
                 .enabled(user.isEnabled())
-                // No incluir user.getPassword() aquí por seguridad
                 .build();
     }
 
@@ -64,8 +60,6 @@ public class UserDTO {
         user.setRole(this.role);
         user.setAvatarUrl(this.avatarUrl);
         user.setEnabled(this.enabled);
-        // Si el DTO tiene un campo password (para creación), asígnalo aquí.
-        // El servicio se encargará de encriptarlo si es necesario.
         if (this.password != null && !this.password.isEmpty()) {
             user.setPassword(this.password); 
         }

@@ -39,7 +39,7 @@ export class ReservationService {
         userMessage = `${context}: ${error.error?.message || 'Datos inválidos.'}`;
       } else if (error.status === 401 || error.status === 403) {
         userMessage = `${context}: No autorizado. Por favor, verifica tu sesión.`;
-        this.authService.logout(); 
+        this.authService.logout();
       } else if (error.status === 404) {
         userMessage = `${context}: Recurso no encontrado.`;
       } else if (error.status === 500) {
@@ -129,8 +129,8 @@ export class ReservationService {
   getReservationsByClassroomAndDateRange(classroomId: string, startDateISO: string, endDateISO: string): Observable<Reservation[]> {
     const filters: ReservationListFilters = {
       classroomId: classroomId,
-      startDate: startDateISO, 
-      endDate: endDateISO,   
+      startDate: startDateISO,
+      endDate: endDateISO,
       sortField: 'startTime',
       sortDirection: 'asc'
     };
@@ -142,8 +142,11 @@ export class ReservationService {
       }),
       catchError(err => {
         console.error(`[ReservationService] Error en getReservationsByClassroomAndDateRange para aula ${classroomId} en rango [${startDateISO}, ${endDateISO}]:`, err);
-        return throwError(() => this.handleError(err, 'obtener reservas por aula y rango de fecha')); 
+        return throwError(() => this.handleError(err, 'obtener reservas por aula y rango de fecha'));
       })
     );
+  }
+      createSemesterReservation(data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/semester`, data);
   }
 }

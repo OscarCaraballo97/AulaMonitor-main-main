@@ -28,7 +28,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
     List<Reservation> findByUserIdAndStartTimeAfter(String userId, LocalDateTime startTime, Sort sort);
     List<Reservation> findByUserIdAndStatus(String userId, ReservationStatus status, Sort sort);
 
-    List<Reservation> findByStatusAndStartTimeAfter(ReservationStatus status, LocalDateTime startTime, Sort sort); // MÉTODO AÑADIDO
+    List<Reservation> findByStatusAndStartTimeAfter(ReservationStatus status, LocalDateTime startTime, Sort sort);
 
     @Query("SELECT r FROM Reservation r WHERE r.user.id = :userId AND r.status = com.backend.IMonitoring.model.ReservationStatus.CONFIRMADA AND r.startTime > :currentTime")
     List<Reservation> findUpcomingConfirmedByUserId(@Param("userId") String userId, @Param("currentTime") LocalDateTime currentTime, Sort sort);

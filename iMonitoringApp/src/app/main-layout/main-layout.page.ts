@@ -3,7 +3,7 @@ import { Router, RouterModule, NavigationEnd, IsActiveMatchOptions, ActivatedRou
 import { IonicModule, Platform, PopoverController, NavController, MenuController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
-import { ThemeService } from '../services/theme.service'; // Make sure this path is correct
+import { ThemeService } from '../services/theme.service'
 import { Rol } from '../models/rol.model';
 import { User } from '../models/user.model';
 import { Subject } from 'rxjs';
@@ -93,10 +93,7 @@ export class MainLayoutPage implements OnInit, OnDestroy {
       }
     });
     this.updatePageTitle(this.router.url);
-    // Removed the problematic call to this.themeService.loadTheme()
-    // Assuming ThemeService's constructor or an initTheme() method handles initial theme loading.
-    // If your ThemeService requires an explicit call after construction,
-    // ensure that method exists and is called appropriately (e.g., this.themeService.initTheme() if available).
+
   }
 
   private setupNavLinks() {
@@ -105,11 +102,11 @@ export class MainLayoutPage implements OnInit, OnDestroy {
       { title: 'Mis Reservas', icon: 'calendar-outline', route: '/app/reservations/my-list', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
       { title: 'Nueva Reserva', icon: 'add-circle-outline', route: '/app/reservations/new', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
       { title: 'Disponibilidad Aulas', icon: 'time-outline', route: '/app/classrooms/availability', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
-      { title: 'Estudiantes (Coord.)', icon: 'people-outline', route: '/app/users', roles: [Rol.COORDINADOR] },
-      { title: 'Reservas Estudiantes (Coord.)', icon: 'filing-outline', route: '/app/reservations/all', roles: [Rol.COORDINADOR] },
+      { title: 'Estudiantes ', icon: 'people-outline', route: '/app/users', roles: [Rol.COORDINADOR] },
+      { title: 'Reservas Estudiantes', icon: 'filing-outline', route: '/app/reservations/all', roles: [Rol.COORDINADOR] },
       { title: 'Edificios', icon: 'business-outline', route: '/app/buildings', roles: [Rol.ADMIN] },
-      { title: 'Aulas (Gestión)', icon: 'school-outline', route: '/app/classrooms', roles: [Rol.ADMIN] },
-      { title: 'Usuarios (Gestión)', icon: 'people-circle-outline', route: '/app/users', roles: [Rol.ADMIN] },
+      { title: 'Aulas', icon: 'school-outline', route: '/app/classrooms', roles: [Rol.ADMIN] },
+      { title: 'Usuarios', icon: 'people-circle-outline', route: '/app/users', roles: [Rol.ADMIN] },
       { title: 'Mi Perfil', icon: 'person-outline', route: '/app/profile', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
     ];
   }

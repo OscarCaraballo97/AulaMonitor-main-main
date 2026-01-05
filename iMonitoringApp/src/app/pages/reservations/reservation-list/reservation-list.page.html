@@ -45,10 +45,10 @@
 
     <ion-segment [(ngModel)]="selectedView" (ionChange)="segmentChanged($event)" class="mb-6 bg-white dark:bg-kwd-dark-light rounded-lg shadow-md">
       <ion-segment-button value="pending" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
-        <ion-label class="text-gray-700 dark:text-gray-300">Pendientes Admin</ion-label>
+        <ion-label class="text-gray-700 dark:text-gray-300">Pendientes</ion-label>
       </ion-segment-button>
       <ion-segment-button value="my-reservations">
-        <ion-label class="text-gray-700 dark:text-gray-300">Mis Reservas</ion-label>
+        <ion-label class="text-gray-700 dark:text-gray-300">Reservas</ion-label>
       </ion-segment-button>
       <ion-segment-button value="all" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
         <ion-label class="text-gray-700 dark:text-gray-300">Todas las Reservas</ion-label>

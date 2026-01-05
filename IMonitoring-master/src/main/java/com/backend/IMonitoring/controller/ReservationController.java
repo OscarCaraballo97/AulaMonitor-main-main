@@ -2,6 +2,7 @@ package com.backend.IMonitoring.controller;
 
 import com.backend.IMonitoring.dto.ReservationRequestDTO;
 import com.backend.IMonitoring.dto.ReservationResponseDTO;
+import com.backend.IMonitoring.dto.SemesterReservationRequestDTO; // Import nuevo
 import com.backend.IMonitoring.model.Classroom;
 import com.backend.IMonitoring.model.Reservation;
 import com.backend.IMonitoring.model.ReservationStatus;
@@ -46,7 +47,7 @@ public class ReservationController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(required = false, defaultValue = "startTime") String sortField,
             @RequestParam(required = false, defaultValue = "desc") String sortDirection) {
-        
+
         List<ReservationResponseDTO> reservationDTOs = reservationService.getAdminFilteredReservations(
                 classroomId, userId, status, startDate, endDate, sortField, sortDirection
         );
@@ -66,17 +67,17 @@ public class ReservationController {
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
-        
+
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) currentUserDetails;
         String currentAuthUserId = userDetailsImpl.getId();
 
         List<ReservationResponseDTO> reservationDTOs = reservationService.getFilteredUserReservations(
-                currentAuthUserId, status, sortField, sortDirection, 
-                page, size, 
-                futureOnly != null && futureOnly, 
+                currentAuthUserId, status, sortField, sortDirection,
+                page, size,
+                futureOnly != null && futureOnly,
                 startDate, endDate
         );
-        
+
         return ResponseEntity.ok(reservationDTOs);
     }
 
@@ -86,14 +87,27 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getReservationByIdDTO(id));
     }
 
+    // --- NUEVO ENDPOINT PARA ASIGNAR SEMESTRE ---
+    @PostMapping("/semester")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
+    public ResponseEntity<List<ReservationResponseDTO>> createSemesterReservations(
+            @Valid @RequestBody SemesterReservationRequestDTO semesterRequest,
+            @AuthenticationPrincipal UserDetails currentUserDetails) {
+
+        List<ReservationResponseDTO> createdReservations = reservationService.createSemesterReservations(semesterRequest, currentUserDetails);
+
+        return ResponseEntity.ok(createdReservations);
+    }
+    // --------------------------------------------
+
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR', 'ESTUDIANTE', 'PROFESOR', 'TUTOR')") 
+    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR', 'ESTUDIANTE', 'PROFESOR', 'TUTOR')")
     public ResponseEntity<ReservationResponseDTO> createReservation(
             @Valid @RequestBody ReservationRequestDTO reservationRequestDTO,
             @AuthenticationPrincipal UserDetails currentUserDetails) {
-        
+
         Reservation reservation = new Reservation();
-        
+
         if (reservationRequestDTO.getClassroomId() != null) {
             Classroom partialClassroom = new Classroom();
             partialClassroom.setId(reservationRequestDTO.getClassroomId());
@@ -107,8 +121,8 @@ public class ReservationController {
             targetUser.setId(reservationRequestDTO.getUserId());
             reservation.setUser(targetUser);
         }
-        
-        if (reservationRequestDTO.getStatus() != null) { 
+
+        if (reservationRequestDTO.getStatus() != null) {
             reservation.setStatus(reservationRequestDTO.getStatus());
         }
 
@@ -128,7 +142,7 @@ public class ReservationController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')") 
+    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
     public ResponseEntity<ReservationResponseDTO> updateReservationStatus(
             @PathVariable String id,
             @Valid @RequestBody UpdateStatusRequest statusRequest,
@@ -139,14 +153,14 @@ public class ReservationController {
         Reservation updatedReservationEntity = reservationService.updateReservationStatus(id, statusRequest.getStatus(), currentUserDetails);
         return ResponseEntity.ok(reservationService.convertToDTO(updatedReservationEntity));
     }
-    
+
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReservationResponseDTO> updateReservationDetails(
             @PathVariable String id,
-            @Valid @RequestBody ReservationRequestDTO reservationRequestDTO, 
+            @Valid @RequestBody ReservationRequestDTO reservationRequestDTO,
             @AuthenticationPrincipal UserDetails currentUserDetails) {
-        
+
         Reservation reservationDetailsToUpdate = new Reservation();
         if (reservationRequestDTO.getClassroomId() != null) {
             Classroom partialClassroom = new Classroom();
@@ -164,7 +178,7 @@ public class ReservationController {
         reservationDetailsToUpdate.setStartTime(reservationRequestDTO.getStartTime());
         reservationDetailsToUpdate.setEndTime(reservationRequestDTO.getEndTime());
         reservationDetailsToUpdate.setPurpose(reservationRequestDTO.getPurpose());
-        
+
         Reservation updatedReservationEntity = reservationService.updateReservation(id, reservationDetailsToUpdate, currentUserDetails);
         return ResponseEntity.ok(reservationService.convertToDTO(updatedReservationEntity));
     }
