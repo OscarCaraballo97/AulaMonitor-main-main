@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError, forkJoin, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, throwError, forkJoin } from 'rxjs';
 import { catchError, tap, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { User } from '../models/user.model';
@@ -88,7 +88,7 @@ export class AuthService {
   register(data: RegisterData): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/register`, data)
       .pipe(
-        tap((response: AuthResponse) => { 
+        tap((response: AuthResponse) => {
           console.log('[AuthService - register] Respuesta:', response);
         }),
         catchError(err => this.handleError(err, 'registro'))
@@ -97,7 +97,7 @@ export class AuthService {
 
   public async processToken(token: string) {
     if (!this._storage) await this.initStorage();
-    
+
     await this._storage?.set(this.TOKEN_KEY, token);
     const decodedToken = this.decodeToken(token);
 
@@ -107,7 +107,7 @@ export class AuthService {
         id: decodedToken.userId,
         name: decodedToken.name,
         email: decodedToken.sub,
-        role: userRoleEnum, 
+        role: userRoleEnum,
         avatarUrl: decodedToken.avatarUrl,
         enabled: decodedToken.enabled !== undefined ? decodedToken.enabled : true
       };
@@ -115,7 +115,7 @@ export class AuthService {
       this.currentUserRoleSubject.next(userRoleEnum || null);
       this.isAuthenticatedSubject.next(true);
     } else {
-      await this.logout(false); 
+      await this.logout(false);
     }
   }
 
@@ -160,9 +160,9 @@ export class AuthService {
       await this.router.navigate(['/login'], { replaceUrl: true });
     }
   }
-  
+
   verifyEmail(token: string): Observable<string> {
-    return this.http.get(`${this.apiUrl}/verify-email?token=${token}`, { responseType: 'text' }) // Añadido responseType: 'text'
+    return this.http.get(`${this.apiUrl}/verify-email?token=${token}`, { responseType: 'text' })
       .pipe(catchError(err => this.handleError(err, 'verificación de email')));
   }
 
@@ -190,11 +190,11 @@ export class AuthService {
         if (results.user !== null && results.role !== null) {
           return { user: results.user, role: results.role };
         }
-        return null; 
+        return null;
       })
     );
   }
-  
+
   public getCurrentUser(): Observable<User | null> {
     return this.currentUserSubject.asObservable();
   }
@@ -202,6 +202,15 @@ export class AuthService {
   public getCurrentUserRole(): Observable<Rol | null> {
     return this.currentUserRoleSubject.asObservable();
   }
+
+  // --- NUEVO MÉTODO AGREGADO ---
+  // Convierte el rol a string para facilitar comparaciones en componentes
+  public getUserRole(): Observable<string> {
+    return this.currentUserRoleSubject.asObservable().pipe(
+      map(role => role ? role.toString() : '')
+    );
+  }
+  // ----------------------------
 
   public async getToken(): Promise<string | null> {
     if (!this._storage) await this.initStorage();
@@ -229,7 +238,6 @@ export class AuthService {
     return this.hasAnyRole([role]);
   }
 
- 
   public updateCurrentUser(updatedUser: User) {
     const currentUser = this.currentUserSubject.getValue();
     if (currentUser && currentUser.id === updatedUser.id) {

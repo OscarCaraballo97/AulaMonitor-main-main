@@ -3,7 +3,7 @@ import { Router, RouterModule, NavigationEnd, IsActiveMatchOptions, ActivatedRou
 import { IonicModule, Platform, PopoverController, NavController, MenuController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
-import { ThemeService } from '../services/theme.service'; // Make sure this path is correct
+import { ThemeService } from '../services/theme.service'
 import { Rol } from '../models/rol.model';
 import { User } from '../models/user.model';
 import { Subject } from 'rxjs';
