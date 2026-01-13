@@ -20,16 +20,16 @@
   <div class="p-4">
     <h1 class="text-2xl font-bold text-gray-900 dark:text-kwd-light mb-6">Lista de Reservas</h1>
 
-    <div class="bg-white dark:bg-kwd-dark-light rounded-lg shadow-md p-4 mb-6">
+    <div class="bg-white dark:bg-[#152e4d] rounded-lg shadow-md p-4 mb-6 transition-colors duration-300">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-kwd-light mb-3">Filtros</h2>
       <ion-item class="mb-3 dark:bg-kwd-dark dark:text-kwd-light rounded-md">
-        <ion-label position="stacked">Estado</ion-label>
-        <ion-select interface="popover" [(ngModel)]="selectedStatusFilter" (ionChange)="applyFilters()" class="dark:text-kwd-light">
+        <ion-label position="stacked"class="text-black-900 dark:text-kwd-light" >Estado</ion-label>
+        <ion-select interface="popover" [(ngModel)]="selectedStatusFilter" (ionChange)="applyFilters()" class="text-black-900 dark:text-kwd-light">
           <ion-select-option *ngFor="let status of availableStatuses" [value]="status.value">{{ status.label | titlecase }}</ion-select-option>
-        </ion-select>
+        </ion-select>                      
       </ion-item>
 
-      <ion-item class="mb-3 dark:bg-kwd-dark dark:text-kwd-light rounded-md">
+      <ion-item class="mb-3 dark:bg-kwd-dark dark:text-kwd-light  rounded-md">
         <ion-label position="stacked">Aula</ion-label>
         <ion-select interface="popover" [(ngModel)]="selectedClassroomFilter" (ionChange)="applyFilters()" class="dark:text-kwd-light">
           <ion-select-option value="ALL">Todas</ion-select-option>
@@ -43,7 +43,7 @@
       </ion-item>
     </div>
 
-    <ion-segment [(ngModel)]="selectedView" (ionChange)="segmentChanged($event)" class="mb-6 bg-white dark:bg-kwd-dark-light rounded-lg shadow-md">
+    <ion-segment [(ngModel)]="selectedView" (ionChange)="segmentChanged($event)" class="bg-white dark:bg-[#152e4d] rounded-lg shadow-md p-4 mb-6 transition-colors duration-300">
       <ion-segment-button value="pending" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
         <ion-label class="text-gray-700 dark:text-gray-300">Pendientes</ion-label>
       </ion-segment-button>

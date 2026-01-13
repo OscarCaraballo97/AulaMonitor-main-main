@@ -56,7 +56,7 @@
       <ion-select-option *ngIf="isLoadingPage && allClassrooms.length === 0" [disabled]="true">Cargando aulas...</ion-select-option>
       <ion-select-option *ngIf="!isLoadingPage && allClassrooms.length === 0" [disabled]="true">No hay aulas disponibles</ion-select-option>
       <ion-select-option *ngFor="let classroom of allClassrooms" [value]="classroom.id">
-        {{ classroom.name }} ({{ classroom.building?.name || 'N/A' }})
+        {{ classroom.name }} 
       </ion-select-option>
     </ion-select>
   </ion-item>
@@ -76,7 +76,6 @@
       <ion-card class="dark:bg-kwd-darker">
         <ion-card-content>
           <h2 class="text-lg font-semibold text-kwd-primary dark:text-kwd-light mb-2">{{ selectedClassroom.name }}</h2>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Edificio: {{ selectedClassroom.building?.name || 'N/A' }}</p>
           <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Capacidad: {{ selectedClassroom.capacity }} | Tipo: {{ selectedClassroom.type | titlecase }}</p>
 
           <div *ngIf="isLoadingSlots" class="text-center py-4">
