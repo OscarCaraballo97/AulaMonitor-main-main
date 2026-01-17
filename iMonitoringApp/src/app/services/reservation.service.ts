@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError, of } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 import { Reservation, ReservationCreationData, ReservationStatus } from '../models/reservation.model';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
@@ -30,16 +30,22 @@ export class ReservationService {
 
   private handleError(error: HttpErrorResponse, context: string = 'Operación de reserva') {
     let userMessage = `${context}: Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.`;
+
     if (error.error instanceof ErrorEvent) {
       console.error(`[ReservationService] Error (cliente/red) en ${context}:`, error.error.message);
       userMessage = `${context}: Error de red o del cliente: ${error.error.message}`;
     } else {
       console.error(`[ReservationService] Error (backend) en ${context}: Código ${error.status}, mensaje: ${error.error?.message || error.message}`, error);
+
       if (error.status === 400) {
         userMessage = `${context}: ${error.error?.message || 'Datos inválidos.'}`;
-      } else if (error.status === 401 || error.status === 403) {
-        userMessage = `${context}: No autorizado. Por favor, verifica tu sesión.`;
+      } else if (error.status === 401) {
+        // CORRECCIÓN: SOLO el 401 cierra la sesión (token inválido/vencido)
+        userMessage = `${context}: Sesión caducada. Por favor, inicia sesión nuevamente.`;
         this.authService.logout();
+      } else if (error.status === 403) {
+        // CORRECCIÓN: El 403 NO cierra sesión, solo avisa que no tiene permisos
+        userMessage = `${context}: No tienes permisos suficientes para realizar esta acción.`;
       } else if (error.status === 404) {
         userMessage = `${context}: Recurso no encontrado.`;
       } else if (error.status === 500) {
@@ -51,7 +57,6 @@ export class ReservationService {
     return throwError(() => new Error(userMessage));
   }
 
-
   getAllReservations(filters?: ReservationListFilters): Observable<Reservation[]> {
     let params = new HttpParams();
     if (filters) {
@@ -61,7 +66,7 @@ export class ReservationService {
         }
       });
     }
-    console.log(`[ReservationService] getAllReservations (llamando a ${this.apiUrl}/filter) con params:`, params.toString());
+    console.log(`[ReservationService] getAllReservations llamando a ${this.apiUrl}/filter`, params.toString());
     return this.http.get<Reservation[]>(`${this.apiUrl}/filter`, { params }).pipe(
       catchError(err => this.handleError(err, 'obtener todas las reservas filtradas'))
     );
@@ -76,7 +81,7 @@ export class ReservationService {
         }
       });
     }
-    console.log(`[ReservationService] getMyReservations (llamando a ${this.apiUrl}/my-list) con params:`, params.toString());
+    console.log(`[ReservationService] getMyReservations llamando a ${this.apiUrl}/my-list`, params.toString());
     return this.http.get<Reservation[]>(`${this.apiUrl}/my-list`, { params }).pipe(
       catchError(err => this.handleError(err, 'obtener mis reservas'))
     );
@@ -89,7 +94,7 @@ export class ReservationService {
   }
 
   createReservation(reservation: ReservationCreationData): Observable<Reservation> {
-    console.log("[ReservationService] Creando reserva con payload:", reservation);
+    console.log("[ReservationService] Creando reserva:", reservation);
     return this.http.post<Reservation>(this.apiUrl, reservation).pipe(
       catchError(err => this.handleError(err, 'crear reserva'))
     );
@@ -134,19 +139,20 @@ export class ReservationService {
       sortField: 'startTime',
       sortDirection: 'asc'
     };
-    console.log(`[ReservationService] getReservationsByClassroomAndDateRange llamando a getAllReservations (endpoint /filter) con filtros:`, filters);
-
     return this.getAllReservations(filters).pipe(
       tap(reservations => {
-        console.log(`[ReservationService] Aula ${classroomId}: ${reservations ? reservations.length : 0} reservas recibidas del backend para el rango [${startDateISO}, ${endDateISO}].`);
+        console.log(`[ReservationService] Reservas recuperadas: ${reservations ? reservations.length : 0}`);
       }),
       catchError(err => {
-        console.error(`[ReservationService] Error en getReservationsByClassroomAndDateRange para aula ${classroomId} en rango [${startDateISO}, ${endDateISO}]:`, err);
+        console.error(`[ReservationService] Error obteniendo reservas por rango:`, err);
         return throwError(() => this.handleError(err, 'obtener reservas por aula y rango de fecha'));
       })
     );
   }
-      createSemesterReservation(data: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/semester`, data);
+
+  createSemesterReservation(data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/semester`, data).pipe(
+      catchError(err => this.handleError(err, 'crear reserva de semestre'))
+    );
   }
 }

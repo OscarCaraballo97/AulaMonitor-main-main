@@ -2,7 +2,7 @@ package com.backend.IMonitoring.service;
 
 import com.backend.IMonitoring.dto.ReservationResponseDTO;
 import com.backend.IMonitoring.dto.ClassroomSummaryDTO;
-import com.backend.IMonitoring.dto.SemesterReservationRequestDTO; // Import nuevo
+import com.backend.IMonitoring.dto.SemesterReservationRequestDTO;
 import com.backend.IMonitoring.dto.UserSummaryDTO;
 import com.backend.IMonitoring.model.*;
 import com.backend.IMonitoring.repository.ClassroomRepository;
@@ -17,11 +17,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek; // Import nuevo
-import java.time.LocalDate; // Import nuevo
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList; // Import nuevo
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -206,6 +205,7 @@ public class ReservationService {
 
         return convertToDTOList(savedReservations);
     }
+
     // ---------------------------------------------------------
 
     @Transactional
@@ -250,18 +250,15 @@ public class ReservationService {
                     ". (Puede haber una reserva PENDIENTE o CONFIRMADA en esta franja).");
         }
 
+        // CORRECCIÓN: Estado automático para ADMIN y COORDINADOR
         ReservationStatus finalStatus = ReservationStatus.PENDIENTE;
 
-        if (userMakingReservation.getRole() == Rol.ADMIN) {
+        if (userMakingReservation.getRole() == Rol.ADMIN || userMakingReservation.getRole() == Rol.COORDINADOR) {
             finalStatus = ReservationStatus.CONFIRMADA;
-        } else if (userMakingReservation.getRole() == Rol.COORDINADOR) {
-            if (userToReserveFor.getRole() == Rol.ESTUDIANTE) {
-                finalStatus = ReservationStatus.CONFIRMADA;
-            } else {
-                finalStatus = ReservationStatus.PENDIENTE;
-            }
         }
 
+        // Sobrescribimos el estado que pueda venir del DTO para garantizar la regla de negocio
+        // a menos que sea Admin explícito (opcional), pero para seguridad forzamos la lógica base.
         if (userMakingReservation.getRole() == Rol.ADMIN && reservationInput.getStatus() != null) {
             reservationInput.setStatus(reservationInput.getStatus());
         } else {

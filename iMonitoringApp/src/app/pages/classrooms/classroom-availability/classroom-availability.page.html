@@ -10,101 +10,48 @@
 <ion-content class="ion-padding bg-gray-100 dark:bg-kwd-dark">
   <div class="sticky top-0 z-10 bg-gray-100 dark:bg-kwd-dark py-2 mb-4 shadow">
     <div class="flex items-center justify-around max-w-md mx-auto mb-2">
-      <ion-button fill="clear" (click)="changeDay(-1)" aria-label="Día anterior">
-        <ion-icon name="chevron-back-outline" slot="icon-only"></ion-icon>
-      </ion-button>
-
-      <ion-button id="date-picker-button-avail" fill="outline" class="dark:text-kwd-light dark:border-gray-600 flex-grow mx-2 text-center">
-        <ion-icon name="calendar-outline" slot="start"></ion-icon>
-        {{ selectedDateYYYYMMDD | date:'dd/MM/yyyy':'UTC':'es-CO' }}
-      </ion-button>
-      <ion-popover trigger="date-picker-button-avail" [keepContentsMounted]="true" class="date-picker-popover">
+      <ion-button fill="clear" (click)="changeDay(-1)"><ion-icon name="chevron-back-outline" slot="icon-only"></ion-icon></ion-button>
+      <ion-button id="date-btn" fill="outline" class="flex-grow mx-2">{{ selectedDateYYYYMMDD | date:'dd/MM/yyyy' }}</ion-button>
+      <ion-popover trigger="date-btn" [keepContentsMounted]="true">
         <ng-template>
-          <ion-datetime
-            presentation="date"
-            [(ngModel)]="selectedDateTimeISO"
-            (ionChange)="onDateTimeChanged($event.detail.value)"
-            [min]="minDate"
-            [max]="maxDate"
-            [showDefaultButtons]="true"
-            doneText="Aceptar"
-            cancelText="Cancelar"
-            locale="es-CO"
-          ></ion-datetime>
+          <ion-datetime presentation="date" [(ngModel)]="selectedDateTimeISO" (ionChange)="onDateTimeChanged($event.detail.value)" [min]="minDate" [max]="maxDate" locale="es-CO"></ion-datetime>
         </ng-template>
       </ion-popover>
-
-      <ion-button fill="clear" (click)="changeDay(1)" aria-label="Día siguiente">
-        <ion-icon name="chevron-forward-outline" slot="icon-only"></ion-icon>
-      </ion-button>
+      <ion-button fill="clear" (click)="changeDay(1)"><ion-icon name="chevron-forward-outline" slot="icon-only"></ion-icon></ion-button>
     </div>
-    <p class="text-center text-sm text-gray-600 dark:text-gray-400">
-      {{ selectedDateYYYYMMDD | date:'EEEE, d \'de\' MMMM \'de\' y':'UTC':'es-CO' }}
-    </p>
+    <p class="text-center text-sm text-gray-600">{{ selectedDateYYYYMMDD | date:'EEEE, d MMMM y' | titlecase }}</p>
   </div>
 
-  <ion-item class="mb-4 rounded-md shadow-sm dark:bg-kwd-dark-light">
-    <ion-label position="stacked" class="text-gray-700 dark:text-gray-300">Selecciona un Aula</ion-label>
-    <ion-select
-      interface="popover"
-      [(ngModel)]="selectedClassroomId"
-      (ionChange)="onClassroomSelected($event)"
-      placeholder="Elige un aula para ver su disponibilidad"
-      okText="Aceptar"
-      cancelText="Cancelar"
-      class="dark:text-kwd-light w-full">
-      <ion-select-option *ngIf="isLoadingPage && allClassrooms.length === 0" [disabled]="true">Cargando aulas...</ion-select-option>
-      <ion-select-option *ngIf="!isLoadingPage && allClassrooms.length === 0" [disabled]="true">No hay aulas disponibles</ion-select-option>
-      <ion-select-option *ngFor="let classroom of allClassrooms" [value]="classroom.id">
-        {{ classroom.name }} 
-      </ion-select-option>
+  <ion-item class="mb-4 rounded-md shadow-sm">
+    <ion-label position="stacked">Selecciona un Aula</ion-label>
+    <ion-select interface="popover" [(ngModel)]="selectedClassroomId" (ionChange)="onClassroomSelected($event)" placeholder="Elige aula">
+      <ion-select-option *ngFor="let c of allClassrooms" [value]="c.id">{{ c.name }}</ion-select-option>
     </ion-select>
   </ion-item>
 
-  <div *ngIf="isLoadingPage && allClassrooms.length === 0" class="flex justify-center items-center h-40">
-    <ion-spinner name="crescent" color="primary"></ion-spinner>
-    <p class="ml-3 text-gray-700 dark:text-gray-300">Cargando lista de aulas...</p>
-  </div>
-  
-  <div *ngIf="!selectedClassroomId && !isLoadingPage && allClassrooms.length > 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-    <ion-icon name="information-circle-outline" class="text-4xl"></ion-icon>
-    <p class="mt-2">Por favor, selecciona una fecha y un aula para ver su disponibilidad.</p>
-  </div>
+  <ng-container *ngIf="selectedClassroomId && getSelectedClassroomDetails() as room">
+    <ion-card>
+      <ion-card-content>
+        <h2 class="text-lg font-bold text-primary mb-2">{{ room.name }}</h2>
+        <div *ngIf="isLoadingSlots" class="text-center py-4"><ion-spinner></ion-spinner></div>
 
-  <ng-container *ngIf="selectedClassroomId && !isLoadingPage">
-    <ng-container *ngIf="getSelectedClassroomDetails() as selectedClassroom">
-      <ion-card class="dark:bg-kwd-darker">
-        <ion-card-content>
-          <h2 class="text-lg font-semibold text-kwd-primary dark:text-kwd-light mb-2">{{ selectedClassroom.name }}</h2>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Capacidad: {{ selectedClassroom.capacity }} | Tipo: {{ selectedClassroom.type | titlecase }}</p>
+        <div *ngIf="!isLoadingSlots && timeSlotsForSelectedClassroom.length > 0">
+           <div class="flex justify-center gap-4 text-xs mb-3">
+              <div class="flex items-center"><div class="w-3 h-3 bg-green-100 border border-green-200 mr-1 rounded"></div> Libre</div>
+              <div class="flex items-center"><div class="w-3 h-3 bg-red-200 border border-red-300 mr-1 rounded"></div> Ocupado</div>
+           </div>
+           <div class="grid grid-cols-4 gap-2">
+              <ion-chip *ngFor="let slot of timeSlotsForSelectedClassroom" [ngClass]="getSlotClass(slot)" (click)="onSlotClick(slot)" class="justify-center flex-col h-auto py-2">
+                 <ion-label class="text-xs font-bold">{{ slot.time }}</ion-label>
+                 <ion-label class="text-[0.65rem] opacity-75">- {{ slot.endTimeLabel }}</ion-label>
+              </ion-chip>
+           </div>
+        </div>
 
-          <div *ngIf="isLoadingSlots" class="text-center py-4">
-            <ion-spinner name="dots" color="secondary"></ion-spinner>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Cargando horarios...</p>
-          </div>
-          <div *ngIf="availabilityError && !isLoadingSlots" class="text-center py-4 text-red-600 dark:text-kwd-danger">
-            <ion-icon name="warning-outline" class="mr-1"></ion-icon> {{ availabilityError }}
-          </div>
-
-          <div *ngIf="!isLoadingSlots && !availabilityError && timeSlotsForSelectedClassroom.length > 0" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-            <ion-chip
-              *ngFor="let slot of timeSlotsForSelectedClassroom"
-              [outline]="!slot.isReserved"
-              [ngClass]="getSlotClass(slot)"
-              (click)="onSlotClick(slot)"
-              class="flex-shrink-0 justify-center min-w-[70px] py-2 px-1"
-              [title]="slot.isReserved ? slot.reservationInfo : 'Disponible'">
-              <ion-label class="text-xs leading-tight">{{ slot.time }}</ion-label>
-            </ion-chip>
-          </div>
-          <div *ngIf="!isLoadingSlots && !availabilityError && timeSlotsForSelectedClassroom.length === 0" class="text-center py-4 text-gray-500 dark:text-gray-400">
-            No hay horarios disponibles para esta aula en la fecha seleccionada (ej. Domingos, fuera de horario, o todos los slots ocupados).
-          </div>
-        </ion-card-content>
-      </ion-card>
-    </ng-container>
-     <div *ngIf="selectedClassroomId && !isLoadingPage && !getSelectedClassroomDetails()" class="text-center py-4 text-gray-500 dark:text-gray-400">
-        <p>El aula seleccionada no se encuentra o no se pudo cargar la información. Por favor, elige otra.</p>
-    </div>
+        <div *ngIf="!isLoadingSlots && timeSlotsForSelectedClassroom.length === 0" class="text-center py-4 text-gray-500">
+           No hay horarios disponibles (Cerrado).
+        </div>
+      </ion-card-content>
+    </ion-card>
   </ng-container>
 </ion-content>
