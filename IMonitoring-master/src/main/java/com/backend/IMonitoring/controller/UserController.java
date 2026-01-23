@@ -9,6 +9,7 @@ import com.backend.IMonitoring.model.User;
 import com.backend.IMonitoring.security.UserDetailsImpl;
 import com.backend.IMonitoring.service.ReservationService;
 import com.backend.IMonitoring.service.UserService;
+import com.backend.IMonitoring.utils.CareerUtils; // Importante: Agregar esta importación
 import com.backend.IMonitoring.exceptions.UnauthorizedAccessException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +18,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile; // Importante
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.io.IOException; // Importante
+import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -45,16 +46,27 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
     public ResponseEntity<List<UserDTO>> getAllUsers(@AuthenticationPrincipal UserDetailsImpl currentUserDetails) {
         List<User> usersToProcess;
+
         if (currentUserDetails.getRoleEnum() == Rol.ADMIN) {
             usersToProcess = userService.getAllUsers();
         } else if (currentUserDetails.getRoleEnum() == Rol.COORDINADOR) {
+            // Obtener la carrera del coordinador
+            String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
+
             List<User> students = userService.getUsersByRole(Rol.ESTUDIANTE);
             List<User> tutors = userService.getUsersByRole(Rol.TUTOR);
             List<User> professors = userService.getUsersByRole(Rol.PROFESOR);
-            usersToProcess = new ArrayList<>();
-            usersToProcess.addAll(students);
-            usersToProcess.addAll(tutors);
-            usersToProcess.addAll(professors);
+
+            List<User> allCandidates = new ArrayList<>();
+            allCandidates.addAll(students);
+            allCandidates.addAll(tutors);
+            allCandidates.addAll(professors);
+
+            // Filtrar solo los usuarios que pertenecen al mismo grupo académico que el coordinador
+            usersToProcess = allCandidates.stream()
+                    .filter(user -> CareerUtils.areSameCareerGroup(coordinatorCareer, user.getCareer()))
+                    .collect(Collectors.toList());
+
         } else {
             throw new UnauthorizedAccessException("No tienes permiso para ver esta lista de usuarios.");
         }
@@ -73,8 +85,13 @@ public class UserController {
         if (isAdmin || isSelf) {
             return ResponseEntity.ok(UserDTO.fromEntity(targetUser));
         }
+
+        // Validar que el Coordinador solo vea usuarios de su grupo académico
         if (isCoordinator && (targetUser.getRole() == Rol.ESTUDIANTE || targetUser.getRole() == Rol.TUTOR || targetUser.getRole() == Rol.PROFESOR)) {
-            return ResponseEntity.ok(UserDTO.fromEntity(targetUser));
+            String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
+            if (CareerUtils.areSameCareerGroup(coordinatorCareer, targetUser.getCareer())) {
+                return ResponseEntity.ok(UserDTO.fromEntity(targetUser));
+            }
         }
 
         throw new UnauthorizedAccessException("No tienes permiso para ver este usuario.");
@@ -89,8 +106,16 @@ public class UserController {
         if (isAdmin) {
             return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
         }
+
+        // Filtrar por carrera en la búsqueda por rol
         if (isCoordinator && (role == Rol.ESTUDIANTE || role == Rol.TUTOR || role == Rol.PROFESOR)) {
-            return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
+            String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
+
+            List<User> filteredUsers = userService.getUsersByRole(role).stream()
+                    .filter(user -> CareerUtils.areSameCareerGroup(coordinatorCareer, user.getCareer()))
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(filteredUsers.stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
         }
 
         throw new UnauthorizedAccessException("No tienes permiso para ver usuarios con este rol.");
@@ -120,14 +145,12 @@ public class UserController {
         return ResponseEntity.ok(UserDTO.fromEntity(updatedUser));
     }
 
-    // --- NUEVO ENDPOINT PARA SUBIR IMAGEN ---
     @PostMapping("/{id}/image")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserDTO> uploadProfilePicture(
             @PathVariable String id,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserDetailsImpl currentUser) {
-
         try {
             User updatedUser = userService.uploadUserProfilePicture(id, file, currentUser.getUserEntity());
             return ResponseEntity.ok(UserDTO.fromEntity(updatedUser));
@@ -148,9 +171,18 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    // Filtrar reservaciones si el coordinador intenta ver las de un usuario fuera de su carrera
     @GetMapping("/{userId}/reservations")
     @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR') or #userId == authentication.principal.id")
-    public ResponseEntity<List<ReservationResponseDTO>> getUserReservations(@PathVariable String userId) {
+    public ResponseEntity<List<ReservationResponseDTO>> getUserReservations(@PathVariable String userId, @AuthenticationPrincipal UserDetailsImpl currentUserDetails) {
+        boolean isCoordinator = currentUserDetails.getRoleEnum() == Rol.COORDINADOR;
+        if (isCoordinator && !userId.equals(currentUserDetails.getId())) {
+            User targetUser = userService.getUserById(userId); // Esto lanzará excepción si no existe
+            if (!CareerUtils.areSameCareerGroup(currentUserDetails.getUserEntity().getCareer(), targetUser.getCareer())) {
+                throw new UnauthorizedAccessException("No puedes ver las reservas de un usuario de otra carrera.");
+            }
+        }
+
         List<ReservationResponseDTO> reservations = reservationService.getReservationsByUserIdDTO(userId);
         return ResponseEntity.ok(reservations);
     }

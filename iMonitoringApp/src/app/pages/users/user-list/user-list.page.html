@@ -13,7 +13,7 @@
   </ion-refresher>
 
   <div class="p-4 md:p-6 lg:p-8">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
       <h1 class="text-2xl font-semibold text-gray-800 dark:text-kwd-light">
         Gestión de Usuarios
       </h1>
@@ -26,15 +26,27 @@
       </div>
     </div>
 
+    <div class="mb-6">
+      <ion-searchbar
+        placeholder="Buscar por nombre o correo..."
+        [debounce]="250"
+        (ionInput)="searchUsers($event)"
+        animated="true"
+        mode="ios"
+        class="rounded-lg shadow-sm"
+        style="--background: white; --color: black; --icon-color: gray; --padding-start: 0; --padding-end: 0;">
+      </ion-searchbar>
+    </div>
+
     <div *ngIf="isLoading && users.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
       <ion-spinner name="crescent" class="w-8 h-8"></ion-spinner>
       <p class="mt-2">Cargando usuarios...</p>
     </div>
 
     <div *ngIf="!isLoading && users.length === 0 && !errorMessage" class="p-8 text-center text-gray-500 bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-gray-400 mt-6">
-      <ion-icon name="people-outline" class="w-12 h-12 mx-auto"></ion-icon>
-      <p class="mt-2">No hay usuarios registrados.</p>
-      <button (click)="navigateToAddUser()" class="mt-4 text-kwd-blue-DEFAULT dark:text-kwd-blue-400 hover:underline">
+      <ion-icon name="search-outline" class="w-12 h-12 mx-auto"></ion-icon>
+      <p class="mt-2">No se encontraron usuarios.</p>
+      <button *ngIf="allUsers.length === 0" (click)="navigateToAddUser()" class="mt-4 text-kwd-blue-DEFAULT dark:text-kwd-blue-400 hover:underline">
         Crear el primero
       </button>
     </div>
@@ -49,6 +61,9 @@
           <tr>
             <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Nombre</th>
             <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Email</th>
+
+            <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Carrera</th>
+
             <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Rol</th>
             <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase dark:text-gray-400">Acciones</th>
           </tr>
@@ -57,6 +72,11 @@
           <tr *ngFor="let user of users" class="hover:bg-gray-50 dark:hover:bg-kwd-dark">
             <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-kwd-light">{{ user.name || 'N/A' }}</td>
             <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ user.email }}</td>
+
+            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
+              {{ user.career || '-' }}
+            </td>
+
             <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
               <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full"
                     [ngClass]="{

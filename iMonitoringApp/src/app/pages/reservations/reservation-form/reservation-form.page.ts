@@ -9,6 +9,7 @@ import { UserService } from 'src/app/services/user.service';
 import { AuthService } from 'src/app/services/auth.service';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { Reservation } from 'src/app/models/reservation.model';
 
 interface TimeSlot {
   index: number;
@@ -30,6 +31,7 @@ export class ReservationFormPage implements OnInit {
   reservationForm: FormGroup;
   isEditMode = false;
   reservationId: string | null = null;
+  currentGroupId: string | null = null;
 
   classrooms: any[] = [];
   users: any[] = [];
@@ -94,7 +96,9 @@ export class ReservationFormPage implements OnInit {
     }
 
     this.reservationForm.get('classroomId')?.valueChanges.subscribe(() => { if(!this.isLoadingAvailability) this.loadDayReservations(); });
-    this.reservationForm.get('date')?.valueChanges.subscribe(() => { if(this.reservationType === 'single') this.loadDayReservations(); });
+    this.reservationForm.get('date')?.valueChanges.subscribe(() => {
+        if(this.reservationType === 'single') this.loadDayReservations();
+    });
   }
 
   checkUserRole() {
@@ -124,8 +128,10 @@ export class ReservationFormPage implements OnInit {
   loadReservation(id: string) {
     this.isLoadingAvailability = true;
     this.reservationService.getReservationById(id).subscribe({
-        next: (data: any) => {
-            this.reservationType = 'single';
+        next: (data: Reservation) => {
+            this.currentGroupId = data.groupId || null;
+            this.reservationType = this.currentGroupId ? 'semester' : 'single';
+
             const startDateObj = new Date(data.startTime);
             const dateISO = startDateObj.toISOString();
 
@@ -152,10 +158,17 @@ export class ReservationFormPage implements OnInit {
 
   initTimeSlots() {
     const slots: TimeSlot[] = [];
-    const formDate = this.reservationForm.get('date')?.value;
-    const baseDate = formDate ? new Date(formDate) : new Date();
+    const formDateVal = this.reservationForm.get('date')?.value;
+
+    let baseDate = new Date();
+    if (formDateVal) {
+        const d = new Date(formDateVal);
+        baseDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
     const dayOfWeek = baseDate.getDay();
     let closingHour = 22;
+
     if (this.reservationType === 'single') {
         if (dayOfWeek === 0) {
             this.timeSlots = [];
@@ -164,20 +177,25 @@ export class ReservationFormPage implements OnInit {
         }
         if (dayOfWeek === 6) closingHour = 12;
     }
+
     let pointer = new Date(baseDate);
     pointer.setHours(6, 0, 0, 0);
+
     const endLimit = new Date(baseDate);
     endLimit.setHours(closingHour, 0, 0, 0);
+
     let idx = 0;
     while (pointer < endLimit) {
       const sStart = new Date(pointer);
       const sEnd = new Date(pointer.getTime() + 45 * 60000);
+
       if (sEnd > endLimit && sEnd.getHours() !== closingHour) break;
       if (closingHour === 12 && (sEnd.getHours() > 12 || (sEnd.getHours() === 12 && sEnd.getMinutes() > 0))) break;
+
       slots.push({
         index: idx++,
-        startLabel: `${sStart.getHours().toString().padStart(2,'0')}:${sStart.getMinutes().toString().padStart(2,'0')}`,
-        endLabel: `${sEnd.getHours().toString().padStart(2,'0')}:${sEnd.getMinutes().toString().padStart(2,'0')}`,
+        startLabel: this.formatTime(sStart),
+        endLabel: this.formatTime(sEnd),
         startISO: sStart.toISOString(),
         endISO: sEnd.toISOString(),
         status: 'free'
@@ -187,21 +205,31 @@ export class ReservationFormPage implements OnInit {
     this.timeSlots = slots;
   }
 
+  formatTime(date: Date): string {
+      const h = date.getHours().toString().padStart(2, '0');
+      const m = date.getMinutes().toString().padStart(2, '0');
+      return `${h}:${m}`;
+  }
+
   loadDayReservations(isEditLoad: boolean = false) {
-    if (this.reservationType === 'semester') {
-        this.initTimeSlots();
-        this.currentDayReservations = [];
-        return;
+    if (this.reservationType === 'semester' && !this.isEditMode) {
+         this.initTimeSlots();
+         this.currentDayReservations = [];
+         return;
     }
     const cid = this.reservationForm.get('classroomId')?.value;
     const dateVal = this.reservationForm.get('date')?.value;
+
     if (!cid || !dateVal) { this.initTimeSlots(); return; }
+
     this.initTimeSlots();
     if (this.timeSlots.length === 0) { this.currentDayReservations = []; return; }
+
     this.isLoadingAvailability = true;
     const d = new Date(dateVal);
     const startIso = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0).toISOString();
     const endIso = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59).toISOString();
+
     this.classroomService.getClassroomReservations(cid, startIso, endIso).subscribe({
       next: (res) => {
           this.currentDayReservations = res;
@@ -217,10 +245,10 @@ export class ReservationFormPage implements OnInit {
       const startVal = this.reservationForm.get('startTime')?.value;
       const endVal = this.reservationForm.get('endTime')?.value;
       if (startVal && endVal) {
-          const startTime = new Date(startVal).getTime();
-          const endTime = new Date(endVal).getTime();
-          const startSlot = this.timeSlots.find(s => new Date(s.startISO).getTime() === startTime);
-          const endSlot = this.timeSlots.find(s => new Date(s.endISO).getTime() === endTime);
+          const targetStart = new Date(startVal).getTime();
+          const targetEnd = new Date(endVal).getTime();
+          const startSlot = this.timeSlots.find(s => Math.abs(new Date(s.startISO).getTime() - targetStart) < 1000);
+          const endSlot = this.timeSlots.find(s => Math.abs(new Date(s.endISO).getTime() - targetEnd) < 1000);
           if (startSlot) {
               this.selectionStartIndex = startSlot.index;
               this.selectionEndIndex = endSlot ? endSlot.index : startSlot.index;
@@ -244,28 +272,48 @@ export class ReservationFormPage implements OnInit {
   }
 
   isRangeFree(start: number, end: number): boolean {
-    for (let i = start; i <= end; i++) if (this.timeSlots[i].status === 'busy') return false;
+    for (let i = start; i <= end; i++) {
+        if (this.timeSlots[i].status === 'busy') return false;
+    }
     return true;
   }
 
   updateVisualGrid() {
     const now = new Date();
+    const formDateVal = this.reservationForm.get('date')?.value;
+    let selectedDate = new Date();
+    if(formDateVal) {
+        const d = new Date(formDateVal);
+        selectedDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    const isToday = selectedDate.toDateString() === now.toDateString();
+
     this.timeSlots.forEach(slot => {
       let isBlocked = false;
       const sStart = new Date(slot.startISO).getTime();
       const sEnd = new Date(slot.endISO).getTime();
-      if (this.reservationType === 'single' && this.currentDayReservations.some(r => {
+
+      if (this.currentDayReservations.some(r => {
          if (this.isEditMode && r.id === this.reservationId) return false;
-         return (new Date(r.startTime).getTime() < sEnd && new Date(r.endTime).getTime() > sStart);
+         const rStart = new Date(r.startTime).getTime();
+         const rEnd = new Date(r.endTime).getTime();
+         return (rStart < sEnd && rEnd > sStart);
       })) isBlocked = true;
-      if (this.reservationType === 'single' && new Date(slot.startISO) < now) isBlocked = true;
+
+      if (this.reservationType === 'single' && isToday && sStart < now.getTime()) isBlocked = true;
+
       slot.status = isBlocked ? 'busy' : 'free';
     });
+
     if (this.selectionStartIndex !== null) {
-      if (this.selectionEndIndex === null) this.timeSlots[this.selectionStartIndex].status = 'range-start';
-      else {
+      if (this.selectionEndIndex === null) {
+          if (this.timeSlots[this.selectionStartIndex].status !== 'busy')
+             this.timeSlots[this.selectionStartIndex].status = 'range-start';
+      } else {
         for (let i = this.selectionStartIndex; i <= this.selectionEndIndex; i++) {
-           this.timeSlots[i].status = (i === this.selectionStartIndex) ? 'range-start' : (i === this.selectionEndIndex ? 'range-end' : 'selected');
+           if (this.timeSlots[i].status !== 'busy') {
+               this.timeSlots[i].status = (i === this.selectionStartIndex) ? 'range-start' : (i === this.selectionEndIndex ? 'range-end' : 'selected');
+           }
         }
       }
     }
@@ -303,46 +351,18 @@ export class ReservationFormPage implements OnInit {
 
     // --- MODO EDICIÓN ---
     if (this.isEditMode && this.reservationId) {
-        const alert = await this.alertController.create({
-            header: 'Editar Reserva',
-            message: '¿Deseas modificar solo esta reserva o toda la serie del semestre (clases futuras)?',
-            buttons: [
-                { text: 'Cancelar', role: 'cancel' },
-                {
-                    text: 'Solo esta',
-                    handler: async () => {
-                        await loading.present();
-                        const payload = {
-                            ...val,
-                            startTime: formatToLocalISO(val.startTime),
-                            endTime: formatToLocalISO(val.endTime),
-                            status: 'PENDIENTE'
-                        };
-                        this.reservationService.updateReservation(this.reservationId!, payload).subscribe({
-                            next: () => { loading.dismiss(); this.handleSuccess('Reserva actualizada.'); },
-                            error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); }
-                        });
-                    }
-                },
-                {
-                    text: 'Todo el semestre',
-                    handler: async () => {
-                        await loading.present();
-                        const payload = {
-                            ...val,
-                            startTime: formatToLocalISO(val.startTime),
-                            endTime: formatToLocalISO(val.endTime),
-                            status: 'PENDIENTE'
-                        };
-                        this.reservationService.updateSemesterReservation(this.reservationId!, payload).subscribe({
-                            next: () => { loading.dismiss(); this.handleSuccess('Serie actualizada correctamente.'); },
-                            error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); }
-                        });
-                    }
-                }
-            ]
+        const isSeries = !!this.currentGroupId;
+        await loading.present();
+        const payload = {
+            ...val,
+            startTime: formatToLocalISO(val.startTime),
+            endTime: formatToLocalISO(val.endTime),
+            status: 'PENDIENTE'
+        };
+        this.reservationService.updateReservation(this.reservationId!, payload, isSeries).subscribe({
+            next: () => { loading.dismiss(); this.handleSuccess(isSeries ? 'Serie actualizada.' : 'Reserva actualizada.'); },
+            error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); }
         });
-        await alert.present();
         return;
     }
 
@@ -360,30 +380,36 @@ export class ReservationFormPage implements OnInit {
            error:(e) => { loading.dismiss(); this.showAlert('Error', e.message); }
        });
     } else {
+       // --- LÓGICA DE SEMESTRE NUEVA (SIN FORKJOIN) ---
        const selectedDays = Array.isArray(val.dayOfWeek) ? val.dayOfWeek : [val.dayOfWeek];
-       if (!selectedDays || selectedDays.length === 0) { loading.dismiss(); this.showToast('Seleccione un día', 'warning'); return; }
-       const endDateLocal = new Date(val.endTime);
-       if (selectedDays.includes('SATURDAY') && (endDateLocal.getHours() > 12 || (endDateLocal.getHours() === 12 && endDateLocal.getMinutes() > 0))) {
-           loading.dismiss(); this.showAlert('Horario no permitido', 'Sábado cierra a las 12:00 PM.'); return;
-       }
-       const requests = selectedDays.map((day: string) => {
-           const payload = {
-               classroomId: val.classroomId,
-               professorId: val.userId,
-               semesterStartDate: val.semesterStartDate.split('T')[0],
-               semesterEndDate: val.semesterEndDate.split('T')[0],
-               startTime: getLocalTimeString(val.startTime),
-               endTime: getLocalTimeString(val.endTime),
-               purpose: val.purpose,
-               dayOfWeek: day
-           };
-           return this.reservationService.createSemesterReservation(payload).pipe(catchError(err => of({ error: true, message: err.message })));
-       });
-       forkJoin(requests).subscribe((results: any[]) => {
+
+       if (!selectedDays || selectedDays.length === 0) {
            loading.dismiss();
-           const errors = results.filter(r => r.error);
-           if (errors.length > 0) { const msgList = errors.map(e => `• ${e.message}`).join('\n'); this.showAlert('Conflictos', `Algunas reservas fallaron:\n\n${msgList}`); }
-           else { this.handleSuccess('Semestre creado correctamente.'); }
+           this.showToast('Seleccione al menos un día', 'warning');
+           return;
+       }
+
+       const endDateLocal = new Date(val.endTime);
+       if (selectedDays.includes('SATURDAY') && endDateLocal.getHours() > 12) {
+           loading.dismiss();
+           this.showAlert('Horario no permitido', 'Sábado cierra a las 12:00 PM.');
+           return;
+       }
+
+       const payload = {
+           classroomId: val.classroomId,
+           professorId: val.userId,
+           semesterStartDate: val.semesterStartDate.split('T')[0],
+           semesterEndDate: val.semesterEndDate.split('T')[0],
+           startTime: getLocalTimeString(val.startTime),
+           endTime: getLocalTimeString(val.endTime),
+           purpose: val.purpose,
+           daysOfWeek: selectedDays // <--- Enviamos la lista tal cual
+       };
+
+       this.reservationService.createSemesterReservation(payload).subscribe({
+           next: () => { loading.dismiss(); this.handleSuccess('Semestre creado correctamente.'); },
+           error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); }
        });
     }
   }

@@ -14,12 +14,14 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ReservationResponseDTO {
     private String id;
-    private ClassroomSummaryDTO classroom; 
-    private UserSummaryDTO user;       
+    private String groupId;
+    private String recurrenceDetails; // <--- NUEVO CAMPO
+    private ClassroomSummaryDTO classroom;
+    private UserSummaryDTO user;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private ReservationStatus status;
     private String purpose;
+    private ReservationStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

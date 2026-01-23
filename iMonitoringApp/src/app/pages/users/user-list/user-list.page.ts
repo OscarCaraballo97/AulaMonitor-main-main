@@ -18,7 +18,10 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class UserListPage implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
-  users: User[] = [];
+
+  users: User[] = [];     // Lista que se muestra en pantalla (filtrada)
+  allUsers: User[] = [];  // Copia maestra de todos los usuarios descargados
+
   isLoading = false;
   errorMessage: string = '';
   public RolEnum = Rol;
@@ -47,6 +50,23 @@ export class UserListPage implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // --- NUEVA FUNCIÓN DE BÚSQUEDA ---
+  searchUsers(event: any) {
+    const searchTerm = event.detail.value?.toLowerCase() || '';
+
+    if (!searchTerm) {
+      this.users = [...this.allUsers]; // Restaurar lista completa si no hay búsqueda
+      return;
+    }
+
+    this.users = this.allUsers.filter(user => {
+      const name = user.name?.toLowerCase() || '';
+      const email = user.email?.toLowerCase() || '';
+      // Buscamos por nombre (y opcionalmente por email para mejor UX)
+      return name.includes(searchTerm) || email.includes(searchTerm);
+    });
   }
 
   async loadUsers(event?: CustomEvent) {
@@ -85,7 +105,10 @@ export class UserListPage implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data: User[]) => {
-          this.users = data.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          // Guardamos la copia maestra ordenada
+          this.allUsers = data.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          // Inicialmente mostramos todos
+          this.users = [...this.allUsers];
           this.isLoading = false;
         },
         error: async (err: Error) => {
@@ -101,6 +124,7 @@ export class UserListPage implements OnInit, OnDestroy {
       });
   }
 
+  // ... (El resto de métodos canEditUser, canDeleteUser, etc. permanecen igual)
   canEditUser(userToList: User): boolean {
     if (this.currentUserRole === Rol.ADMIN) {
       return true;
@@ -144,7 +168,7 @@ export class UserListPage implements OnInit, OnDestroy {
         { text: 'Cancelar', role: 'cancel' },
         {
           text: 'Eliminar',
-          cssClass: 'text-danger', 
+          cssClass: 'text-danger',
           handler: () => this.deleteUser(user.id!),
         },
       ],

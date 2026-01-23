@@ -1,17 +1,10 @@
 package com.backend.IMonitoring.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Data
@@ -23,6 +16,14 @@ public class Reservation {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
+
+    // Identificador para agrupar reservas de un mismo semestre
+    @Column(name = "group_id")
+    private String groupId;
+
+    // NUEVO: Detalle de recurrencia (Ej: "LUNES - MIERCOLES")
+    @Column(name = "recurrence_details")
+    private String recurrenceDetails;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classroom_id", nullable = false)
@@ -59,9 +60,7 @@ public class Reservation {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
+        if (createdAt == null) createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 

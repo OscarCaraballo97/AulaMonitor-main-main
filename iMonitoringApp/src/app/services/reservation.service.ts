@@ -95,13 +95,14 @@ export class ReservationService {
     );
   }
 
-  updateReservation(id: string, reservation: Partial<ReservationCreationData>): Observable<Reservation> {
-    return this.http.put<Reservation>(`${this.apiUrl}/${id}`, reservation).pipe(
+  // --- MODIFICADO: Acepta editSeries y lo manda como Query Param ---
+  updateReservation(id: string, reservation: Partial<ReservationCreationData>, editSeries: boolean = false): Observable<Reservation> {
+    const url = `${this.apiUrl}/${id}?editSeries=${editSeries}`;
+    return this.http.put<Reservation>(url, reservation).pipe(
       catchError(err => this.handleError(err, 'Actualizar reserva'))
     );
   }
 
-  // --- NUEVO MÉTODO PARA SEMESTRE ---
   updateSemesterReservation(id: string, reservation: Partial<ReservationCreationData>): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/semester/${id}`, reservation).pipe(
       catchError(err => this.handleError(err, 'Actualizar semestre'))

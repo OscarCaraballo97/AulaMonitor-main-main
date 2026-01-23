@@ -1,7 +1,6 @@
 package com.backend.IMonitoring.dto;
 
-import com.backend.IMonitoring.model.ReservationStatus; // Asegúrate de importar ReservationStatus
-import jakarta.validation.constraints.NotBlank;
+import com.backend.IMonitoring.model.ReservationStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,19 +14,15 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReservationRequestDTO {
-
-    @NotBlank(message = "El ID del aula (classroomId) es obligatorio")
     private String classroomId;
+    private String userId;
 
-    private String userId; 
-
-    @NotNull(message = "La fecha y hora de inicio es obligatoria")
+    @NotNull
     private LocalDateTime startTime;
 
-    @NotNull(message = "La fecha y hora de fin es obligatoria")
+    @NotNull
     private LocalDateTime endTime;
 
     private String purpose;
-
-    private ReservationStatus status; 
+    private ReservationStatus status;
 }

@@ -10,7 +10,9 @@ import com.backend.IMonitoring.model.User;
 import com.backend.IMonitoring.security.UserDetailsImpl;
 import com.backend.IMonitoring.service.ReservationService;
 import jakarta.validation.Valid;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,10 +25,10 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Getter
+@Setter
 class UpdateStatusRequest {
     private ReservationStatus status;
-    public ReservationStatus getStatus() { return status; }
-    public void setStatus(ReservationStatus status) { this.status = status; }
 }
 
 @RestController
@@ -85,7 +87,6 @@ public class ReservationController {
         return ResponseEntity.ok(reservationDTOs);
     }
 
-    // --- NUEVO ENDPOINT AGREGADO (SOLUCIÓN AL ERROR 404) ---
     @GetMapping("/my-upcoming")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ReservationResponseDTO>> getMyUpcomingReservations(
@@ -98,7 +99,6 @@ public class ReservationController {
         List<ReservationResponseDTO> upcoming = reservationService.getMyUpcomingReservationsDTO(userId, limit);
         return ResponseEntity.ok(upcoming);
     }
-    // -------------------------------------------------------
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
@@ -172,9 +172,10 @@ public class ReservationController {
 
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ReservationResponseDTO> updateReservationDetails(
+    public ResponseEntity<List<ReservationResponseDTO>> updateReservationDetails(
             @PathVariable String id,
             @Valid @RequestBody ReservationRequestDTO reservationRequestDTO,
+            @RequestParam(required = false, defaultValue = "false") boolean editSeries,
             @AuthenticationPrincipal UserDetails currentUserDetails) {
 
         Reservation reservationDetailsToUpdate = new Reservation();
@@ -195,28 +196,7 @@ public class ReservationController {
         reservationDetailsToUpdate.setEndTime(reservationRequestDTO.getEndTime());
         reservationDetailsToUpdate.setPurpose(reservationRequestDTO.getPurpose());
 
-        Reservation updatedReservationEntity = reservationService.updateReservation(id, reservationDetailsToUpdate, currentUserDetails);
-        return ResponseEntity.ok(reservationService.convertToDTO(updatedReservationEntity));
-    }
-
-    @PutMapping("/semester/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ReservationResponseDTO>> updateSemester(
-            @PathVariable String id,
-            @RequestBody ReservationRequestDTO reservationRequestDTO,
-            @AuthenticationPrincipal UserDetails currentUserDetails) {
-
-        Reservation res = new Reservation();
-        res.setStartTime(reservationRequestDTO.getStartTime());
-        res.setEndTime(reservationRequestDTO.getEndTime());
-        res.setPurpose(reservationRequestDTO.getPurpose());
-        if(reservationRequestDTO.getClassroomId() != null) {
-            Classroom c = new Classroom();
-            c.setId(reservationRequestDTO.getClassroomId());
-            res.setClassroom(c);
-        }
-
-        List<ReservationResponseDTO> updatedReservations = reservationService.updateSemesterReservations(id, res, currentUserDetails);
+        List<ReservationResponseDTO> updatedReservations = reservationService.updateReservationSmart(id, reservationDetailsToUpdate, currentUserDetails, editSeries);
         return ResponseEntity.ok(updatedReservations);
     }
 

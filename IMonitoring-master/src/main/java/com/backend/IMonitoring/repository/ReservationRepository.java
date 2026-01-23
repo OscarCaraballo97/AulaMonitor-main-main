@@ -18,6 +18,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
     List<Reservation> findByUserId(String userId, Sort sort);
     List<Reservation> findByClassroomId(String classroomId, Sort sort);
 
+    // --- NUEVO: Buscar por grupo ---
+    List<Reservation> findByGroupId(String groupId);
+    // -------------------------------
+
     List<Reservation> findByClassroomIdAndStartTimeBetween(String classroomId, LocalDateTime startTime, LocalDateTime endTime, Sort sort);
     List<Reservation> findByUserIdAndStartTimeBetween(String userId, LocalDateTime startTime, LocalDateTime endTime, Sort sort);
     List<Reservation> findByStatusAndStartTimeBetween(ReservationStatus status, LocalDateTime startTime, LocalDateTime endTime, Sort sort);
@@ -39,7 +43,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
     @Query("SELECT r FROM Reservation r WHERE r.classroom.id = :classroomId AND r.startTime >= :startDate AND r.endTime <= :endDate")
     List<Reservation> findByClassroomIdAndDateTimeRange(@Param("classroomId") String classroomId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // Método para validar conflictos al crear/editar
+    // Método para validar conflictos
     @Query("SELECT r FROM Reservation r WHERE r.classroom.id = :classroomId " +
             "AND r.startTime < :endTime AND r.endTime > :startTime " +
             "AND r.status IN (com.backend.IMonitoring.model.ReservationStatus.CONFIRMADA, com.backend.IMonitoring.model.ReservationStatus.PENDIENTE)")
@@ -47,7 +51,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
                                                   @Param("startTime") LocalDateTime startTime,
                                                   @Param("endTime") LocalDateTime endTime);
 
-    // NUEVO MÉTODO: Buscar serie de reservas futuras (mismo usuario, propósito y aula) para edición masiva
+    // Método legacy (puedes conservarlo si lo usas en otra parte, pero la lógica nueva usa group_id)
     @Query("SELECT r FROM Reservation r WHERE r.user.id = :userId " +
             "AND r.purpose = :purpose " +
             "AND r.classroom.id = :classroomId " +

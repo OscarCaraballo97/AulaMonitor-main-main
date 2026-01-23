@@ -1,41 +1,35 @@
 package com.backend.IMonitoring.dto;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class SemesterReservationRequestDTO {
-
-    @NotNull(message = "El ID del aula es obligatorio")
+    @NotNull
     private String classroomId;
 
-    @NotNull(message = "El ID del profesor es obligatorio")
+    @NotNull
     private String professorId;
 
-    @NotNull(message = "La fecha de inicio del semestre es obligatoria")
+    private String purpose;
+
+    @NotNull
     private LocalDate semesterStartDate;
 
-    @NotNull(message = "La fecha de fin del semestre es obligatoria")
+    @NotNull
     private LocalDate semesterEndDate;
 
-    @NotNull(message = "El día de la semana es obligatorio")
-    private DayOfWeek dayOfWeek;
-
-    @NotNull(message = "La hora de inicio de la clase es obligatoria")
+    @NotNull
     private LocalTime startTime;
 
-    @NotNull(message = "La hora de fin de la clase es obligatoria")
+    @NotNull
     private LocalTime endTime;
 
-    private String purpose;
+    @NotNull
+    private List<DayOfWeek> daysOfWeek;
 }
