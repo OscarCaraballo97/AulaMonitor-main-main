@@ -1,56 +1,99 @@
 <ion-header>
   <ion-toolbar color="primary">
-    <ion-buttons slot="start"><ion-back-button defaultHref="/reservations"></ion-back-button></ion-buttons>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/app/reservations"></ion-back-button>
+    </ion-buttons>
     <ion-title>{{ isEditMode ? 'Editar Reserva' : 'Nueva Reserva' }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="ion-padding">
+
   <div *ngIf="isAdminOrCoordinator && !isEditMode" class="ion-margin-bottom">
     <ion-segment [value]="reservationType" (ionChange)="segmentChanged($event)">
-      <ion-segment-button value="single"><ion-label>Clase Única</ion-label></ion-segment-button>
-      <ion-segment-button value="semester"><ion-label>Semestre</ion-label></ion-segment-button>
+      <ion-segment-button value="single">
+        <ion-label>Clase Única</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="semester">
+        <ion-label>Semestre</ion-label>
+      </ion-segment-button>
     </ion-segment>
   </div>
 
+  <div *ngIf="!isAdminOrCoordinator && !isEditMode" class="ion-margin-bottom ion-text-center">
+    <ion-note color="medium" class="ion-text-uppercase">Reserva Individual</ion-note>
+  </div>
+
+  <div *ngIf="isEditMode" class="ion-margin-bottom p-3 bg-blue-50 border border-blue-200 rounded text-center text-blue-700">
+    <ion-icon name="create-outline" class="mr-1"></ion-icon>
+    Editando una reserva existente
+  </div>
+
   <form [formGroup]="reservationForm" (ngSubmit)="onSubmit()">
+
     <ion-item class="ion-margin-bottom">
       <ion-label position="stacked">Aula</ion-label>
-      <ion-select formControlName="classroomId" placeholder="Seleccione"><ion-select-option *ngFor="let r of classrooms" [value]="r.id">{{r.name}}</ion-select-option></ion-select>
+      <ion-select formControlName="classroomId" placeholder="Seleccione el aula">
+        <ion-select-option *ngFor="let r of classrooms" [value]="r.id">
+          {{ r.name }} ({{ r.building?.name }})
+        </ion-select-option>
+      </ion-select>
     </ion-item>
 
     <ion-item class="ion-margin-bottom" *ngIf="isAdminOrCoordinator">
-      <ion-label position="stacked">Asignar a</ion-label>
-      <ion-select formControlName="userId"><ion-select-option *ngFor="let u of users" [value]="u.id">{{u.name}}</ion-select-option></ion-select>
+      <ion-label position="stacked">Asignar a Usuario</ion-label>
+      <ion-select formControlName="userId" placeholder="Seleccione usuario">
+        <ion-select-option *ngFor="let u of users" [value]="u.id">
+          {{ u.name }} ({{ u.role }})
+        </ion-select-option>
+      </ion-select>
     </ion-item>
 
     <ion-item class="ion-margin-bottom">
-      <ion-label position="stacked">Propósito</ion-label>
-      <ion-input formControlName="purpose"></ion-input>
+      <ion-label position="stacked">Propósito / Materia</ion-label>
+      <ion-input formControlName="purpose" placeholder="Ej: Clase de Matemáticas"></ion-input>
     </ion-item>
 
     <ng-container *ngIf="reservationType === 'single'">
-      <ion-item><ion-label position="stacked">Fecha</ion-label><ion-datetime-button datetime="ds"></ion-datetime-button></ion-item>
-      <ion-modal [keepContentsMounted]="true"><ng-template><ion-datetime id="ds" presentation="date" formControlName="date"></ion-datetime></ng-template></ion-modal>
+      <ion-item class="ion-margin-bottom">
+        <ion-label position="stacked">Fecha de la clase</ion-label>
+        <ion-datetime-button datetime="date-single"></ion-datetime-button>
+      </ion-item>
+      <ion-modal [keepContentsMounted]="true">
+        <ng-template>
+          <ion-datetime id="date-single" presentation="date" formControlName="date" [min]="minDateISO"></ion-datetime>
+        </ng-template>
+      </ion-modal>
     </ng-container>
 
     <ng-container *ngIf="reservationType === 'semester'">
-      <ion-item><ion-label>Inicio Semestre</ion-label><ion-datetime-button datetime="dss"></ion-datetime-button></ion-item>
-      <ion-modal [keepContentsMounted]="true"><ng-template><ion-datetime id="dss" presentation="date" formControlName="semesterStartDate"></ion-datetime></ng-template></ion-modal>
-      <ion-item><ion-label>Fin Semestre</ion-label><ion-datetime-button datetime="dse"></ion-datetime-button></ion-item>
-      <ion-modal [keepContentsMounted]="true"><ng-template><ion-datetime id="dse" presentation="date" formControlName="semesterEndDate"></ion-datetime></ng-template></ion-modal>
-      <ion-item><ion-label>Día</ion-label><ion-select formControlName="dayOfWeek"><ion-select-option *ngFor="let d of daysOfWeek" [value]="d.value">{{d.label}}</ion-select-option></ion-select></ion-item>
+      <ion-item-divider><ion-label>Configuración del Semestre</ion-label></ion-item-divider>
+      <ion-item><ion-label>Inicio Semestre</ion-label><ion-datetime-button datetime="sem-start"></ion-datetime-button></ion-item>
+      <ion-modal [keepContentsMounted]="true"><ng-template><ion-datetime id="sem-start" presentation="date" formControlName="semesterStartDate"></ion-datetime></ng-template></ion-modal>
+      <ion-item><ion-label>Fin Semestre</ion-label><ion-datetime-button datetime="sem-end"></ion-datetime-button></ion-item>
+      <ion-modal [keepContentsMounted]="true"><ng-template><ion-datetime id="sem-end" presentation="date" formControlName="semesterEndDate"></ion-datetime></ng-template></ion-modal>
+      <ion-item>
+        <ion-label position="stacked">Días de Clase</ion-label>
+        <ion-select formControlName="dayOfWeek" [multiple]="true">
+            <ion-select-option *ngFor="let d of daysOfWeek" [value]="d.value">{{d.label}}</ion-select-option>
+        </ion-select>
+      </ion-item>
     </ng-container>
 
     <div *ngIf="reservationForm.get('classroomId')?.value" class="ion-margin-top">
-      <ion-list-header><ion-label><h2>Horarios (45 min)</h2>
-        <p *ngIf="reservationForm.get('startTime')?.value">{{ reservationForm.get('startTime')?.value | date:'HH:mm' }} - {{ reservationForm.get('endTime')?.value | date:'HH:mm' }}</p>
-      </ion-label></ion-list-header>
+      <ion-list-header>
+        <ion-label>
+          <h2>Horarios (45 min)</h2>
+          <p *ngIf="reservationForm.get('startTime')?.value" class="text-primary">
+            {{ reservationForm.get('startTime')?.value | date:'HH:mm' }} - {{ reservationForm.get('endTime')?.value | date:'HH:mm' }}
+          </p>
+        </ion-label>
+      </ion-list-header>
 
-      <div *ngIf="isLoadingAvailability" class="ion-text-center"><ion-spinner></ion-spinner></div>
+      <div *ngIf="isLoadingAvailability" class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
 
       <div *ngIf="!isLoadingAvailability && timeSlots.length === 0" class="ion-text-center ion-padding text-gray-500">
-         <ion-icon name="close-circle-outline" style="font-size:2rem"></ion-icon><p>Cerrado / No disponible</p>
+         <ion-icon name="close-circle-outline" style="font-size:2rem"></ion-icon><p>No disponible</p>
       </div>
 
       <ion-grid class="schedule-grid" *ngIf="timeSlots.length > 0">
@@ -59,7 +102,9 @@
             <div class="time-card" [ngClass]="slot.status" (click)="selectSlot(slot)">
               <div class="time-label">{{ slot.startLabel }}</div>
               <div class="end-label">- {{ slot.endLabel }}</div>
-              <ion-icon [name]="slot.status==='free'?'ellipse-outline':(slot.status==='busy'?'close-circle-outline':'checkmark-circle')"></ion-icon>
+              <ion-icon *ngIf="slot.status === 'free'" name="ellipse-outline"></ion-icon>
+              <ion-icon *ngIf="slot.status === 'busy'" name="close-circle-outline"></ion-icon>
+              <ion-icon *ngIf="slot.status.includes('selected') || slot.status.includes('range')" name="checkmark-circle"></ion-icon>
             </div>
           </ion-col>
         </ion-row>
@@ -67,7 +112,9 @@
     </div>
 
     <div class="ion-padding">
-      <ion-button expand="block" type="submit" [disabled]="reservationForm.invalid || !reservationForm.get('startTime')?.value">Guardar</ion-button>
+      <ion-button expand="block" type="submit" [disabled]="reservationForm.invalid || !reservationForm.get('startTime')?.value">
+        {{ isEditMode ? 'Guardar Cambios' : 'Confirmar Reserva' }}
+      </ion-button>
     </div>
   </form>
 </ion-content>

@@ -11,6 +11,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Base64;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -35,33 +37,46 @@ public class UserDTO {
 
     private String avatarUrl;
 
-    @Builder.Default
-    private boolean enabled = true;
+    private String profilePictureBase64;
+    private String imageType;
+
+    // CAMBIO IMPORTANTE: Usar Boolean (Clase) en lugar de boolean (primitivo)
+    // Esto permite que sea NULL si el frontend no lo envía, evitando que se convierta en 'false' automáticamente.
+    private Boolean enabled;
 
     public static UserDTO fromEntity(User user) {
         if (user == null) {
             return null;
         }
+
+        String base64Image = null;
+        if (user.getProfilePicture() != null && user.getProfilePicture().length > 0) {
+            base64Image = Base64.getEncoder().encodeToString(user.getProfilePicture());
+        }
+
         return UserDTO.builder()
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
                 .avatarUrl(user.getAvatarUrl())
+                .profilePictureBase64(base64Image)
+                .imageType(user.getImageType())
                 .enabled(user.isEnabled())
                 .build();
     }
 
     public User toEntity() {
         User user = new User();
-        user.setId(this.id); 
+        user.setId(this.id);
         user.setName(this.name);
         user.setEmail(this.email);
         user.setRole(this.role);
         user.setAvatarUrl(this.avatarUrl);
-        user.setEnabled(this.enabled);
+        // Si es null (no se envió), asumimos true por defecto al crear, o se manejará en el update
+        user.setEnabled(this.enabled != null ? this.enabled : true);
         if (this.password != null && !this.password.isEmpty()) {
-            user.setPassword(this.password); 
+            user.setPassword(this.password);
         }
         return user;
     }

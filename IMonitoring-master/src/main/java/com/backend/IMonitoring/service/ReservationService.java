@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -33,14 +34,11 @@ public class ReservationService {
     private final UserService userService;
 
     public ReservationResponseDTO convertToDTO(Reservation reservation) {
-        if (reservation == null) {
-            return null;
-        }
+        if (reservation == null) return null;
+
         User userEntity = reservation.getUser();
-        UserSummaryDTO userSummary = null;
-        if (userEntity != null) {
-            userSummary = new UserSummaryDTO(userEntity.getId(), userEntity.getName(), userEntity.getEmail(), userEntity.getRole());
-        }
+        UserSummaryDTO userSummary = (userEntity != null) ?
+                new UserSummaryDTO(userEntity.getId(), userEntity.getName(), userEntity.getEmail(), userEntity.getRole()) : null;
 
         Classroom classroomEntity = reservation.getClassroom();
         ClassroomSummaryDTO classroomSummary = null;
@@ -63,14 +61,9 @@ public class ReservationService {
     }
 
     private List<ReservationResponseDTO> convertToDTOList(List<Reservation> reservations) {
-        if (reservations == null) {
-            return List.of();
-        }
-        return reservations.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        if (reservations == null) return List.of();
+        return reservations.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
-
 
     public Reservation getReservationById(String id) {
         return reservationRepository.findById(id)
@@ -78,52 +71,37 @@ public class ReservationService {
     }
 
     public ReservationResponseDTO getReservationByIdDTO(String id) {
-        Reservation reservation = getReservationById(id);
-        return convertToDTO(reservation);
+        return convertToDTO(getReservationById(id));
     }
 
     public List<ReservationResponseDTO> getAdminFilteredReservations(
             String classroomId, String userId, ReservationStatus status,
             LocalDateTime startDate, LocalDateTime endDate,
             String sortField, String sortDirection) {
-        Sort sort;
-        if (sortField != null && !sortField.isEmpty()) {
-            Sort.Direction direction = (sortDirection != null && sortDirection.equalsIgnoreCase("desc")) ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-            sort = Sort.by(direction, sortField);
-        } else {
-            sort = Sort.by(Sort.Direction.DESC, "startTime");
-        }
+        Sort sort = (sortField != null && !sortField.isEmpty()) ?
+                Sort.by((sortDirection != null && sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC), sortField) :
+                Sort.by(Sort.Direction.DESC, "startTime");
 
         List<Reservation> reservationsList;
-
         if (status != null) {
             reservationsList = reservationRepository.findByStatus(status, sort);
         } else if (classroomId != null && !classroomId.isEmpty() && startDate != null && endDate != null) {
             reservationsList = reservationRepository.findByClassroomIdAndStartTimeBetween(classroomId, startDate, endDate, sort);
         } else if (userId != null && !userId.isEmpty()) {
             reservationsList = reservationRepository.findByUserId(userId, sort);
-        }
-        else {
+        } else {
             reservationsList = reservationRepository.findAll(sort);
         }
         return convertToDTOList(reservationsList);
     }
 
     public List<ReservationResponseDTO> getFilteredUserReservations(
-            String userIdAuth, ReservationStatus status,
-            String sortField, String sortDirection,
-            Integer page, Integer size,
-            boolean futureOnly,
-            LocalDateTime startDate, LocalDateTime endDate) {
-        Sort sort;
-        if (sortField != null && !sortField.isEmpty()) {
-            Sort.Direction direction = (sortDirection != null && sortDirection.equalsIgnoreCase("desc")) ?
-                    Sort.Direction.DESC : Sort.Direction.ASC;
-            sort = Sort.by(direction, sortField);
-        } else {
-            sort = Sort.by(Sort.Direction.DESC, "startTime");
-        }
+            String userIdAuth, ReservationStatus status, String sortField, String sortDirection,
+            Integer page, Integer size, boolean futureOnly, LocalDateTime startDate, LocalDateTime endDate) {
+
+        Sort sort = (sortField != null && !sortField.isEmpty()) ?
+                Sort.by((sortDirection != null && sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC), sortField) :
+                Sort.by(Sort.Direction.DESC, "startTime");
 
         List<Reservation> reservationsList;
         if (startDate != null && endDate != null) {
@@ -168,19 +146,38 @@ public class ReservationService {
             currentDate = currentDate.plusDays(1);
         }
 
+        if (currentDate.isAfter(request.getSemesterEndDate())) {
+            throw new InvalidReservationException("El rango de fechas seleccionado no contiene ningún " + request.getDayOfWeek() + ".");
+        }
+
         while (!currentDate.isAfter(request.getSemesterEndDate())) {
             LocalDateTime startDateTime = LocalDateTime.of(currentDate, request.getStartTime());
             LocalDateTime endDateTime = LocalDateTime.of(currentDate, request.getEndTime());
 
             boolean isAvailable = classroomRepository.isAvailableConsideringAllStatuses(
-                    classroom.getId(),
-                    startDateTime,
-                    endDateTime
+                    classroom.getId(), startDateTime, endDateTime
             );
 
             if (!isAvailable) {
-                throw new InvalidReservationException("Conflicto de horario detectado en la fecha: " + currentDate +
-                        ". El aula " + classroom.getName() + " ya está ocupada en ese horario.");
+                List<Reservation> conflicts = reservationRepository.findOverlappingReservations(
+                        classroom.getId(), startDateTime, endDateTime
+                );
+
+                String conflictMsg = "Conflicto el " + currentDate;
+                if (!conflicts.isEmpty()) {
+                    Reservation conflict = conflicts.get(0);
+                    DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                    conflictMsg += ". Ya existe una reserva de " +
+                            conflict.getStartTime().format(timeFormatter) + " a " +
+                            conflict.getEndTime().format(timeFormatter);
+                    if (conflict.getUser() != null) {
+                        conflictMsg += " (" + conflict.getUser().getName() + ")";
+                    }
+                } else {
+                    conflictMsg += ". El aula está ocupada en ese horario.";
+                }
+
+                throw new InvalidReservationException(conflictMsg);
             }
 
             Reservation reservation = Reservation.builder()
@@ -193,36 +190,32 @@ public class ReservationService {
                     .build();
 
             reservationsToSave.add(reservation);
-
             currentDate = currentDate.plusWeeks(1);
         }
 
         if (reservationsToSave.isEmpty()) {
-            throw new InvalidReservationException("No se generaron reservas. Verifique el rango de fechas y el día seleccionado.");
+            throw new InvalidReservationException("No se generaron reservas. Verifique fechas y día seleccionado.");
         }
 
-        List<Reservation> savedReservations = reservationRepository.saveAll(reservationsToSave);
-
-        return convertToDTOList(savedReservations);
+        return convertToDTOList(reservationRepository.saveAll(reservationsToSave));
     }
-
-    // ---------------------------------------------------------
 
     @Transactional
     public Reservation createReservation(Reservation reservationInput, UserDetails currentUserDetails) {
         if (reservationInput.getClassroom() == null || reservationInput.getClassroom().getId() == null) {
-            throw new InvalidReservationException("ID del aula es requerido para crear una reserva.");
+            throw new InvalidReservationException("ID del aula requerido.");
         }
         Classroom classroom = classroomRepository.findById(reservationInput.getClassroom().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Aula no encontrada con ID: " + reservationInput.getClassroom().getId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Aula no encontrada."));
         reservationInput.setClassroom(classroom);
 
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) currentUserDetails;
         User userMakingReservation = userDetailsImpl.getUserEntity();
         User userToReserveFor;
 
-        if ((userMakingReservation.getRole() == Rol.ADMIN || userMakingReservation.getRole() == Rol.COORDINADOR) &&
-                reservationInput.getUser() != null && reservationInput.getUser().getId() != null &&
+        boolean isPrivileged = userMakingReservation.getRole() == Rol.ADMIN || userMakingReservation.getRole() == Rol.COORDINADOR;
+
+        if (isPrivileged && reservationInput.getUser() != null && reservationInput.getUser().getId() != null &&
                 !Objects.equals(reservationInput.getUser().getId(), userMakingReservation.getId())) {
             userToReserveFor = userService.getUserById(reservationInput.getUser().getId());
         } else {
@@ -231,34 +224,40 @@ public class ReservationService {
         reservationInput.setUser(userToReserveFor);
 
         if (reservationInput.getStartTime() == null || reservationInput.getEndTime() == null) {
-            throw new InvalidReservationException("Las fechas de inicio y fin son requeridas.");
+            throw new InvalidReservationException("Fechas de inicio y fin requeridas.");
         }
-        if (reservationInput.getStartTime().isAfter(reservationInput.getEndTime()) || reservationInput.getStartTime().isEqual(reservationInput.getEndTime())) {
+        if (!reservationInput.getStartTime().isBefore(reservationInput.getEndTime())) {
             throw new InvalidReservationException("La fecha de inicio debe ser anterior a la fecha de fin.");
         }
 
         boolean isAvailable = classroomRepository.isAvailableConsideringAllStatuses(
-                reservationInput.getClassroom().getId(),
-                reservationInput.getStartTime(),
-                reservationInput.getEndTime()
+                reservationInput.getClassroom().getId(), reservationInput.getStartTime(), reservationInput.getEndTime()
         );
 
         if (!isAvailable) {
-            throw new InvalidReservationException("El aula no está disponible en el horario solicitado: " +
-                    classroom.getName() +
-                    " de " + reservationInput.getStartTime() + " a " + reservationInput.getEndTime() +
-                    ". (Puede haber una reserva PENDIENTE o CONFIRMADA en esta franja).");
+            List<Reservation> conflicts = reservationRepository.findOverlappingReservations(
+                    classroom.getId(), reservationInput.getStartTime(), reservationInput.getEndTime()
+            );
+            String conflictMsg = "Aula no disponible.";
+            if (!conflicts.isEmpty()) {
+                Reservation conflict = conflicts.get(0);
+                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                conflictMsg = "Conflicto con reserva existente: " +
+                        conflict.getStartTime().format(timeFormatter) + " - " +
+                        conflict.getEndTime().format(timeFormatter);
+                if (conflict.getUser() != null) {
+                    conflictMsg += " (" + conflict.getUser().getName() + ")";
+                }
+            }
+            throw new InvalidReservationException(conflictMsg);
         }
 
-        // CORRECCIÓN: Estado automático para ADMIN y COORDINADOR
         ReservationStatus finalStatus = ReservationStatus.PENDIENTE;
 
         if (userMakingReservation.getRole() == Rol.ADMIN || userMakingReservation.getRole() == Rol.COORDINADOR) {
             finalStatus = ReservationStatus.CONFIRMADA;
         }
 
-        // Sobrescribimos el estado que pueda venir del DTO para garantizar la regla de negocio
-        // a menos que sea Admin explícito (opcional), pero para seguridad forzamos la lógica base.
         if (userMakingReservation.getRole() == Rol.ADMIN && reservationInput.getStatus() != null) {
             reservationInput.setStatus(reservationInput.getStatus());
         } else {
@@ -271,152 +270,189 @@ public class ReservationService {
     @Transactional
     public Reservation updateReservationStatus(String id, ReservationStatus newStatus, UserDetails adminOrCoordinatorDetails) {
         UserDetailsImpl userDetails = (UserDetailsImpl) adminOrCoordinatorDetails;
-        User userPerformingAction = userDetails.getUserEntity();
-        Reservation reservation = this.getReservationById(id);
+        User user = userDetails.getUserEntity();
+        Reservation reservation = getReservationById(id);
 
-        boolean isAdmin = userPerformingAction.getRole() == Rol.ADMIN;
-        boolean isCoordinator = userPerformingAction.getRole() == Rol.COORDINADOR;
+        boolean isAdmin = user.getRole() == Rol.ADMIN;
+        boolean isCoordinator = user.getRole() == Rol.COORDINADOR;
 
-        if (!isAdmin && !isCoordinator) {
-            throw new UnauthorizedAccessException("Solo Administradores o Coordinadores pueden cambiar el estado de una reserva.");
-        }
-        if (isCoordinator && (reservation.getUser() == null || reservation.getUser().getRole() != Rol.ESTUDIANTE) && !Objects.equals(reservation.getUser().getId(), userPerformingAction.getId())) {
-            throw new UnauthorizedAccessException("Coordinadores solo pueden modificar el estado de reservas de estudiantes o sus propias reservas.");
+        if (!isAdmin && !isCoordinator) throw new UnauthorizedAccessException("Permiso denegado.");
+        if (isCoordinator && (reservation.getUser() == null || reservation.getUser().getRole() != Rol.ESTUDIANTE) && !Objects.equals(reservation.getUser().getId(), user.getId())) {
+            throw new UnauthorizedAccessException("Coordinadores solo gestionan reservas de estudiantes o propias.");
         }
 
-        ReservationStatus currentStatus = reservation.getStatus();
-        boolean statusChanged = false;
+        if (newStatus == ReservationStatus.CONFIRMADA) {
+            if (!classroomRepository.isAvailableExcludingReservationConsideringAllStatuses(
+                    reservation.getClassroom().getId(), reservation.getStartTime(), reservation.getEndTime(), reservation.getId())) {
+                throw new InvalidReservationException("Conflicto de horario al confirmar.");
+            }
+        }
+        reservation.setStatus(newStatus);
+        return reservationRepository.save(reservation);
+    }
 
-        if (currentStatus == ReservationStatus.PENDIENTE) {
-            if (newStatus == ReservationStatus.CONFIRMADA || newStatus == ReservationStatus.RECHAZADA || newStatus == ReservationStatus.CANCELADA) {
-                if (newStatus == ReservationStatus.CONFIRMADA) {
-                    if (!classroomRepository.isAvailableExcludingReservationConsideringAllStatuses(
-                            reservation.getClassroom().getId(),
-                            reservation.getStartTime(),
-                            reservation.getEndTime(),
-                            reservation.getId()
-                    )) {
-                        throw new InvalidReservationException("No se puede confirmar la reserva. El aula y horario ahora entran en conflicto con otra reserva (pendiente o confirmada).");
-                    }
+    @Transactional
+    public Reservation updateReservation(String id, Reservation updatedData, UserDetails userDetails) {
+        Reservation reservation = getReservationById(id);
+
+        UserDetailsImpl userDetailsImpl = (UserDetailsImpl) userDetails;
+        User userUpdating = userDetailsImpl.getUserEntity();
+        boolean isAdmin = userUpdating.getRole().equals(Rol.ADMIN);
+        boolean isCoordinator = userUpdating.getRole().equals(Rol.COORDINADOR);
+        boolean isOwner = reservation.getUser() != null && Objects.equals(reservation.getUser().getId(), userUpdating.getId());
+
+        if (!isAdmin) {
+            if (isCoordinator) {
+                boolean isStudentReservation = reservation.getUser() != null && reservation.getUser().getRole() == Rol.ESTUDIANTE;
+                if (!((isStudentReservation && (reservation.getStatus() == ReservationStatus.PENDIENTE || reservation.getStatus() == ReservationStatus.CONFIRMADA)) ||
+                        (isOwner && reservation.getStatus() == ReservationStatus.PENDIENTE))) {
+                    throw new UnauthorizedAccessException("Coordinadores pueden modificar reservas de estudiantes (pendientes o confirmadas), o las propias si están pendientes.");
                 }
-                reservation.setStatus(newStatus);
-                statusChanged = true;
+            } else if (isOwner) {
+                if (reservation.getStatus() != ReservationStatus.PENDIENTE) {
+                    throw new InvalidReservationException("Solo puedes modificar tus propias reservas si están en estado PENDIENTE.");
+                }
+            } else {
+                throw new UnauthorizedAccessException("No tienes permiso.");
             }
-        } else if (currentStatus == ReservationStatus.CONFIRMADA) {
-            if (newStatus == ReservationStatus.CANCELADA) {
-                reservation.setStatus(newStatus);
-                statusChanged = true;
-            } else if (isAdmin && newStatus != currentStatus) {
-                reservation.setStatus(newStatus);
-                statusChanged = true;
+        }
+
+        reservation.setStartTime(updatedData.getStartTime());
+        reservation.setEndTime(updatedData.getEndTime());
+        reservation.setPurpose(updatedData.getPurpose());
+
+        if (updatedData.getClassroom() != null && updatedData.getClassroom().getId() != null &&
+                !Objects.equals(reservation.getClassroom().getId(), updatedData.getClassroom().getId())) {
+            Classroom newClassroom = classroomRepository.findById(updatedData.getClassroom().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Aula no encontrada"));
+            reservation.setClassroom(newClassroom);
+        }
+
+        if (updatedData.getUser() != null && updatedData.getUser().getId() != null &&
+                !Objects.equals(reservation.getUser().getId(), updatedData.getUser().getId())) {
+            if (!isAdmin && !isCoordinator) {
+                throw new UnauthorizedAccessException("No tienes permiso para reasignar el usuario de esta reserva.");
             }
-        } else if (isAdmin && newStatus != currentStatus) {
-            if (newStatus == ReservationStatus.CONFIRMADA &&
-                    (currentStatus == ReservationStatus.RECHAZADA || currentStatus == ReservationStatus.CANCELADA)) {
+            User newUser = userService.getUserById(updatedData.getUser().getId());
+            reservation.setUser(newUser);
+        }
+
+        if (isAdmin && updatedData.getStatus() != null && reservation.getStatus() != updatedData.getStatus()) {
+            if (updatedData.getStatus() == ReservationStatus.CONFIRMADA) {
                 if (!classroomRepository.isAvailableExcludingReservationConsideringAllStatuses(
                         reservation.getClassroom().getId(),
                         reservation.getStartTime(),
                         reservation.getEndTime(),
                         reservation.getId()
                 )) {
-                    throw new InvalidReservationException("No se puede reactivar y confirmar la reserva. El aula y horario ahora entran en conflicto.");
+                    throw new InvalidReservationException("No se puede confirmar la reserva al actualizar. El aula y horario entran en conflicto.");
                 }
             }
-            reservation.setStatus(newStatus);
-            statusChanged = true;
+            reservation.setStatus(updatedData.getStatus());
         }
 
-        if (!statusChanged) {
-            throw new InvalidReservationException("Transición de estado no permitida (" + currentStatus + " -> " + newStatus + ") o acción no permitida para tu rol.");
+        if (!classroomRepository.isAvailableExcludingReservationConsideringAllStatuses(
+                reservation.getClassroom().getId(), reservation.getStartTime(), reservation.getEndTime(), id)) {
+
+            List<Reservation> conflicts = reservationRepository.findOverlappingReservations(
+                    reservation.getClassroom().getId(), reservation.getStartTime(), reservation.getEndTime()
+            );
+            String conflictMsg = "Conflicto de horario.";
+            if(!conflicts.isEmpty()) {
+                Reservation c = conflicts.stream().filter(r -> !r.getId().equals(id)).findFirst().orElse(null);
+                if(c != null) {
+                    DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                    conflictMsg += " Ocupado por: " + c.getStartTime().format(timeFormatter) + " - " + c.getEndTime().format(timeFormatter);
+                    if (c.getUser() != null) {
+                        conflictMsg += " (" + c.getUser().getName() + ")";
+                    }
+                }
+            }
+            throw new InvalidReservationException(conflictMsg);
         }
         return reservationRepository.save(reservation);
     }
 
+    // --- NUEVO MÉTODO PARA ACTUALIZAR SEMESTRE COMPLETO ---
     @Transactional
-    public Reservation updateReservation(String reservationId, Reservation updatedReservationData, UserDetails currentUserDetails) {
-        Reservation existingReservation = this.getReservationById(reservationId);
-        UserDetailsImpl userDetailsImpl = (UserDetailsImpl) currentUserDetails;
+    public List<ReservationResponseDTO> updateSemesterReservations(String originalId, Reservation updatedData, UserDetails userDetails) {
+        Reservation original = getReservationById(originalId);
+        UserDetailsImpl userDetailsImpl = (UserDetailsImpl) userDetails;
         User userUpdating = userDetailsImpl.getUserEntity();
 
         boolean isAdmin = userUpdating.getRole().equals(Rol.ADMIN);
         boolean isCoordinator = userUpdating.getRole().equals(Rol.COORDINADOR);
-        boolean isOwner = existingReservation.getUser() != null && Objects.equals(existingReservation.getUser().getId(), userUpdating.getId());
+        boolean isOwner = original.getUser() != null && Objects.equals(original.getUser().getId(), userUpdating.getId());
 
-        if (!isAdmin) {
-            if (isCoordinator) {
-                boolean isStudentReservation = existingReservation.getUser() != null && existingReservation.getUser().getRole() == Rol.ESTUDIANTE;
-                if (!((isStudentReservation && (existingReservation.getStatus() == ReservationStatus.PENDIENTE || existingReservation.getStatus() == ReservationStatus.CONFIRMADA)) ||
-                        (isOwner && existingReservation.getStatus() == ReservationStatus.PENDIENTE))) {
-                    throw new UnauthorizedAccessException("Coordinadores pueden modificar reservas de estudiantes (pendientes o confirmadas), o las propias si están pendientes.");
-                }
-            } else if (isOwner) {
-                if (existingReservation.getStatus() != ReservationStatus.PENDIENTE) {
-                    throw new InvalidReservationException("Solo puedes modificar tus propias reservas si están en estado PENDIENTE.");
-                }
-            } else {
-                throw new UnauthorizedAccessException("No tienes permiso para modificar esta reserva.");
-            }
+        if (!isAdmin && !isCoordinator && !isOwner) {
+            throw new UnauthorizedAccessException("No tienes permiso para modificar este semestre.");
         }
 
-        existingReservation.setStartTime(updatedReservationData.getStartTime());
-        existingReservation.setEndTime(updatedReservationData.getEndTime());
-        existingReservation.setPurpose(updatedReservationData.getPurpose());
-
-        if (updatedReservationData.getClassroom() != null && updatedReservationData.getClassroom().getId() != null &&
-                !Objects.equals(existingReservation.getClassroom().getId(), updatedReservationData.getClassroom().getId())) {
-            boolean canChangeClassroom = isAdmin ||
-                    ((isCoordinator || isOwner) && existingReservation.getStatus() == ReservationStatus.PENDIENTE);
-            if (!canChangeClassroom) {
-                throw new UnauthorizedAccessException("No tienes permiso para cambiar el aula de esta reserva en su estado actual.");
-            }
-            Classroom newClassroom = classroomRepository.findById(updatedReservationData.getClassroom().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Aula no encontrada con ID: " + updatedReservationData.getClassroom().getId()));
-            existingReservation.setClassroom(newClassroom);
-        }
-
-        if (updatedReservationData.getUser() != null && updatedReservationData.getUser().getId() != null &&
-                !Objects.equals(existingReservation.getUser().getId(), updatedReservationData.getUser().getId())) {
-            if (!isAdmin && !isCoordinator) {
-                throw new UnauthorizedAccessException("No tienes permiso para reasignar el usuario de esta reserva.");
-            }
-            User newUser = userService.getUserById(updatedReservationData.getUser().getId());
-            if (isCoordinator && newUser.getRole() != Rol.ESTUDIANTE && !Objects.equals(newUser.getId(), userUpdating.getId())) {
-                throw new UnauthorizedAccessException("Coordinadores solo pueden reasignar reservas a estudiantes (o a sí mismos si la reserva era originalmente suya y está pendiente).");
-            }
-            existingReservation.setUser(newUser);
-        }
-
-        if (isAdmin && updatedReservationData.getStatus() != null && existingReservation.getStatus() != updatedReservationData.getStatus()) {
-            if (updatedReservationData.getStatus() == ReservationStatus.CONFIRMADA) {
-                if (!classroomRepository.isAvailableExcludingReservationConsideringAllStatuses(
-                        existingReservation.getClassroom().getId(),
-                        existingReservation.getStartTime(),
-                        existingReservation.getEndTime(),
-                        existingReservation.getId()
-                )) {
-                    throw new InvalidReservationException("No se puede confirmar la reserva al actualizar. El aula y horario entran en conflicto.");
-                }
-            }
-            existingReservation.setStatus(updatedReservationData.getStatus());
-        }
-
-        boolean isAvailable = classroomRepository.isAvailableExcludingReservationConsideringAllStatuses(
-                existingReservation.getClassroom().getId(),
-                existingReservation.getStartTime(),
-                existingReservation.getEndTime(),
-                existingReservation.getId()
+        // Buscar reservas futuras con el mismo patrón (mismo usuario, propósito y hora)
+        List<Reservation> semesterSeries = reservationRepository.findFutureReservationsByPattern(
+                original.getUser().getId(),
+                original.getPurpose(),
+                original.getClassroom().getId(),
+                original.getStartTime()
         );
-        if (!isAvailable) {
-            throw new InvalidReservationException("El aula no está disponible en el nuevo horario o aula solicitada debido a un conflicto con otra reserva (pendiente o confirmada).");
+
+        // Filtrar para asegurarnos que sean del mismo día de la semana y misma hora
+        List<Reservation> filteredSeries = semesterSeries.stream()
+                .filter(r -> r.getStartTime().getDayOfWeek() == original.getStartTime().getDayOfWeek() &&
+                        r.getStartTime().toLocalTime().equals(original.getStartTime().toLocalTime()))
+                .collect(Collectors.toList());
+
+        if (filteredSeries.isEmpty()) {
+            filteredSeries.add(original);
         }
-        return reservationRepository.save(existingReservation);
+
+        List<Reservation> updatedList = new ArrayList<>();
+
+        java.time.LocalTime newStartTime = updatedData.getStartTime().toLocalTime();
+        java.time.LocalTime newEndTime = updatedData.getEndTime().toLocalTime();
+
+        Classroom newClassroom = null;
+        if (updatedData.getClassroom() != null) {
+            newClassroom = classroomRepository.findById(updatedData.getClassroom().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Nueva aula no encontrada"));
+        }
+
+        for (Reservation res : filteredSeries) {
+            // Mantener fecha original, cambiar hora
+            LocalDateTime targetStart = res.getStartTime().toLocalDate().atTime(newStartTime);
+            LocalDateTime targetEnd = res.getEndTime().toLocalDate().atTime(newEndTime);
+
+            // Verificar conflicto individual
+            if (!classroomRepository.isAvailableExcludingReservationConsideringAllStatuses(
+                    (newClassroom != null ? newClassroom.getId() : res.getClassroom().getId()),
+                    targetStart, targetEnd, res.getId())) {
+                throw new InvalidReservationException("Conflicto de horario el día: " + res.getStartTime().toLocalDate() + ". No se puede actualizar toda la serie.");
+            }
+
+            res.setStartTime(targetStart);
+            res.setEndTime(targetEnd);
+            res.setPurpose(updatedData.getPurpose());
+            if (newClassroom != null) {
+                res.setClassroom(newClassroom);
+            }
+
+            // Re-confirmar si es admin/coord
+            if (isAdmin || isCoordinator) {
+                res.setStatus(ReservationStatus.CONFIRMADA);
+            } else {
+                res.setStatus(ReservationStatus.PENDIENTE);
+            }
+
+            updatedList.add(res);
+        }
+
+        return convertToDTOList(reservationRepository.saveAll(updatedList));
     }
 
     @Transactional
-    public Reservation cancelMyReservation(String reservationId, UserDetails currentUserDetails) {
-
-        Reservation reservation = this.getReservationById(reservationId);
-        UserDetailsImpl userDetailsImpl = (UserDetailsImpl) currentUserDetails;
+    public Reservation cancelMyReservation(String id, UserDetails userDetails) {
+        Reservation reservation = getReservationById(id);
+        UserDetailsImpl userDetailsImpl = (UserDetailsImpl) userDetails;
         User userCancelling = userDetailsImpl.getUserEntity();
 
         boolean isAdmin = userCancelling.getRole() == Rol.ADMIN;
@@ -443,10 +479,9 @@ public class ReservationService {
     }
 
     @Transactional
-    public void deleteReservation(String reservationId, UserDetails currentUserDetails) {
-
-        Reservation reservation = this.getReservationById(reservationId);
-        UserDetailsImpl userDetailsImpl = (UserDetailsImpl) currentUserDetails;
+    public void deleteReservation(String id, UserDetails userDetails) {
+        Reservation reservation = this.getReservationById(id);
+        UserDetailsImpl userDetailsImpl = (UserDetailsImpl) userDetails;
         User userDeleting = userDetailsImpl.getUserEntity();
 
         boolean isAdmin = userDeleting.getRole() == Rol.ADMIN;
@@ -464,39 +499,27 @@ public class ReservationService {
                         reservation.getStatus() == ReservationStatus.RECHAZADA);
 
         if (isAdmin || isOwnerAndAllowedStatus || isCoordinatorWithPermission) {
-            reservationRepository.deleteById(reservationId);
+            reservationRepository.deleteById(id);
         } else {
             throw new UnauthorizedAccessException("No tienes permiso para eliminar esta reserva o el estado actual no lo permite.");
         }
     }
 
-
     public List<ReservationResponseDTO> getReservationsByStatusDTO(ReservationStatus status) {
         return convertToDTOList(reservationRepository.findByStatus(status, Sort.by(Sort.Direction.DESC, "startTime")));
     }
-
     public List<ReservationResponseDTO> getUpcomingReservationsDTO(int limit) {
-        Sort sort = Sort.by(Sort.Direction.ASC, "startTime");
-        List<Reservation> reservations = reservationRepository.findByStatusAndStartTimeAfter(ReservationStatus.CONFIRMADA, LocalDateTime.now(ZoneOffset.UTC), sort)
-                .stream().limit(limit).collect(Collectors.toList());
-        return convertToDTOList(reservations);
+        return convertToDTOList(reservationRepository.findByStatusAndStartTimeAfter(ReservationStatus.CONFIRMADA, LocalDateTime.now(ZoneOffset.UTC), Sort.by(Sort.Direction.ASC, "startTime"))
+                .stream().limit(limit).collect(Collectors.toList()));
     }
-
     public List<ReservationResponseDTO> getMyUpcomingReservationsDTO(String userId, int limit) {
-        Sort sort = Sort.by(Sort.Direction.ASC, "startTime");
-        List<Reservation> reservations = reservationRepository.findUpcomingConfirmedByUserId(userId, LocalDateTime.now(ZoneOffset.UTC), sort)
-                .stream().limit(limit).collect(Collectors.toList());
-        return convertToDTOList(reservations);
+        return convertToDTOList(reservationRepository.findUpcomingConfirmedByUserId(userId, LocalDateTime.now(ZoneOffset.UTC), Sort.by(Sort.Direction.ASC, "startTime"))
+                .stream().limit(limit).collect(Collectors.toList()));
     }
-
     public List<ReservationResponseDTO> getCurrentReservationsDTO() {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        List<Reservation> reservations = reservationRepository.findCurrentReservations(now);
-        return convertToDTOList(reservations);
+        return convertToDTOList(reservationRepository.findCurrentReservations(LocalDateTime.now(ZoneOffset.UTC)));
     }
-
     public List<ReservationResponseDTO> getReservationsByUserIdDTO(String userId) {
-        List<Reservation> reservations = reservationRepository.findByUserId(userId, Sort.by(Sort.Direction.DESC, "startTime"));
-        return convertToDTOList(reservations);
+        return convertToDTOList(reservationRepository.findByUserId(userId, Sort.by(Sort.Direction.DESC, "startTime")));
     }
 }

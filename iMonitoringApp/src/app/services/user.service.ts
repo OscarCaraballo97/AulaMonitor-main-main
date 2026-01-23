@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Observable, throwError, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { User } from '../models/user.model';
-import { Rol } from '../models/rol.model'; 
+import { Rol } from '../models/rol.model';
 
 @Injectable({
   providedIn: 'root'
@@ -42,7 +42,7 @@ export class UserService {
       .pipe(catchError(this.handleError<User>(`obtener usuario por ID ${id}`)));
   }
 
-  createUser(user: Partial<User>): Observable<User> { 
+  createUser(user: Partial<User>): Observable<User> {
     return this.http.post<User>(this.apiUrl, user)
       .pipe(catchError(this.handleError<User>('crear usuario')));
   }
@@ -54,15 +54,26 @@ export class UserService {
     );
   }
 
+  // --- NUEVO MÉTODO PARA SUBIR IMAGEN ---
+  uploadProfilePicture(userId: string, file: File): Observable<User> {
+    const formData = new FormData();
+    formData.append('file', file); // El nombre 'file' debe coincidir con el @RequestParam del backend
+
+    return this.http.post<User>(`${this.apiUrl}/${userId}/image`, formData).pipe(
+        tap(() => console.log(`Foto de perfil actualizada para usuario ${userId}`)),
+        catchError(this.handleError<User>('subir foto de perfil'))
+    );
+  }
+  // --------------------------------------
+
   deleteUser(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`)
       .pipe(catchError(this.handleError<void>(`eliminar usuario ${id}`)));
   }
 
   updateUserPassword(userId: string, passwordData: { currentPassword?: string, newPassword?: string, oldPassword?: string }): Observable<string> {
-
     let actualPayload = passwordData;
-    if (passwordData.currentPassword) { 
+    if (passwordData.currentPassword) {
         actualPayload = { oldPassword: passwordData.currentPassword, newPassword: passwordData.newPassword };
     }
 

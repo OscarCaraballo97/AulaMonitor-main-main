@@ -38,4 +38,24 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
 
     @Query("SELECT r FROM Reservation r WHERE r.classroom.id = :classroomId AND r.startTime >= :startDate AND r.endTime <= :endDate")
     List<Reservation> findByClassroomIdAndDateTimeRange(@Param("classroomId") String classroomId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Método para validar conflictos al crear/editar
+    @Query("SELECT r FROM Reservation r WHERE r.classroom.id = :classroomId " +
+            "AND r.startTime < :endTime AND r.endTime > :startTime " +
+            "AND r.status IN (com.backend.IMonitoring.model.ReservationStatus.CONFIRMADA, com.backend.IMonitoring.model.ReservationStatus.PENDIENTE)")
+    List<Reservation> findOverlappingReservations(@Param("classroomId") String classroomId,
+                                                  @Param("startTime") LocalDateTime startTime,
+                                                  @Param("endTime") LocalDateTime endTime);
+
+    // NUEVO MÉTODO: Buscar serie de reservas futuras (mismo usuario, propósito y aula) para edición masiva
+    @Query("SELECT r FROM Reservation r WHERE r.user.id = :userId " +
+            "AND r.purpose = :purpose " +
+            "AND r.classroom.id = :classroomId " +
+            "AND r.startTime >= :baseDate")
+    List<Reservation> findFutureReservationsByPattern(
+            @Param("userId") String userId,
+            @Param("purpose") String purpose,
+            @Param("classroomId") String classroomId,
+            @Param("baseDate") LocalDateTime baseDate
+    );
 }

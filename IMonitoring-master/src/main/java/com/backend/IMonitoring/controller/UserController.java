@@ -17,8 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile; // Importante
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.io.IOException; // Importante
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -28,7 +30,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class UserController {
     private final UserService userService;
     private final ReservationService reservationService;
@@ -54,14 +56,12 @@ public class UserController {
             usersToProcess.addAll(tutors);
             usersToProcess.addAll(professors);
         } else {
-
             throw new UnauthorizedAccessException("No tienes permiso para ver esta lista de usuarios.");
         }
         return ResponseEntity.ok(usersToProcess.stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
     }
 
     @GetMapping("/{id}")
-   
     @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR') or #id == authentication.principal.id")
     public ResponseEntity<UserDTO> getUserById(@PathVariable String id, @AuthenticationPrincipal UserDetailsImpl currentUserDetails) {
         User targetUser = userService.getUserById(id);
@@ -76,7 +76,7 @@ public class UserController {
         if (isCoordinator && (targetUser.getRole() == Rol.ESTUDIANTE || targetUser.getRole() == Rol.TUTOR || targetUser.getRole() == Rol.PROFESOR)) {
             return ResponseEntity.ok(UserDTO.fromEntity(targetUser));
         }
-     
+
         throw new UnauthorizedAccessException("No tienes permiso para ver este usuario.");
     }
 
@@ -87,10 +87,10 @@ public class UserController {
         boolean isCoordinator = currentUserDetails.getRoleEnum() == Rol.COORDINADOR;
 
         if (isAdmin) {
-             return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
+            return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
         }
         if (isCoordinator && (role == Rol.ESTUDIANTE || role == Rol.TUTOR || role == Rol.PROFESOR)) {
-             return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
+            return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
         }
 
         throw new UnauthorizedAccessException("No tienes permiso para ver usuarios con este rol.");
@@ -98,7 +98,7 @@ public class UserController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
-    public ResponseEntity<UserDTO> createUser(@Valid @RequestBody UserDTO userDTO, @AuthenticationPrincipal UserDetailsImpl currentUserDetails) { // Añadido currentUserDetails
+    public ResponseEntity<UserDTO> createUser(@Valid @RequestBody UserDTO userDTO, @AuthenticationPrincipal UserDetailsImpl currentUserDetails) {
         User performingUser = currentUserDetails.getUserEntity();
         User createdUser = userService.createUser(userDTO, performingUser);
         URI location = ServletUriComponentsBuilder
@@ -119,6 +119,25 @@ public class UserController {
         User updatedUser = userService.updateUser(id, userDTO, performingUser);
         return ResponseEntity.ok(UserDTO.fromEntity(updatedUser));
     }
+
+    // --- NUEVO ENDPOINT PARA SUBIR IMAGEN ---
+    @PostMapping("/{id}/image")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserDTO> uploadProfilePicture(
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+
+        try {
+            User updatedUser = userService.uploadUserProfilePicture(id, file, currentUser.getUserEntity());
+            return ResponseEntity.ok(UserDTO.fromEntity(updatedUser));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    // ----------------------------------------
 
     @PatchMapping("/{id}/password")
     @PreAuthorize("isAuthenticated()")
@@ -149,24 +168,24 @@ public class UserController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(required = false, defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "1000") int size) { 
+            @RequestParam(required = false, defaultValue = "1000") int size) {
         String currentUserId = currentUserDetails.getId();
 
         List<ReservationResponseDTO> userReservationsDTO = reservationService.getFilteredUserReservations(
-            currentUserId, status, sortField, sortDirection, page, size, futureOnly, startDate, endDate
+                currentUserId, status, sortField, sortDirection, page, size, futureOnly, startDate, endDate
         );
 
-        if (limit != null && limit > 0 && userReservationsDTO.size() > limit && page == 0) { 
+        if (limit != null && limit > 0 && userReservationsDTO.size() > limit && page == 0) {
             userReservationsDTO = userReservationsDTO.subList(0, Math.min(limit, userReservationsDTO.size()));
         }
         return ResponseEntity.ok(userReservationsDTO);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')") 
-    public ResponseEntity<Void> deleteUser(@PathVariable String id, @AuthenticationPrincipal UserDetailsImpl currentUserDetails) { // Añadido currentUserDetails
+    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
+    public ResponseEntity<Void> deleteUser(@PathVariable String id, @AuthenticationPrincipal UserDetailsImpl currentUserDetails) {
         User performingUser = currentUserDetails.getUserEntity();
-        userService.deleteUser(id, performingUser); 
+        userService.deleteUser(id, performingUser);
         return ResponseEntity.noContent().build();
     }
 }

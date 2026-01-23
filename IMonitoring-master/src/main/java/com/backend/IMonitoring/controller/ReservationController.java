@@ -2,7 +2,7 @@ package com.backend.IMonitoring.controller;
 
 import com.backend.IMonitoring.dto.ReservationRequestDTO;
 import com.backend.IMonitoring.dto.ReservationResponseDTO;
-import com.backend.IMonitoring.dto.SemesterReservationRequestDTO; // Import nuevo
+import com.backend.IMonitoring.dto.SemesterReservationRequestDTO;
 import com.backend.IMonitoring.model.Classroom;
 import com.backend.IMonitoring.model.Reservation;
 import com.backend.IMonitoring.model.ReservationStatus;
@@ -37,6 +37,10 @@ public class ReservationController {
 
     private final ReservationService reservationService;
 
+    @GetMapping
+    public ResponseEntity<List<ReservationResponseDTO>> getAllReservations() {
+        return ResponseEntity.ok(reservationService.getReservationsByStatusDTO(null));
+    }
 
     @GetMapping("/filter")
     public ResponseEntity<List<ReservationResponseDTO>> getAdminFilteredReservations(
@@ -81,13 +85,27 @@ public class ReservationController {
         return ResponseEntity.ok(reservationDTOs);
     }
 
+    // --- NUEVO ENDPOINT AGREGADO (SOLUCIÓN AL ERROR 404) ---
+    @GetMapping("/my-upcoming")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<ReservationResponseDTO>> getMyUpcomingReservations(
+            @AuthenticationPrincipal UserDetails currentUserDetails,
+            @RequestParam(defaultValue = "3") int limit) {
+
+        UserDetailsImpl userDetailsImpl = (UserDetailsImpl) currentUserDetails;
+        String userId = userDetailsImpl.getId();
+
+        List<ReservationResponseDTO> upcoming = reservationService.getMyUpcomingReservationsDTO(userId, limit);
+        return ResponseEntity.ok(upcoming);
+    }
+    // -------------------------------------------------------
+
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReservationResponseDTO> getReservationById(@PathVariable String id) {
         return ResponseEntity.ok(reservationService.getReservationByIdDTO(id));
     }
 
-    // --- NUEVO ENDPOINT PARA ASIGNAR SEMESTRE ---
     @PostMapping("/semester")
     @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
     public ResponseEntity<List<ReservationResponseDTO>> createSemesterReservations(
@@ -95,10 +113,8 @@ public class ReservationController {
             @AuthenticationPrincipal UserDetails currentUserDetails) {
 
         List<ReservationResponseDTO> createdReservations = reservationService.createSemesterReservations(semesterRequest, currentUserDetails);
-
         return ResponseEntity.ok(createdReservations);
     }
-    // --------------------------------------------
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR', 'ESTUDIANTE', 'PROFESOR', 'TUTOR')")
@@ -183,6 +199,27 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.convertToDTO(updatedReservationEntity));
     }
 
+    @PutMapping("/semester/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<ReservationResponseDTO>> updateSemester(
+            @PathVariable String id,
+            @RequestBody ReservationRequestDTO reservationRequestDTO,
+            @AuthenticationPrincipal UserDetails currentUserDetails) {
+
+        Reservation res = new Reservation();
+        res.setStartTime(reservationRequestDTO.getStartTime());
+        res.setEndTime(reservationRequestDTO.getEndTime());
+        res.setPurpose(reservationRequestDTO.getPurpose());
+        if(reservationRequestDTO.getClassroomId() != null) {
+            Classroom c = new Classroom();
+            c.setId(reservationRequestDTO.getClassroomId());
+            res.setClassroom(c);
+        }
+
+        List<ReservationResponseDTO> updatedReservations = reservationService.updateSemesterReservations(id, res, currentUserDetails);
+        return ResponseEntity.ok(updatedReservations);
+    }
+
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReservationResponseDTO> cancelMyReservation(
@@ -190,6 +227,14 @@ public class ReservationController {
             @AuthenticationPrincipal UserDetails currentUserDetails) {
         Reservation cancelledReservation = reservationService.cancelMyReservation(id, currentUserDetails);
         return ResponseEntity.ok(reservationService.convertToDTO(cancelledReservation));
+    }
+
+    @PatchMapping("/{id}/cancel-by-user")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ReservationResponseDTO> cancelMyReservationAlias(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserDetails currentUserDetails) {
+        return cancelMyReservation(id, currentUserDetails);
     }
 
     @DeleteMapping("/{id}")

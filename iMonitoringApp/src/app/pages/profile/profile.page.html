@@ -18,16 +18,26 @@
 <ion-content [fullscreen]="true" class="ion-padding profile-content dark:bg-kwd-dark">
   <ion-loading [isOpen]="isLoading" message="Procesando..."></ion-loading>
 
+  <input type="file" #fileInput accept="image/*" (change)="onFileSelected($event)" style="display: none;" />
+
   <div *ngIf="currentUser" class="profile-container">
     <ion-card class="profile-card dark:bg-kwd-darker dark:text-kwd-light">
       <ion-card-header class="profile-card-header">
         <div class="xs:flex-col flex items-center justify-center md:justify-start space-x-0 md:space-x-4">
-          <ion-avatar class="profile-avatar" (click)="isEditing && openAvatarOptions()">
-            <img [src]="profileForm.get('avatarUrl')?.value || currentUser.avatarUrl || 'assets/images/user-default.png'" (error)="handleAvatarError($event)" />
+
+          <ion-avatar class="profile-avatar" (click)="isEditing && openAvatarOptions()" [style.cursor]="isEditing ? 'pointer' : 'default'">
+            <img
+              [src]="currentUser.profilePictureBase64
+                     ? 'data:' + (currentUser.imageType || 'image/png') + ';base64,' + currentUser.profilePictureBase64
+                     : (profileForm.get('avatarUrl')?.value || currentUser.avatarUrl || 'assets/images/user-default.png')"
+              (error)="handleAvatarError($event)"
+            />
+
             <div *ngIf="isEditing" class="avatar-edit-overlay">
               <ion-icon name="camera" class="text-xl"></ion-icon>
             </div>
           </ion-avatar>
+
           <div class="xs:text-center xs:mt-2 md:text-left">
             <ion-card-title class="profile-name">{{ currentUser.name }}</ion-card-title>
             <ion-card-subtitle class="profile-role">{{ currentUser.role | titlecase }}</ion-card-subtitle>
@@ -60,7 +70,7 @@
             <ion-item class="profile-item dark:bg-kwd-darker" *ngIf="isEditing">
               <ion-icon name="image-outline" slot="start" class="profile-item-icon"></ion-icon>
               <ion-label position="stacked" class="profile-label">URL del Avatar (Opcional)</ion-label>
-              <ion-input type="url" formControlName="avatarUrl" class="profile-input dark:text-kwd-light"></ion-input>
+              <ion-input type="url" formControlName="avatarUrl" class="profile-input dark:text-kwd-light" placeholder="Si no subes imagen, usa URL"></ion-input>
             </ion-item>
           </ion-list>
 

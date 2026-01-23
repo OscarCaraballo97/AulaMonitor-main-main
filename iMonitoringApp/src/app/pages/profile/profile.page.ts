@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { IonicModule, LoadingController, ToastController, NavController, AlertController, ActionSheetController } from '@ionic/angular';
@@ -7,7 +7,6 @@ import { UserService } from '../../services/user.service';
 import { User } from '../../models/user.model';
 import { Subject } from 'rxjs';
 import { takeUntil, filter, finalize } from 'rxjs/operators';
-import { AuthResponse } from '../../models/auth.model';
 import { Router } from '@angular/router';
 
 @Component({
@@ -18,6 +17,8 @@ import { Router } from '@angular/router';
   imports: [IonicModule, CommonModule, ReactiveFormsModule]
 })
 export class ProfilePage implements OnInit, OnDestroy {
+  @ViewChild('fileInput', { static: false }) fileInput!: ElementRef;
+
   profileForm!: FormGroup;
   changePasswordForm!: FormGroup;
   currentUser: User | null = null;
@@ -101,7 +102,7 @@ export class ProfilePage implements OnInit, OnDestroy {
       await this.presentToast('Error: Usuario no identificado.', 'danger');
       return;
     }
-    if (this.profileForm.getRawValue().name === '') {
+    if (this.profileForm.invalid) { // Check invalid status properly
       await this.presentToast('Por favor, completa los campos requeridos.', 'warning');
       return;
     }
@@ -110,8 +111,12 @@ export class ProfilePage implements OnInit, OnDestroy {
     const loading = await this.loadingCtrl.create({ message: 'Guardando perfil...' });
     await loading.present();
 
-    const updatedData: Partial<User> = {
-      name: this.profileForm.value.name,
+    // --- CORRECCIÓN CLAVE ---
+    // Enviamos TODO el objeto usuario, sobrescribiendo solo lo que cambió en el formulario.
+    // Esto evita que 'role' o 'enabled' se envíen vacíos y el backend lance error 403/400.
+    const updatedData: User = {
+      ...this.currentUser, // Mantiene ID, Role, Email, Enabled, etc.
+      name: this.profileForm.getRawValue().name, // getRawValue obtiene el valor aunque esté disabled
       avatarUrl: this.profileForm.value.avatarUrl
     };
 
@@ -130,7 +135,9 @@ export class ProfilePage implements OnInit, OnDestroy {
         await this.presentToast('Perfil actualizado exitosamente.', 'success');
       },
       error: async (err: Error) => {
-        await this.presentToast(err.message || 'Error al actualizar el perfil.', 'danger');
+        // Mejor manejo de error para ver qué pasa
+        console.error('Error updating user:', err);
+        await this.presentToast('Error al actualizar el perfil. Verifica los datos.', 'danger');
       }
     });
   }
@@ -182,7 +189,7 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   handleAvatarError(event: Event) {
     const element = event.target as HTMLImageElement;
-    if (element) element.src = 'assets/icon/user-default.png';
+    if (element) element.src = 'assets/images/user-default.png';
   }
 
   async openAvatarOptions() {
@@ -190,6 +197,13 @@ export class ProfilePage implements OnInit, OnDestroy {
     const actionSheet = await this.actionSheetCtrl.create({
       header: 'Cambiar Avatar',
       buttons: [
+        {
+          text: 'Subir desde Dispositivo',
+          icon: 'image-outline',
+          handler: () => {
+            this.fileInput.nativeElement.click();
+          }
+        },
         {
           text: 'Ingresar URL de imagen',
           icon: 'link-outline',
@@ -205,6 +219,39 @@ export class ProfilePage implements OnInit, OnDestroy {
       ]
     });
     await actionSheet.present();
+  }
+
+  async onFileSelected(event: any) {
+    const file: File = event.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        this.presentToast('La imagen es demasiado grande (máx 5MB).', 'warning');
+        return;
+      }
+
+      this.isLoading = true;
+      const loading = await this.loadingCtrl.create({ message: 'Subiendo imagen...' });
+      await loading.present();
+
+      if (this.currentUser?.id) {
+        this.userService.uploadProfilePicture(this.currentUser.id, file)
+          .pipe(finalize(async () => {
+             this.isLoading = false;
+             await loading.dismiss();
+             event.target.value = null;
+          }))
+          .subscribe({
+            next: (updatedUser) => {
+              this.authService.updateCurrentUser(updatedUser);
+              this.currentUser = updatedUser;
+              this.presentToast('Foto de perfil actualizada.', 'success');
+            },
+            error: (err) => {
+              this.presentToast('Error al subir la imagen.', 'danger');
+            }
+          });
+      }
+    }
   }
 
   async promptForAvatarUrl() {

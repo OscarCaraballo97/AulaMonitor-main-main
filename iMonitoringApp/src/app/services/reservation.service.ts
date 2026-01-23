@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 import { Reservation, ReservationCreationData, ReservationStatus } from '../models/reservation.model';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
@@ -29,29 +29,27 @@ export class ReservationService {
   constructor(private http: HttpClient, private authService: AuthService) {}
 
   private handleError(error: HttpErrorResponse, context: string = 'Operación de reserva') {
-    let userMessage = `${context}: Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.`;
+    let userMessage = `${context}: Ocurrió un error inesperado.`;
 
     if (error.error instanceof ErrorEvent) {
       console.error(`[ReservationService] Error (cliente/red) en ${context}:`, error.error.message);
-      userMessage = `${context}: Error de red o del cliente: ${error.error.message}`;
+      userMessage = `${context}: Error de conexión o cliente.`;
     } else {
-      console.error(`[ReservationService] Error (backend) en ${context}: Código ${error.status}, mensaje: ${error.error?.message || error.message}`, error);
+      console.error(`[ReservationService] Error (backend) en ${context}: Código ${error.status}, mensaje: ${error.error?.message || error.message}`);
 
       if (error.status === 400) {
-        userMessage = `${context}: ${error.error?.message || 'Datos inválidos.'}`;
+        userMessage = error.error?.message || 'Datos inválidos.';
       } else if (error.status === 401) {
-        // CORRECCIÓN: SOLO el 401 cierra la sesión (token inválido/vencido)
-        userMessage = `${context}: Sesión caducada. Por favor, inicia sesión nuevamente.`;
+        userMessage = 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.';
         this.authService.logout();
       } else if (error.status === 403) {
-        // CORRECCIÓN: El 403 NO cierra sesión, solo avisa que no tiene permisos
-        userMessage = `${context}: No tienes permisos suficientes para realizar esta acción.`;
+        userMessage = 'No tienes permisos para realizar esta acción.';
       } else if (error.status === 404) {
-        userMessage = `${context}: Recurso no encontrado.`;
+        userMessage = 'Recurso no encontrado.';
       } else if (error.status === 500) {
-        userMessage = `${context}: Ocurrió un error inesperado en el servidor.`;
+        userMessage = 'Error interno del servidor.';
       } else {
-         userMessage = `${context}: Código ${error.status}, mensaje: ${error.error?.message || error.message}`;
+        userMessage = error.error?.message || `Error ${error.status}`;
       }
     }
     return throwError(() => new Error(userMessage));
@@ -66,9 +64,8 @@ export class ReservationService {
         }
       });
     }
-    console.log(`[ReservationService] getAllReservations llamando a ${this.apiUrl}/filter`, params.toString());
     return this.http.get<Reservation[]>(`${this.apiUrl}/filter`, { params }).pipe(
-      catchError(err => this.handleError(err, 'obtener todas las reservas filtradas'))
+      catchError(err => this.handleError(err, 'Obtener reservas'))
     );
   }
 
@@ -81,53 +78,58 @@ export class ReservationService {
         }
       });
     }
-    console.log(`[ReservationService] getMyReservations llamando a ${this.apiUrl}/my-list`, params.toString());
     return this.http.get<Reservation[]>(`${this.apiUrl}/my-list`, { params }).pipe(
-      catchError(err => this.handleError(err, 'obtener mis reservas'))
+      catchError(err => this.handleError(err, 'Obtener mis reservas'))
     );
   }
 
   getReservationById(id: string): Observable<Reservation> {
     return this.http.get<Reservation>(`${this.apiUrl}/${id}`).pipe(
-      catchError(err => this.handleError(err, `obtener reserva ID ${id}`))
+      catchError(err => this.handleError(err, 'Obtener detalle'))
     );
   }
 
   createReservation(reservation: ReservationCreationData): Observable<Reservation> {
-    console.log("[ReservationService] Creando reserva:", reservation);
     return this.http.post<Reservation>(this.apiUrl, reservation).pipe(
-      catchError(err => this.handleError(err, 'crear reserva'))
+      catchError(err => this.handleError(err, 'Crear reserva'))
     );
   }
 
   updateReservation(id: string, reservation: Partial<ReservationCreationData>): Observable<Reservation> {
     return this.http.put<Reservation>(`${this.apiUrl}/${id}`, reservation).pipe(
-      catchError(err => this.handleError(err, `actualizar reserva ID ${id}`))
+      catchError(err => this.handleError(err, 'Actualizar reserva'))
+    );
+  }
+
+  // --- NUEVO MÉTODO PARA SEMESTRE ---
+  updateSemesterReservation(id: string, reservation: Partial<ReservationCreationData>): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/semester/${id}`, reservation).pipe(
+      catchError(err => this.handleError(err, 'Actualizar semestre'))
     );
   }
 
   updateReservationStatus(id: string, status: ReservationStatus): Observable<Reservation> {
     return this.http.patch<Reservation>(`${this.apiUrl}/${id}/status`, { status }).pipe(
-      catchError(err => this.handleError(err, `actualizar estado de reserva ID ${id}`))
+      catchError(err => this.handleError(err, 'Actualizar estado'))
     );
   }
 
   deleteReservation(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`).pipe(
-      catchError(err => this.handleError(err, `eliminar reserva ID ${id}`))
+      catchError(err => this.handleError(err, 'Eliminar reserva'))
     );
   }
 
   cancelMyReservation(id: string): Observable<Reservation> {
     return this.http.patch<Reservation>(`${this.apiUrl}/${id}/cancel-by-user`, {}).pipe(
-      catchError(err => this.handleError(err, `cancelar mi reserva ID ${id}`))
+      catchError(err => this.handleError(err, 'Cancelar reserva'))
     );
   }
 
   getMyUpcomingReservations(limit: number = 5): Observable<Reservation[]> {
     const params = new HttpParams().set('limit', limit.toString());
     return this.http.get<Reservation[]>(`${this.apiUrl}/my-upcoming`, { params }).pipe(
-      catchError(err => this.handleError(err, 'obtener mis próximas reservas'))
+      catchError(err => this.handleError(err, 'Próximas reservas'))
     );
   }
 
@@ -140,19 +142,13 @@ export class ReservationService {
       sortDirection: 'asc'
     };
     return this.getAllReservations(filters).pipe(
-      tap(reservations => {
-        console.log(`[ReservationService] Reservas recuperadas: ${reservations ? reservations.length : 0}`);
-      }),
-      catchError(err => {
-        console.error(`[ReservationService] Error obteniendo reservas por rango:`, err);
-        return throwError(() => this.handleError(err, 'obtener reservas por aula y rango de fecha'));
-      })
+      catchError(err => this.handleError(err, 'Reservas por aula'))
     );
   }
 
   createSemesterReservation(data: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/semester`, data).pipe(
-      catchError(err => this.handleError(err, 'crear reserva de semestre'))
+      catchError(err => this.handleError(err, 'Asignar semestre'))
     );
   }
 }

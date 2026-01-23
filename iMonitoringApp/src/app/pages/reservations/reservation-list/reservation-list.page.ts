@@ -1,8 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router'; 
-import { Params } from '@angular/router';
+import { ActivatedRoute, Router, Params } from '@angular/router';
 import {
   IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent, IonSegment, IonSegmentButton,
   IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner, IonInput, IonSelect, IonSelectOption,
@@ -10,13 +9,13 @@ import {
   ToastController, AlertController, NavController, LoadingController
 } from '@ionic/angular/standalone';
 
-import { ReservationService, ReservationListFilters } from '../../../services/reservation.service';
-import { Reservation, ReservationStatus, ReservationClassroomDetails } from '../../../models/reservation.model';
+import { ReservationService } from '../../../services/reservation.service';
+import { Reservation, ReservationStatus } from '../../../models/reservation.model';
 import { AuthService } from '../../../services/auth.service';
 import { User } from '../../../models/user.model';
 import { Rol } from 'src/app/models/rol.model';
-import { Subject, Observable, forkJoin, of, combineLatest } from 'rxjs';
-import { takeUntil, catchError, finalize, tap, switchMap, map } from 'rxjs/operators';
+import { Subject, Observable, of } from 'rxjs';
+import { takeUntil, finalize } from 'rxjs/operators';
 import { ClassroomService } from 'src/app/services/classroom.service';
 import { Classroom } from 'src/app/models/classroom.model';
 import { ClassroomType } from 'src/app/models/classroom-type.enum';
@@ -26,25 +25,35 @@ interface StatusOption {
   label: string;
 }
 
+export interface ReservationViewItem {
+  isGroup: boolean;
+  id: string;
+  rawReservation: Reservation;
+  title: string;
+  subtitle: string;
+  userName: string;
+  status: ReservationStatus;
+  startTimeLabel: string;
+  endTimeLabel: string;
+  dateDescription: string;
+  count: number;
+}
+
 @Component({
   selector: 'app-reservation-list',
-  templateUrl: './reservation-list.page.html',
+  templateUrl: './reservation-list.page.html', // <--- IMPORTANTE: DEBE DECIR LIST, NO FORM
   styleUrls: ['./reservation-list.page.scss'],
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    TitleCasePipe,
+    CommonModule, FormsModule, TitleCasePipe,
     IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent,
-    IonSegment, IonSegmentButton,
-    IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner,
-    IonInput, IonSelect, IonSelectOption,
-    IonItemSliding, IonItemOptions, IonItemOption,
+    IonSegment, IonSegmentButton, IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner,
+    IonInput, IonSelect, IonSelectOption, IonItemSliding, IonItemOptions, IonItemOption,
     IonRefresher, IonRefresherContent
   ],
   providers: [DatePipe]
 })
-export class ReservationListPage implements OnInit, OnDestroy {
+export class ReservationListPage implements OnInit, OnDestroy { // <--- CLASE CORRECTA
   private destroy$ = new Subject<void>();
 
   currentUser: User | null = null;
@@ -56,17 +65,15 @@ export class ReservationListPage implements OnInit, OnDestroy {
   myReservations: Reservation[] = [];
   pendingReservations: Reservation[] = [];
 
-  filteredAllReservations: Reservation[] = [];
-  filteredMyReservations: Reservation[] = [];
-  filteredPendingReservations: Reservation[] = [];
-
+  filteredAllReservations: ReservationViewItem[] = [];
+  filteredMyReservations: ReservationViewItem[] = [];
+  filteredPendingReservations: ReservationViewItem[] = [];
 
   isLoadingAllReservations = true;
   isLoadingMyReservations = true;
   isLoadingPending = true;
 
   errorMessage: string | null = null;
-
   selectedView: 'my-reservations' | 'pending' | 'all' = 'my-reservations';
 
   classrooms: Classroom[] = [];
@@ -92,20 +99,17 @@ export class ReservationListPage implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private router: Router,
     private loadingCtrl: LoadingController,
-    private activatedRoute: ActivatedRoute 
+    private activatedRoute: ActivatedRoute,
+    private datePipe: DatePipe
   ) { }
 
   ngOnInit() {
-    this.authService.getCurrentUser().pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(user => {
+    this.authService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe(user => {
       this.currentUser = user;
-      this.authService.getCurrentUserRole().pipe(
-        takeUntil(this.destroy$)
-      ).subscribe(role => {
+      this.authService.getCurrentUserRole().pipe(takeUntil(this.destroy$)).subscribe(role => {
         this.userRole = role;
-        this.loadReservations();
         this.loadClassrooms();
+        this.loadReservations();
       });
     });
 
@@ -117,6 +121,12 @@ export class ReservationListPage implements OnInit, OnDestroy {
     });
   }
 
+  ionViewDidEnter() {
+    if (this.userRole) {
+      this.loadReservations();
+    }
+  }
+
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
@@ -124,90 +134,136 @@ export class ReservationListPage implements OnInit, OnDestroy {
 
   loadReservations() {
     if (!this.currentUser || !this.userRole) return;
-
     this.errorMessage = null;
 
     this.isLoadingMyReservations = true;
-    this.reservationService.getMyReservations().pipe(
+    this.reservationService.getMyReservations({ sortDirection: 'desc' }).pipe(
       takeUntil(this.destroy$),
       finalize(() => {
         this.isLoadingMyReservations = false;
         this.applyFilters();
-      }),
-      catchError(err => {
-        this.errorMessage = err.message || 'Error al cargar tus reservas.';
-        this.presentToast(this.errorMessage || 'Error desconocido', 'danger');
-        return of([]);
+        this.cdr.detectChanges();
       })
-    ).subscribe(reservations => {
-      this.myReservations = reservations;
-      this.cdr.detectChanges();
+    ).subscribe({
+      next: (res) => { this.myReservations = res; },
+      error: (err) => { this.handleLoadError(err, 'mis reservas'); }
     });
 
     if (this.userRole === Rol.ADMIN || this.userRole === Rol.COORDINADOR) {
       this.isLoadingPending = true;
-      this.reservationService.getAllReservations({ status: ReservationStatus.PENDIENTE }).pipe(
+      this.reservationService.getAllReservations({ status: ReservationStatus.PENDIENTE, sortDirection: 'desc' }).pipe(
         takeUntil(this.destroy$),
         finalize(() => {
-          this.isLoadingPending = false;
-          this.applyFilters();
-        }),
-        catchError(err => {
-          this.errorMessage = err.message || 'Error al cargar reservas pendientes.';
-          this.presentToast(this.errorMessage || 'Error desconocido', 'danger');
-          return of([]);
+            this.isLoadingPending = false;
+            this.applyFilters();
+            this.cdr.detectChanges();
         })
-      ).subscribe(reservations => {
-        this.pendingReservations = reservations;
-        this.cdr.detectChanges();
+      ).subscribe({
+        next: (res) => { this.pendingReservations = res; },
+        error: (err) => { this.handleLoadError(err, 'pendientes'); }
       });
 
       this.isLoadingAllReservations = true;
-      this.reservationService.getAllReservations().pipe(
+      this.reservationService.getAllReservations({ sortDirection: 'desc' }).pipe(
         takeUntil(this.destroy$),
         finalize(() => {
-          this.isLoadingAllReservations = false;
-          this.applyFilters();
-        }),
-        catchError(err => {
-          this.errorMessage = err.message || 'Error al cargar todas las reservas.';
-          this.presentToast(this.errorMessage || 'Error desconocido', 'danger');
-          return of([]);
+            this.isLoadingAllReservations = false;
+            this.applyFilters();
+            this.cdr.detectChanges();
         })
-      ).subscribe(reservations => {
-        this.allReservations = reservations;
-        this.cdr.detectChanges();
+      ).subscribe({
+        next: (res) => { this.allReservations = res; },
+        error: (err) => { this.handleLoadError(err, 'todas'); }
       });
     }
   }
 
+  handleLoadError(err: any, context: string) {
+    console.error(`Error loading ${context}:`, err);
+  }
+
   loadClassrooms() {
-    this.classroomService.getAllClassrooms().pipe(
-      takeUntil(this.destroy$),
-      catchError(err => {
-        this.presentToast('Error al cargar la lista de aulas para filtros.', 'danger');
-        return of([] as Classroom[]);
-      })
-    ).subscribe(classrooms => {
-      this.classrooms = classrooms;
+    this.classroomService.getAllClassrooms().pipe(takeUntil(this.destroy$)).subscribe(c => {
+      this.classrooms = c;
       this.cdr.detectChanges();
     });
   }
 
+  private groupReservations(reservations: Reservation[]): ReservationViewItem[] {
+    const groups: { [key: string]: Reservation[] } = {};
+    const viewItems: ReservationViewItem[] = [];
+
+    reservations.forEach(res => {
+      const d = new Date(res.startTime);
+      const timeKey = `${d.getHours()}:${d.getMinutes()}`;
+      const endTimeKey = new Date(res.endTime).getHours() + ':' + new Date(res.endTime).getMinutes();
+      const dayName = d.toLocaleDateString('es-CO', { weekday: 'long' });
+
+      const key = `${res.classroom?.id}_${res.user?.id}_${res.purpose}_${timeKey}_${endTimeKey}_${dayName}`;
+
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(res);
+    });
+
+    for (const key in groups) {
+      const list = groups[key];
+      list.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+      const first = list[0];
+      const last = list[list.length - 1];
+      const isGroup = list.length > 1;
+
+      let dateDesc = '';
+      if (isGroup) {
+        const startStr = this.datePipe.transform(first.startTime, 'dd MMM');
+        const endStr = this.datePipe.transform(last.startTime, 'dd MMM');
+        const dayStr = this.datePipe.transform(first.startTime, 'EEEE');
+        dateDesc = `${dayStr}s (${startStr} - ${endStr})`;
+      } else {
+        dateDesc = this.datePipe.transform(first.startTime, 'EEEE, d/MM/yy') || '';
+      }
+
+      viewItems.push({
+        isGroup: isGroup,
+        id: first.id,
+        rawReservation: first,
+        title: first.purpose || 'Sin motivo',
+        subtitle: `${first.classroom?.name} (${first.classroom?.buildingName || 'N/A'})`,
+        userName: first.user?.name || 'N/A',
+        status: first.status,
+        startTimeLabel: this.datePipe.transform(first.startTime, 'HH:mm') || '',
+        endTimeLabel: this.datePipe.transform(first.endTime, 'HH:mm') || '',
+        dateDescription: dateDesc,
+        count: list.length
+      });
+    }
+
+    return viewItems.sort((a, b) => {
+        return new Date(b.rawReservation.startTime).getTime() - new Date(a.rawReservation.startTime).getTime();
+    });
+  }
+
   applyFilters() {
-    const filterFn = (res: Reservation) => {
+    const groupedMy = this.groupReservations(this.myReservations);
+    const groupedPending = this.groupReservations(this.pendingReservations);
+    const groupedAll = this.groupReservations(this.allReservations);
+
+    const filterFn = (item: ReservationViewItem) => {
+      const res = item.rawReservation;
       const statusMatch = this.selectedStatusFilter === 'ALL' || res.status === this.selectedStatusFilter;
       const classroomMatch = this.selectedClassroomFilter === 'ALL' || res.classroom?.id === this.selectedClassroomFilter;
+      const term = this.searchTerm.toLowerCase();
       const searchTermMatch = !this.searchTerm ||
-        res.purpose?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        res.user?.name?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        res.classroom?.name?.toLowerCase().includes(this.searchTerm.toLowerCase());
+        res.purpose?.toLowerCase().includes(term) ||
+        res.user?.name?.toLowerCase().includes(term) ||
+        res.classroom?.name?.toLowerCase().includes(term);
+
       return statusMatch && classroomMatch && searchTermMatch;
     };
 
-    this.filteredMyReservations = this.myReservations.filter(filterFn);
-    this.filteredPendingReservations = this.pendingReservations.filter(filterFn);
-    this.filteredAllReservations = this.allReservations.filter(filterFn);
+    this.filteredMyReservations = groupedMy.filter(filterFn);
+    this.filteredPendingReservations = groupedPending.filter(filterFn);
+    this.filteredAllReservations = groupedAll.filter(filterFn);
 
     this.cdr.detectChanges();
   }
@@ -218,63 +274,51 @@ export class ReservationListPage implements OnInit, OnDestroy {
   }
 
   async presentToast(message: string, color: 'success' | 'danger' | 'warning', duration: number = 3000) {
-    if (!message) return;
-    const toast = await this.toastCtrl.create({
-      message,
-      duration,
-      color,
-      position: 'top',
-      buttons: [{ text: 'OK', role: 'cancel' }]
-    });
+    const toast = await this.toastCtrl.create({ message, duration, color, position: 'top', buttons: [{ text: 'OK', role: 'cancel' }] });
     await toast.present();
   }
 
-  async confirmAction(reservation: Reservation, actionType: 'confirm' | 'reject' | 'cancel') {
+  async confirmAction(item: ReservationViewItem, actionType: 'confirm' | 'reject' | 'cancel') {
+    const reservation = item.rawReservation;
     let header = '';
     let message = '';
-    let statusToUpdate: ReservationStatus | null = null;
     let serviceCall: Observable<Reservation>;
+
+    const groupSuffix = item.isGroup ? ` (y las ${item.count - 1} restantes de la serie)` : '';
 
     if (actionType === 'confirm') {
       header = 'Confirmar Reserva';
-      message = `¿Estás seguro de que quieres confirmar la reserva de ${reservation.user?.name || 'N/A'} para el aula ${reservation.classroom?.name || 'N/A'}?`;
-      statusToUpdate = ReservationStatus.CONFIRMADA;
-      serviceCall = this.reservationService.updateReservationStatus(reservation.id, statusToUpdate);
+      message = `¿Confirmar reserva de ${reservation.user?.name}?${groupSuffix}`;
+      serviceCall = this.reservationService.updateReservationStatus(reservation.id, ReservationStatus.CONFIRMADA);
     } else if (actionType === 'reject') {
       header = 'Rechazar Reserva';
-      message = `¿Estás seguro de que quieres rechazar la reserva de ${reservation.user?.name || 'N/A'} para el aula ${reservation.classroom?.name || 'N/A'}?`;
-      statusToUpdate = ReservationStatus.RECHAZADA;
-      serviceCall = this.reservationService.updateReservationStatus(reservation.id, statusToUpdate);
+      message = `¿Rechazar reserva de ${reservation.user?.name}?${groupSuffix}`;
+      serviceCall = this.reservationService.updateReservationStatus(reservation.id, ReservationStatus.RECHAZADA);
     } else if (actionType === 'cancel') {
       header = 'Cancelar Reserva';
-      message = `¿Estás seguro de que quieres cancelar la reserva para el aula ${reservation.classroom?.name || 'N/A'}?`;
-      statusToUpdate = ReservationStatus.CANCELADA;
-      serviceCall = this.reservationService.cancelMyReservation(reservation.id); 
-    } else {
-      return; 
-    }
+      message = `¿Cancelar esta reserva?${groupSuffix}`;
+      serviceCall = this.reservationService.cancelMyReservation(reservation.id);
+    } else { return; }
 
     const alert = await this.alertCtrl.create({
-      header: header,
-      message: message,
+      header, message,
       buttons: [
         { text: 'No', role: 'cancel' },
         {
           text: 'Sí',
           handler: async () => {
-            const loading = await this.loadingCtrl.create({ message: 'Actualizando reserva...' });
+            const loading = await this.loadingCtrl.create({ message: 'Procesando...' });
             await loading.present();
+
             serviceCall.pipe(
               finalize(async () => await loading.dismiss()),
               takeUntil(this.destroy$)
             ).subscribe({
-              next: async () => {
-                await this.presentToast('Reserva actualizada exitosamente.', 'success');
+              next: () => {
+                this.presentToast('Acción realizada con éxito.', 'success');
                 this.loadReservations();
               },
-              error: async (err) => {
-                await this.presentToast(err.message || 'Error al actualizar la reserva.', 'danger');
-              }
+              error: (err) => { this.presentToast(err.message || 'Error al procesar.', 'danger'); }
             });
           }
         }
@@ -283,24 +327,26 @@ export class ReservationListPage implements OnInit, OnDestroy {
     await alert.present();
   }
 
-  viewReservationDetails(reservation: Reservation) {
-    this.router.navigate(['/app/reservations/edit', reservation.id]);
+  navigateToEdit(item: ReservationViewItem) {
+    this.router.navigate(['/app/reservations/edit', item.rawReservation.id]);
   }
 
-  navigateToEdit(reservationId: string) {
-    this.router.navigate(['/app/reservations/edit', reservationId]);
+  viewReservationDetails(item: ReservationViewItem) {
+    this.navigateToEdit(item);
   }
 
-  canApproveOrReject(res: Reservation): boolean {
-    return (this.userRole === Rol.ADMIN || this.userRole === Rol.COORDINADOR) && res.status === ReservationStatus.PENDIENTE;
+  canApproveOrReject(item: ReservationViewItem): boolean {
+    return (this.userRole === Rol.ADMIN || this.userRole === Rol.COORDINADOR) && item.rawReservation.status === ReservationStatus.PENDIENTE;
   }
 
-  canCancelReservation(res: Reservation): boolean {
+  canCancelReservation(item: ReservationViewItem): boolean {
+    const res = item.rawReservation;
     return (this.userRole === Rol.ADMIN || this.userRole === Rol.COORDINADOR || (this.currentUser?.id === res.user?.id)) &&
            (res.status === ReservationStatus.PENDIENTE || res.status === ReservationStatus.CONFIRMADA);
   }
 
-  canEditReservation(res: Reservation): boolean {
+  canEditReservation(item: ReservationViewItem): boolean {
+    const res = item.rawReservation;
     if (this.userRole === Rol.ADMIN) return true;
     if (this.userRole === Rol.COORDINADOR) {
       const isStudentRes = res.user?.role === Rol.ESTUDIANTE;
@@ -308,21 +354,19 @@ export class ReservationListPage implements OnInit, OnDestroy {
       return (isStudentRes && (res.status === ReservationStatus.PENDIENTE || res.status === ReservationStatus.CONFIRMADA)) ||
              (isOwner && res.status === ReservationStatus.PENDIENTE);
     }
-
     return this.currentUser?.id === res.user?.id && res.status === ReservationStatus.PENDIENTE;
   }
 
-
   getStatusColor(status: ReservationStatus): string {
     switch (status) {
-      case ReservationStatus.PENDIENTE: return '#FFC107'; 
+      case ReservationStatus.PENDIENTE: return '#FFC107';
       case ReservationStatus.CONFIRMADA: return '#28A745';
-      case ReservationStatus.RECHAZADA: return '#DC3545'; 
-      case ReservationStatus.CANCELADA: return '#6C757D'; 
-      default: return '#007BFF'; 
+      case ReservationStatus.RECHAZADA: return '#DC3545';
+      case ReservationStatus.CANCELADA: return '#6C757D';
+      default: return '#007BFF';
     }
   }
-  
+
   async handleRefresh(event: any) {
     await this.loadReservations();
     event.target.complete();
