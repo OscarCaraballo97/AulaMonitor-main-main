@@ -9,7 +9,7 @@ export interface AuthResponse {
 
 export interface LoginCredentials {
   email: string;
-  password: string; 
+  password: string;
 }
 
 export interface RegisterData {
@@ -17,6 +17,9 @@ export interface RegisterData {
   email: string;
   password_hash: string;
   role: Rol;
+  // --- NUEVO CAMPO ---
+  career?: string;
+  // -------------------
 }
 
 export interface RegisterRequest {
@@ -25,6 +28,9 @@ export interface RegisterRequest {
   password_hash: string;
   confirmPassword_hash?: string;
   role: Rol;
+  // --- NUEVO CAMPO ---
+  career?: string;
+  // -------------------
 }
 
 export interface PasswordResetRequest {

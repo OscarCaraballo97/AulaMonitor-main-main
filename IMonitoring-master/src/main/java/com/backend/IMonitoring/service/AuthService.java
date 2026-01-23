@@ -46,6 +46,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword_hash()))
                 .role(request.getRole())
+                .career(request.getCareer()) // <--- GUARDAMOS LA CARRERA AQUÍ
                 .enabled(false)
                 .build();
         User savedUser = userRepository.save(user);
@@ -66,7 +67,7 @@ public class AuthService {
         VerificationToken verificationToken = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new ResourceNotFoundException("Token de verificación inválido o no encontrado."));
 
-        if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now(ZoneOffset.UTC))) { 
+        if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now(ZoneOffset.UTC))) {
             tokenRepository.delete(verificationToken);
             throw new InvalidReservationException("El token de verificación ha expirado. Por favor, solicita uno nuevo.");
         }
@@ -77,7 +78,7 @@ public class AuthService {
 
         User user = verificationToken.getUser();
         if (user == null) {
-             throw new ResourceNotFoundException("Usuario asociado al token no encontrado.");
+            throw new ResourceNotFoundException("Usuario asociado al token no encontrado.");
         }
         user.setEnabled(true);
         userRepository.save(user);
@@ -106,9 +107,9 @@ public class AuthService {
 
         if (!user.isEnabled()) {
             VerificationToken existingToken = tokenRepository.findByUser_IdAndVerifiedFalse(user.getId()).orElse(null);
-            if (existingToken != null && existingToken.getExpiryDate().isAfter(LocalDateTime.now(ZoneOffset.UTC))) { // Use ZoneOffset.UTC
+            if (existingToken != null && existingToken.getExpiryDate().isAfter(LocalDateTime.now(ZoneOffset.UTC))) {
                 emailService.sendVerificationEmail(user.getEmail(), existingToken.getToken());
-                 throw new UnauthorizedAccessException("Tu cuenta no está activada. Se ha reenviado un correo de verificación.");
+                throw new UnauthorizedAccessException("Tu cuenta no está activada. Se ha reenviado un correo de verificación.");
             } else {
                 if (existingToken != null) tokenRepository.delete(existingToken);
                 String newTokenString = UUID.randomUUID().toString();

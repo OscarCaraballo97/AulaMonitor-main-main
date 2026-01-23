@@ -13,7 +13,6 @@ import java.util.List;
 @Builder
 @Table(name = "users")
 public class User {
-    // ... tus otros campos ...
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -32,18 +31,20 @@ public class User {
     @Column(nullable = false)
     private Rol role;
 
+    // --- ESTE CAMPO FALTABA ---
+    @Column(name = "career")
+    private String career;
+    // -------------------------
+
     private String avatarUrl;
 
-    // --- CORRECCIÓN AQUÍ ---
-    @Lob
     @Column(name = "profile_picture", length = 1000000)
-    @ToString.Exclude             // <--- AGREGAR ESTO: Evita que los logs intenten leer la imagen y rompan la transacción
-    @EqualsAndHashCode.Exclude    // <--- AGREGAR ESTO: Evita comparaciones pesadas
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private byte[] profilePicture;
 
     @Column(name = "image_type")
     private String imageType;
-    // -----------------------
 
     @Column(nullable = false)
     @Builder.Default

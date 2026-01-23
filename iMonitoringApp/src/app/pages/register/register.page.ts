@@ -2,22 +2,23 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidatorFn } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import {AlertController, LoadingController, NavController, ToastController
-} from '@ionic/angular/standalone'; 
+import { AlertController, LoadingController, NavController, ToastController } from '@ionic/angular/standalone';
 import { AuthService } from '../../services/auth.service';
 import { Rol } from '../../models/rol.model';
-import { RegisterData, AuthResponse } from '../../models/auth.model'; 
+import { RegisterData, AuthResponse } from '../../models/auth.model';
 import { IonicModule } from '@ionic/angular';
 
-
+// CORRECCIÓN: El validador ahora busca los nombres correctos de los controles ('password_hash')
 export function passwordMatchValidator(): ValidatorFn {
   return (control: AbstractControl): { [key: string]: any } | null => {
-    const password = control.get('password');
-    const confirmPassword = control.get('confirmPassword');
+    const password = control.get('password_hash');
+    const confirmPassword = control.get('confirmPassword_hash');
+
     if (password && confirmPassword && password.value !== confirmPassword.value) {
       confirmPassword.setErrors({ passwordMismatch: true });
       return { passwordMismatchGlobal: true };
     }
+
     if (confirmPassword?.hasError('passwordMismatch') && password?.value === confirmPassword?.value) {
       const errors = confirmPassword.errors;
       if (errors) {
@@ -48,15 +49,29 @@ export class RegisterPage implements OnInit {
   isLoading: boolean = false;
 
   public rolesForSelect: { key: string, value: Rol }[] = [];
-  public RolEnum = Rol; 
+  public RolEnum = Rol;
+
+  // --- LISTA DE CARRERAS (Agregada) ---
+  careers: string[] = [
+    'Administración de Empresas',
+    'Contaduría Pública',
+    'Derecho',
+    'Licenciatura en Bilingüismo con énfasis en Inglés',
+    'Ingeniería Industrial',
+    'Ingeniería de Sistemas',
+    'Administración de Empresas Turísticas y Hoteleras',
+    'Tecnología en Sistemas de Gestión de Calidad',
+    'Tecnología en Desarrollo de Sistemas de Información y de Software',
+    'Tecnología en Gestión de Servicios Turísticos y Hoteleros'
+  ];
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router, 
+    private router: Router,
     private alertCtrl: AlertController,
     private loadingCtrl: LoadingController,
-    private navCtrl: NavController, 
+    private navCtrl: NavController,
     private toastCtrl: ToastController
   ) {}
 
@@ -71,17 +86,19 @@ export class RegisterPage implements OnInit {
     this.registerForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password_hash: ['', [Validators.required, Validators.minLength(6)]], 
+      password_hash: ['', [Validators.required, Validators.minLength(6)]],
       confirmPassword_hash: ['', Validators.required],
-      role: [Rol.ESTUDIANTE, [Validators.required]] 
+      role: [Rol.ESTUDIANTE, [Validators.required]],
+      career: ['', [Validators.required]] // --- NUEVO CAMPO CARRERA ---
     }, { validators: passwordMatchValidator() });
   }
 
   get name() { return this.registerForm.get('name'); }
   get email() { return this.registerForm.get('email'); }
   get password_hash() { return this.registerForm.get('password_hash'); }
-  get confirmPassword_hash() { return this.registerForm.get('confirmPassword_hash'); } 
+  get confirmPassword_hash() { return this.registerForm.get('confirmPassword_hash'); }
   get role() { return this.registerForm.get('role'); }
+  get career() { return this.registerForm.get('career'); } // Getter para carrera
 
   async onSubmit() {
     if (this.registerForm.invalid) {
@@ -96,28 +113,31 @@ export class RegisterPage implements OnInit {
     await loading.present();
 
     const formValue = this.registerForm.value;
+
+    // Preparar objeto de envío
     const finalRegistrationData: RegisterData = {
       name: formValue.name,
       email: formValue.email,
-      password_hash: formValue.password_hash, 
-      role: formValue.role 
+      password_hash: formValue.password_hash,
+      role: formValue.role,
+      career: formValue.career // Incluimos la carrera seleccionada
     };
 
     console.log('Enviando datos de registro:', finalRegistrationData);
 
     this.authService.register(finalRegistrationData).subscribe({
-      next: async (response: AuthResponse) => { 
+      next: async (response: AuthResponse) => {
         this.isLoading = false;
         await loading.dismiss();
-        
+
         const successMessage = response.message || '¡Registro exitoso! Por favor, revisa tu correo electrónico para verificar tu cuenta.';
         await this.presentSuccessAlert(successMessage);
-        this.navCtrl.navigateRoot('/login'); 
+        this.navCtrl.navigateRoot('/login');
       },
       error: async (err: any) => {
         this.isLoading = false;
         await loading.dismiss();
-        
+
         if (err.error && err.error.message) {
           this.errorMessage = err.error.message;
         } else if (err.message) {

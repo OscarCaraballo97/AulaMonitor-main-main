@@ -33,21 +33,18 @@ public class UserDTO {
     @NotNull(message = "El rol es obligatorio")
     private Rol role;
 
+    // --- ESTE CAMPO FALTABA ---
+    private String career;
+    // -------------------------
+
     private String password;
-
     private String avatarUrl;
-
     private String profilePictureBase64;
     private String imageType;
-
-    // CAMBIO IMPORTANTE: Usar Boolean (Clase) en lugar de boolean (primitivo)
-    // Esto permite que sea NULL si el frontend no lo envía, evitando que se convierta en 'false' automáticamente.
     private Boolean enabled;
 
     public static UserDTO fromEntity(User user) {
-        if (user == null) {
-            return null;
-        }
+        if (user == null) return null;
 
         String base64Image = null;
         if (user.getProfilePicture() != null && user.getProfilePicture().length > 0) {
@@ -59,6 +56,7 @@ public class UserDTO {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .career(user.getCareer()) // <--- Mapeo agregado
                 .avatarUrl(user.getAvatarUrl())
                 .profilePictureBase64(base64Image)
                 .imageType(user.getImageType())
@@ -72,8 +70,8 @@ public class UserDTO {
         user.setName(this.name);
         user.setEmail(this.email);
         user.setRole(this.role);
+        user.setCareer(this.career); // <--- Mapeo agregado
         user.setAvatarUrl(this.avatarUrl);
-        // Si es null (no se envió), asumimos true por defecto al crear, o se manejará en el update
         user.setEnabled(this.enabled != null ? this.enabled : true);
         if (this.password != null && !this.password.isEmpty()) {
             user.setPassword(this.password);

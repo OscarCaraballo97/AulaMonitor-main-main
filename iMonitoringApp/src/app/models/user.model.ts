@@ -4,7 +4,10 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role?: Rol; 
+  role: Rol;
+  career?: string;
   avatarUrl?: string;
-  enabled?: boolean;
+  profilePicture?: string;
+  imageType?: string;
+  enabled: boolean;
 }

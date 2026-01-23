@@ -11,6 +11,7 @@ import com.backend.IMonitoring.security.UserDetailsImpl;
 import com.backend.IMonitoring.exceptions.ResourceNotFoundException;
 import com.backend.IMonitoring.exceptions.UnauthorizedAccessException;
 import com.backend.IMonitoring.exceptions.InvalidReservationException;
+import com.backend.IMonitoring.utils.CareerUtils; // <--- IMPORTANTE
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -130,10 +131,18 @@ public class ReservationService {
             throw new UnauthorizedAccessException("Solo Administradores o Coordinadores pueden asignar semestres completos.");
         }
 
+        User professor = userService.getUserById(request.getProfessorId());
+
+        // --- CAMBIO: Usar CareerUtils ---
+        if (userPerformingAction.getRole() == Rol.COORDINADOR) {
+            if (!CareerUtils.areSameCareerGroup(userPerformingAction.getCareer(), professor.getCareer())) {
+                throw new UnauthorizedAccessException("Solo puedes asignar semestres a profesores de tu mismo grupo académico (" + userPerformingAction.getCareer() + ").");
+            }
+        }
+        // --------------------------------
+
         Classroom classroom = classroomRepository.findById(request.getClassroomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Aula no encontrada con ID: " + request.getClassroomId()));
-
-        User professor = userService.getUserById(request.getProfessorId());
 
         if (request.getStartTime().isAfter(request.getEndTime()) || request.getStartTime().equals(request.getEndTime())) {
             throw new InvalidReservationException("La hora de inicio debe ser anterior a la de fin.");
@@ -168,7 +177,7 @@ public class ReservationService {
                     Reservation conflict = conflicts.get(0);
                     DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
                     conflictMsg += ". Ya existe una reserva de " +
-                            conflict.getStartTime().format(timeFormatter) + " a " +
+                            conflict.getStartTime().format(timeFormatter) + " - " +
                             conflict.getEndTime().format(timeFormatter);
                     if (conflict.getUser() != null) {
                         conflictMsg += " (" + conflict.getUser().getName() + ")";
@@ -218,6 +227,15 @@ public class ReservationService {
         if (isPrivileged && reservationInput.getUser() != null && reservationInput.getUser().getId() != null &&
                 !Objects.equals(reservationInput.getUser().getId(), userMakingReservation.getId())) {
             userToReserveFor = userService.getUserById(reservationInput.getUser().getId());
+
+            // --- CAMBIO: Usar CareerUtils ---
+            if (userMakingReservation.getRole() == Rol.COORDINADOR) {
+                if (!CareerUtils.areSameCareerGroup(userMakingReservation.getCareer(), userToReserveFor.getCareer())) {
+                    throw new UnauthorizedAccessException("Solo puedes crear reservas para usuarios de tu mismo grupo académico.");
+                }
+            }
+            // --------------------------------
+
         } else {
             userToReserveFor = userMakingReservation;
         }
@@ -277,8 +295,22 @@ public class ReservationService {
         boolean isCoordinator = user.getRole() == Rol.COORDINADOR;
 
         if (!isAdmin && !isCoordinator) throw new UnauthorizedAccessException("Permiso denegado.");
-        if (isCoordinator && (reservation.getUser() == null || reservation.getUser().getRole() != Rol.ESTUDIANTE) && !Objects.equals(reservation.getUser().getId(), user.getId())) {
-            throw new UnauthorizedAccessException("Coordinadores solo gestionan reservas de estudiantes o propias.");
+
+        if (isCoordinator) {
+            boolean isStudentOrProfessor = reservation.getUser() != null &&
+                    (reservation.getUser().getRole() == Rol.ESTUDIANTE || reservation.getUser().getRole() == Rol.PROFESOR);
+
+            if (!isStudentOrProfessor && !Objects.equals(reservation.getUser().getId(), user.getId())) {
+                throw new UnauthorizedAccessException("Coordinadores solo gestionan reservas de estudiantes, profesores o propias.");
+            }
+
+            // --- CAMBIO: Usar CareerUtils ---
+            if (reservation.getUser() != null && !Objects.equals(reservation.getUser().getId(), user.getId())) {
+                if (!CareerUtils.areSameCareerGroup(user.getCareer(), reservation.getUser().getCareer())) {
+                    throw new UnauthorizedAccessException("No puedes gestionar reservas de usuarios de otro grupo académico.");
+                }
+            }
+            // --------------------------------
         }
 
         if (newStatus == ReservationStatus.CONFIRMADA) {
@@ -303,11 +335,22 @@ public class ReservationService {
 
         if (!isAdmin) {
             if (isCoordinator) {
-                boolean isStudentReservation = reservation.getUser() != null && reservation.getUser().getRole() == Rol.ESTUDIANTE;
-                if (!((isStudentReservation && (reservation.getStatus() == ReservationStatus.PENDIENTE || reservation.getStatus() == ReservationStatus.CONFIRMADA)) ||
+                boolean isStudentOrProfessorReservation = reservation.getUser() != null &&
+                        (reservation.getUser().getRole() == Rol.ESTUDIANTE || reservation.getUser().getRole() == Rol.PROFESOR);
+
+                if (!((isStudentOrProfessorReservation && (reservation.getStatus() == ReservationStatus.PENDIENTE || reservation.getStatus() == ReservationStatus.CONFIRMADA)) ||
                         (isOwner && reservation.getStatus() == ReservationStatus.PENDIENTE))) {
-                    throw new UnauthorizedAccessException("Coordinadores pueden modificar reservas de estudiantes (pendientes o confirmadas), o las propias si están pendientes.");
+                    throw new UnauthorizedAccessException("Coordinadores pueden modificar reservas de estudiantes/profesores (pendientes o confirmadas), o las propias si están pendientes.");
                 }
+
+                // --- CAMBIO: Usar CareerUtils ---
+                if (!isOwner && reservation.getUser() != null) {
+                    if (!CareerUtils.areSameCareerGroup(userUpdating.getCareer(), reservation.getUser().getCareer())) {
+                        throw new UnauthorizedAccessException("No puedes modificar reservas de usuarios de otro grupo académico.");
+                    }
+                }
+                // --------------------------------
+
             } else if (isOwner) {
                 if (reservation.getStatus() != ReservationStatus.PENDIENTE) {
                     throw new InvalidReservationException("Solo puedes modificar tus propias reservas si están en estado PENDIENTE.");
@@ -334,6 +377,13 @@ public class ReservationService {
                 throw new UnauthorizedAccessException("No tienes permiso para reasignar el usuario de esta reserva.");
             }
             User newUser = userService.getUserById(updatedData.getUser().getId());
+
+            // --- CAMBIO: Usar CareerUtils ---
+            if (isCoordinator && !CareerUtils.areSameCareerGroup(userUpdating.getCareer(), newUser.getCareer())) {
+                throw new UnauthorizedAccessException("No puedes reasignar la reserva a un usuario de otro grupo académico.");
+            }
+            // --------------------------------
+
             reservation.setUser(newUser);
         }
 
@@ -373,7 +423,6 @@ public class ReservationService {
         return reservationRepository.save(reservation);
     }
 
-    // --- NUEVO MÉTODO PARA ACTUALIZAR SEMESTRE COMPLETO ---
     @Transactional
     public List<ReservationResponseDTO> updateSemesterReservations(String originalId, Reservation updatedData, UserDetails userDetails) {
         Reservation original = getReservationById(originalId);
@@ -388,7 +437,14 @@ public class ReservationService {
             throw new UnauthorizedAccessException("No tienes permiso para modificar este semestre.");
         }
 
-        // Buscar reservas futuras con el mismo patrón (mismo usuario, propósito y hora)
+        // --- CAMBIO: Usar CareerUtils ---
+        if (isCoordinator && !isOwner && original.getUser() != null) {
+            if (!CareerUtils.areSameCareerGroup(userUpdating.getCareer(), original.getUser().getCareer())) {
+                throw new UnauthorizedAccessException("No puedes gestionar semestres de otro grupo académico.");
+            }
+        }
+        // --------------------------------
+
         List<Reservation> semesterSeries = reservationRepository.findFutureReservationsByPattern(
                 original.getUser().getId(),
                 original.getPurpose(),
@@ -396,7 +452,6 @@ public class ReservationService {
                 original.getStartTime()
         );
 
-        // Filtrar para asegurarnos que sean del mismo día de la semana y misma hora
         List<Reservation> filteredSeries = semesterSeries.stream()
                 .filter(r -> r.getStartTime().getDayOfWeek() == original.getStartTime().getDayOfWeek() &&
                         r.getStartTime().toLocalTime().equals(original.getStartTime().toLocalTime()))
@@ -418,11 +473,9 @@ public class ReservationService {
         }
 
         for (Reservation res : filteredSeries) {
-            // Mantener fecha original, cambiar hora
             LocalDateTime targetStart = res.getStartTime().toLocalDate().atTime(newStartTime);
             LocalDateTime targetEnd = res.getEndTime().toLocalDate().atTime(newEndTime);
 
-            // Verificar conflicto individual
             if (!classroomRepository.isAvailableExcludingReservationConsideringAllStatuses(
                     (newClassroom != null ? newClassroom.getId() : res.getClassroom().getId()),
                     targetStart, targetEnd, res.getId())) {
@@ -436,7 +489,6 @@ public class ReservationService {
                 res.setClassroom(newClassroom);
             }
 
-            // Re-confirmar si es admin/coord
             if (isAdmin || isCoordinator) {
                 res.setStatus(ReservationStatus.CONFIRMADA);
             } else {
@@ -461,10 +513,20 @@ public class ReservationService {
 
         if (!isAdmin) {
             if (isCoordinator) {
-                boolean isStudentReservation = reservation.getUser() != null && reservation.getUser().getRole() == Rol.ESTUDIANTE;
-                if (!isStudentReservation && !isOwner) {
-                    throw new UnauthorizedAccessException("Coordinadores solo pueden cancelar reservas de estudiantes o las propias.");
+                boolean isStudentOrProfessor = reservation.getUser() != null &&
+                        (reservation.getUser().getRole() == Rol.ESTUDIANTE || reservation.getUser().getRole() == Rol.PROFESOR);
+
+                if (!isStudentOrProfessor && !isOwner) {
+                    throw new UnauthorizedAccessException("Coordinadores solo pueden cancelar reservas de estudiantes, profesores o las propias.");
                 }
+
+                // --- CAMBIO: Usar CareerUtils ---
+                if (!isOwner && reservation.getUser() != null) {
+                    if (!CareerUtils.areSameCareerGroup(userCancelling.getCareer(), reservation.getUser().getCareer())) {
+                        throw new UnauthorizedAccessException("No puedes cancelar reservas de usuarios de otro grupo académico.");
+                    }
+                }
+                // --------------------------------
             } else if (!isOwner) {
                 throw new UnauthorizedAccessException("No tienes permiso para cancelar esta reserva.");
             }
@@ -487,10 +549,18 @@ public class ReservationService {
         boolean isAdmin = userDeleting.getRole() == Rol.ADMIN;
         boolean isCoordinatorWithPermission = userDeleting.getRole() == Rol.COORDINADOR &&
                 reservation.getUser() != null &&
-                (reservation.getUser().getRole() == Rol.ESTUDIANTE || Objects.equals(reservation.getUser().getId(), userDeleting.getId())) &&
+                (reservation.getUser().getRole() == Rol.ESTUDIANTE || reservation.getUser().getRole() == Rol.PROFESOR || Objects.equals(reservation.getUser().getId(), userDeleting.getId())) &&
                 (reservation.getStatus() == ReservationStatus.PENDIENTE ||
                         reservation.getStatus() == ReservationStatus.CANCELADA ||
                         reservation.getStatus() == ReservationStatus.RECHAZADA);
+
+        // --- CAMBIO: Usar CareerUtils ---
+        if (isCoordinatorWithPermission && !Objects.equals(reservation.getUser().getId(), userDeleting.getId())) {
+            if (!CareerUtils.areSameCareerGroup(userDeleting.getCareer(), reservation.getUser().getCareer())) {
+                isCoordinatorWithPermission = false;
+            }
+        }
+        // --------------------------------
 
         boolean isOwnerAndAllowedStatus = reservation.getUser() != null &&
                 Objects.equals(reservation.getUser().getId(), userDeleting.getId()) &&

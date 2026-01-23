@@ -22,7 +22,7 @@ public class RegisterRequest {
 
     @NotBlank(message = "El correo electrónico no puede estar vacío")
     @Email(message = "El formato del correo electrónico no es válido")
-    private String email; 
+    private String email;
 
     @NotBlank(message = "La contraseña no puede estar vacía")
     @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
@@ -30,4 +30,8 @@ public class RegisterRequest {
 
     @NotNull(message = "El rol es obligatorio")
     private Rol role;
+
+    // --- NUEVO CAMPO ---
+    // Opcional si es ADMIN, pero requerido para estudiantes/profesores en el frontend
+    private String career;
 }

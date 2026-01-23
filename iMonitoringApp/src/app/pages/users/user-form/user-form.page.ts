@@ -32,6 +32,21 @@ export class UserFormPage implements OnInit, OnDestroy {
   public rolesForSelect: { key: string, value: Rol }[] = [];
   public RolEnum = Rol;
 
+  // --- LISTA DE CARRERAS ---
+  careers: string[] = [
+    'Administración de Empresas',
+    'Contaduría Pública',
+    'Derecho',
+    'Licenciatura en Bilingüismo con énfasis en Inglés',
+    'Ingeniería Industrial',
+    'Ingeniería de Sistemas',
+    'Administración de Empresas Turísticas y Hoteleras',
+    'Tecnología en Sistemas de Gestión de Calidad',
+    'Tecnología en Desarrollo de Sistemas de Información y de Software',
+    'Tecnología en Gestión de Servicios Turísticos y Hoteleros'
+  ];
+  // -------------------------
+
   constructor(
     private fb: FormBuilder,
     private userService: UserService,
@@ -49,8 +64,9 @@ export class UserFormPage implements OnInit, OnDestroy {
     this.userForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: [''], 
+      password: [''],
       role: [Rol.ESTUDIANTE, Validators.required],
+      career: ['', Validators.required], // --- AGREGADO CAMPO CARRERA
       avatarUrl: ['']
     });
     console.log("UserFormPage: userForm ha sido inicializado:", !!this.userForm);
@@ -59,7 +75,7 @@ export class UserFormPage implements OnInit, OnDestroy {
         this.currentUser = user;
         this.loggedInUserRole = user?.role || null;
         this.setupRolesForSelect();
-        this.cdr.detectChanges(); 
+        this.cdr.detectChanges();
     });
 
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
@@ -83,17 +99,15 @@ export class UserFormPage implements OnInit, OnDestroy {
   setupRolesForSelect() {
     if (this.loggedInUserRole === Rol.ADMIN) {
       this.rolesForSelect = Object.keys(Rol)
-        .filter(key => isNaN(Number(key))) 
+        .filter(key => isNaN(Number(key)))
         .map(key => ({ key: key.replace('_', ' '), value: Rol[key as keyof typeof Rol] }));
     } else if (this.loggedInUserRole === Rol.COORDINADOR) {
-     
       this.rolesForSelect = Object.keys(Rol)
         .filter(key => isNaN(Number(key)) && [Rol.ESTUDIANTE, Rol.TUTOR, Rol.PROFESOR].includes(Rol[key as keyof typeof Rol]))
         .map(key => ({ key: key.replace('_', ' '), value: Rol[key as keyof typeof Rol] }));
     } else {
-      this.rolesForSelect = []; 
+      this.rolesForSelect = [];
     }
-    console.log("UserFormPage: rolesForSelect configurados:", this.rolesForSelect);
   }
 
   ngOnDestroy() {
@@ -118,6 +132,7 @@ export class UserFormPage implements OnInit, OnDestroy {
           name: user.name,
           email: user.email,
           role: user.role,
+          career: user.career, // --- CARGAR CARRERA ---
           avatarUrl: user.avatarUrl
         });
 
@@ -147,6 +162,10 @@ export class UserFormPage implements OnInit, OnDestroy {
     await loading.present();
 
     const userData = this.userForm.getRawValue();
+
+    // Si no es admin editando, o si es un coordinador, el backend manejará la asignación final,
+    // pero enviamos el dato seleccionado.
+
     if (!this.isEditMode && !userData.password) {
         this.isLoading = false;
         await loading.dismiss();
@@ -162,7 +181,7 @@ export class UserFormPage implements OnInit, OnDestroy {
     if (this.isEditMode && this.userId) {
       operation = this.userService.updateUser(this.userId, userData);
     } else {
-      operation = this.userService.createUser(userData as User); 
+      operation = this.userService.createUser(userData as User);
     }
 
     operation.pipe(

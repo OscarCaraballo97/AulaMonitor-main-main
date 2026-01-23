@@ -103,7 +103,11 @@ export class MainLayoutPage implements OnInit, OnDestroy {
       { title: 'Nueva Reserva', icon: 'add-circle-outline', route: '/app/reservations/new', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
       { title: 'Disponibilidad Aulas', icon: 'time-outline', route: '/app/classrooms/availability', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
       { title: 'Estudiantes ', icon: 'people-outline', route: '/app/users', roles: [Rol.COORDINADOR] },
-      { title: 'Reservas Estudiantes', icon: 'filing-outline', route: '/app/reservations/all', roles: [Rol.COORDINADOR] },
+
+      // --- CORRECCIÓN AQUÍ: Se cambió 'filing-outline' por 'documents-outline' ---
+      { title: 'Reservas Estudiantes', icon: 'documents-outline', route: '/app/reservations/all', roles: [Rol.COORDINADOR] },
+      // --------------------------------------------------------------------------
+
       { title: 'Edificios', icon: 'business-outline', route: '/app/buildings', roles: [Rol.ADMIN] },
       { title: 'Aulas', icon: 'school-outline', route: '/app/classrooms', roles: [Rol.ADMIN] },
       { title: 'Usuarios', icon: 'people-circle-outline', route: '/app/users', roles: [Rol.ADMIN] },
