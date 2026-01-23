@@ -32,11 +32,7 @@ public class UserDTO {
 
     @NotNull(message = "El rol es obligatorio")
     private Rol role;
-
-    // --- ESTE CAMPO FALTABA ---
     private String career;
-    // -------------------------
-
     private String password;
     private String avatarUrl;
     private String profilePictureBase64;
@@ -56,7 +52,7 @@ public class UserDTO {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .career(user.getCareer()) // <--- Mapeo agregado
+                .career(user.getCareer())
                 .avatarUrl(user.getAvatarUrl())
                 .profilePictureBase64(base64Image)
                 .imageType(user.getImageType())
@@ -70,7 +66,7 @@ public class UserDTO {
         user.setName(this.name);
         user.setEmail(this.email);
         user.setRole(this.role);
-        user.setCareer(this.career); // <--- Mapeo agregado
+        user.setCareer(this.career);
         user.setAvatarUrl(this.avatarUrl);
         user.setEnabled(this.enabled != null ? this.enabled : true);
         if (this.password != null && !this.password.isEmpty()) {

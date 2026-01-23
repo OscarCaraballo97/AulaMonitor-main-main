@@ -137,7 +137,6 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
     }
-    // ----------------------------------------
 
     @PatchMapping("/{id}/password")
     @PreAuthorize("isAuthenticated()")

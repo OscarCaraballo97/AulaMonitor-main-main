@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/login" class="dark:text-kwd-light"></ion-back-button>
     </ion-buttons>
-    <ion-title class="dark:text-kwd-light">Registro de Nuevo Usuario</ion-title>
+    <ion-title class="dark:text-kwd-light">Registro de Estudiante</ion-title>
   </ion-toolbar>
 </ion-header>
 
@@ -11,7 +11,7 @@
   <div class="w-full max-w-md p-6 md:p-8 space-y-6 bg-white rounded-lg shadow-xl dark:bg-kwd-darker">
     <div>
       <h2 class="text-2xl font-bold text-center text-gray-900 dark:text-kwd-light">
-        Crear una cuenta
+        Crear cuenta de Estudiante
       </h2>
     </div>
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="mt-6 space-y-4">
@@ -54,15 +54,6 @@
       </div>
 
       <ion-item lines="none" class="rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark focus-within:ring-2 focus-within:ring-inset focus-within:ring-kwd-blue-DEFAULT">
-        <ion-label position="stacked" class="text-gray-700 dark:text-gray-300">Rol (Solo Desarrollo)</ion-label>
-        <ion-select formControlName="role" interface="popover" class="text-gray-900 dark:text-kwd-light">
-          <ion-select-option [value]="RolEnum.ESTUDIANTE">Estudiante</ion-select-option>
-          <ion-select-option [value]="RolEnum.PROFESOR">Profesor</ion-select-option>
-          <ion-select-option [value]="RolEnum.COORDINADOR">Coordinador</ion-select-option>
-        </ion-select>
-      </ion-item>
-
-      <ion-item lines="none" class="rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark focus-within:ring-2 focus-within:ring-inset focus-within:ring-kwd-blue-DEFAULT">
         <ion-label position="stacked" class="text-gray-700 dark:text-gray-300">Programa Académico</ion-label>
         <ion-select formControlName="career" interface="popover" placeholder="Selecciona tu carrera" class="text-gray-900 dark:text-kwd-light">
           <ion-select-option *ngFor="let c of careers" [value]="c">{{ c }}</ion-select-option>
@@ -71,6 +62,7 @@
       <div *ngIf="registerForm.get('career')?.invalid && registerForm.get('career')?.touched" class="mt-1 text-xs text-red-600 dark:text-kwd-red">
         <small *ngIf="registerForm.get('career')?.errors?.['required']">La carrera es requerida.</small>
       </div>
+
       <div *ngIf="errorMessage" class="p-3 mt-2 text-sm text-center text-red-700 bg-red-100 rounded-md dark:text-kwd-red dark:bg-red-900/30">
         {{ errorMessage }}
       </div>

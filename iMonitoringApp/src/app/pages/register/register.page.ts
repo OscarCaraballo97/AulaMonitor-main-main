@@ -8,7 +8,6 @@ import { Rol } from '../../models/rol.model';
 import { RegisterData, AuthResponse } from '../../models/auth.model';
 import { IonicModule } from '@ionic/angular';
 
-// CORRECCIÓN: El validador ahora busca los nombres correctos de los controles ('password_hash')
 export function passwordMatchValidator(): ValidatorFn {
   return (control: AbstractControl): { [key: string]: any } | null => {
     const password = control.get('password_hash');
@@ -48,10 +47,7 @@ export class RegisterPage implements OnInit {
   errorMessage: string = '';
   isLoading: boolean = false;
 
-  public rolesForSelect: { key: string, value: Rol }[] = [];
-  public RolEnum = Rol;
-
-  // --- LISTA DE CARRERAS (Agregada) ---
+  // --- LISTA DE CARRERAS ---
   careers: string[] = [
     'Administración de Empresas',
     'Contaduría Pública',
@@ -76,20 +72,15 @@ export class RegisterPage implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.rolesForSelect = Object.keys(Rol)
-      .filter(key => isNaN(Number(key)) && Rol[key as keyof typeof Rol] !== Rol.ADMIN && Rol[key as keyof typeof Rol] !== Rol.COORDINADOR)
-      .map(key => ({
-        key: key.charAt(0).toUpperCase() + key.slice(1).toLowerCase().replace('_', ' '),
-        value: Rol[key as keyof typeof Rol]
-      }));
-
     this.registerForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
       password_hash: ['', [Validators.required, Validators.minLength(6)]],
       confirmPassword_hash: ['', Validators.required],
+      // --- ROL FIJO: ESTUDIANTE ---
       role: [Rol.ESTUDIANTE, [Validators.required]],
-      career: ['', [Validators.required]] // --- NUEVO CAMPO CARRERA ---
+      // ----------------------------
+      career: ['', [Validators.required]]
     }, { validators: passwordMatchValidator() });
   }
 
@@ -97,8 +88,8 @@ export class RegisterPage implements OnInit {
   get email() { return this.registerForm.get('email'); }
   get password_hash() { return this.registerForm.get('password_hash'); }
   get confirmPassword_hash() { return this.registerForm.get('confirmPassword_hash'); }
-  get role() { return this.registerForm.get('role'); }
-  get career() { return this.registerForm.get('career'); } // Getter para carrera
+  // get role() ya no es estrictamente necesario para la vista, pero se mantiene en el form
+  get career() { return this.registerForm.get('career'); }
 
   async onSubmit() {
     if (this.registerForm.invalid) {
@@ -114,13 +105,12 @@ export class RegisterPage implements OnInit {
 
     const formValue = this.registerForm.value;
 
-    // Preparar objeto de envío
     const finalRegistrationData: RegisterData = {
       name: formValue.name,
       email: formValue.email,
       password_hash: formValue.password_hash,
-      role: formValue.role,
-      career: formValue.career // Incluimos la carrera seleccionada
+      role: formValue.role, // Se envía ESTUDIANTE por defecto
+      career: formValue.career
     };
 
     console.log('Enviando datos de registro:', finalRegistrationData);
@@ -147,9 +137,9 @@ export class RegisterPage implements OnInit {
         }
 
         if (err.status === 409) {
-          this.errorMessage = this.errorMessage || 'El correo electrónico ya está registrado. Por favor, revisa tu bandeja de entrada o intenta iniciar sesión.';
+          this.errorMessage = this.errorMessage || 'El correo electrónico ya está registrado.';
         } else if (err.status === 500) {
-          this.errorMessage = this.errorMessage || 'Ocurrió un error inesperado en el servidor. Por favor, intenta de nuevo más tarde.';
+          this.errorMessage = this.errorMessage || 'Ocurrió un error inesperado en el servidor.';
         }
 
         await this.presentToast(this.errorMessage, 'danger', 'close-circle-outline');

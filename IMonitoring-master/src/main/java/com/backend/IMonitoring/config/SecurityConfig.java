@@ -32,61 +32,65 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(Customizer.withDefaults())
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(
-                    "/api/auth/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-resources/**",
-                    "/webjars/**"
-                ).permitAll()
+                .cors(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        // Rutas públicas (Swagger, Auth, etc.)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
 
-                
-                .requestMatchers(HttpMethod.GET, "/api/buildings", "/api/buildings/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/buildings").hasAuthority("ROLE_" + Rol.ADMIN.name())
-                .requestMatchers(HttpMethod.PUT, "/api/buildings/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
-                .requestMatchers(HttpMethod.DELETE, "/api/buildings/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
+                        // --- BUILDINGS (Solo ADMIN) ---
+                        .requestMatchers(HttpMethod.GET, "/api/buildings/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/buildings").hasAuthority("ROLE_" + Rol.ADMIN.name())
+                        .requestMatchers(HttpMethod.PUT, "/api/buildings/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
+                        .requestMatchers(HttpMethod.DELETE, "/api/buildings/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
 
-                
-                .requestMatchers(HttpMethod.GET, "/api/classrooms", "/api/classrooms/{id}").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/classrooms/availability", "/api/classrooms/{classroomId}/reservations").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/classrooms").hasAuthority("ROLE_" + Rol.ADMIN.name())
-                .requestMatchers(HttpMethod.PUT, "/api/classrooms/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
-                .requestMatchers(HttpMethod.DELETE, "/api/classrooms/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
+                        // --- CLASSROOMS (Solo ADMIN, lectura todos) ---
+                        .requestMatchers(HttpMethod.GET, "/api/classrooms/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/classrooms").hasAuthority("ROLE_" + Rol.ADMIN.name())
+                        .requestMatchers(HttpMethod.PUT, "/api/classrooms/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
+                        .requestMatchers(HttpMethod.DELETE, "/api/classrooms/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
 
-                
-                .requestMatchers(HttpMethod.POST, "/api/reservations").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.PROFESOR.name(), "ROLE_" + Rol.TUTOR.name(), "ROLE_" + Rol.ESTUDIANTE.name(), "ROLE_" + Rol.COORDINADOR.name())
-                .requestMatchers(HttpMethod.GET, "/api/reservations", "/api/reservations/{id}", "/api/reservations/filter", "/api/reservations/my-list").authenticated() // Added /filter and /my-list
-                .requestMatchers(HttpMethod.PUT, "/api/reservations/{id}/status").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
-                .requestMatchers(HttpMethod.PATCH, "/api/reservations/{id}/status").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
-                .requestMatchers(HttpMethod.PUT, "/api/reservations/{id}").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/reservations/{id}").authenticated()
-                .requestMatchers(HttpMethod.PATCH, "/api/reservations/{id}/cancel").authenticated()
+                        // --- RESERVATIONS ---
+                        // Crear reserva: Todos los roles autenticados pueden intentarlo (validado en servicio)
+                        .requestMatchers(HttpMethod.POST, "/api/reservations").authenticated()
 
-                
-                .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/users/me/reservations").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/users/{id}").authenticated() // Fine-grained control in controller/service
-                .requestMatchers(HttpMethod.PATCH, "/api/users/{id}/password").authenticated()
+                        // Cambiar estado: ADMIN y COORDINADOR
+                        .requestMatchers(HttpMethod.PUT, "/api/reservations/{id}/status").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+                        .requestMatchers(HttpMethod.PATCH, "/api/reservations/{id}/status").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
 
-                
-                .requestMatchers(HttpMethod.GET, "/api/users").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
-                .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
-                .requestMatchers(HttpMethod.GET, "/api/users/role/{role}").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
-                .requestMatchers(HttpMethod.POST, "/api/users").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name()) // MODIFICADO: COORDINADOR puede crear
-                .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name()) // MODIFICADO: COORDINADOR puede eliminar (con lógica en servicio)
-                .requestMatchers(HttpMethod.GET, "/api/users/{userId}/reservations").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+                        // Otras operaciones de reserva
+                        .requestMatchers("/api/reservations/**").authenticated()
 
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(authenticationProvider)
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                        // --- USERS (CORRECCIÓN AQUÍ) ---
+                        // PERMITIR A COORDINADORES CREAR USUARIOS (POST)
+                        .requestMatchers(HttpMethod.POST, "/api/users").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+
+                        // Listar usuarios: ADMIN y COORDINADOR
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+
+                        // Editar usuarios: ADMIN y COORDINADOR
+                        .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+
+                        // Eliminar usuarios: ADMIN y COORDINADOR (validado en servicio)
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+
+                        // Perfil propio
+                        .requestMatchers("/api/users/me/**").authenticated()
+
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -94,13 +98,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8100"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8100", "http://localhost:4200"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", configuration);
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }

@@ -31,11 +31,8 @@ public class User {
     @Column(nullable = false)
     private Rol role;
 
-    // --- ESTE CAMPO FALTABA ---
     @Column(name = "career")
     private String career;
-    // -------------------------
-
     private String avatarUrl;
 
     @Column(name = "profile_picture", length = 1000000)

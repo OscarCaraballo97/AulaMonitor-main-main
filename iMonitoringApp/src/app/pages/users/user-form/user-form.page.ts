@@ -1,6 +1,11 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
-import { IonicModule, LoadingController, ToastController, NavController, AlertController } from '@ionic/angular';
+import {
+  IonicModule,
+  LoadingController,
+  ToastController,
+  NavController
+} from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { UserService } from '../../../services/user.service';
@@ -8,14 +13,19 @@ import { AuthService } from '../../../services/auth.service';
 import { User } from '../../../models/user.model';
 import { Rol } from '../../../models/rol.model';
 import { Subject, Observable } from 'rxjs';
-import { takeUntil, finalize, filter } from 'rxjs/operators';
+import { takeUntil, finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-user-form',
   templateUrl: './user-form.page.html',
   styleUrls: ['./user-form.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, ReactiveFormsModule, RouterModule]
+  imports: [
+    IonicModule, // Importa todos los componentes de Ionic (ion-button, ion-item, etc.)
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule
+  ]
 })
 export class UserFormPage implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -32,20 +42,27 @@ export class UserFormPage implements OnInit, OnDestroy {
   public rolesForSelect: { key: string, value: Rol }[] = [];
   public RolEnum = Rol;
 
-  // --- LISTA DE CARRERAS ---
-  careers: string[] = [
-    'Administración de Empresas',
-    'Contaduría Pública',
-    'Derecho',
-    'Licenciatura en Bilingüismo con énfasis en Inglés',
-    'Ingeniería Industrial',
-    'Ingeniería de Sistemas',
-    'Administración de Empresas Turísticas y Hoteleras',
+  // Listas de Carreras
+  private careerGroups: { [key: string]: string[] } = {
+    'SISTEMAS': ['Ingeniería de Sistemas', 'Tecnología en Desarrollo de Sistemas de Información y de Software'],
+    'INDUSTRIAL': ['Ingeniería Industrial', 'Tecnología en Sistemas de Gestión de Calidad'],
+    'TURISMO': ['Administración de Empresas Turísticas y Hoteleras', 'Tecnología en Gestión de Servicios Turísticos y Hoteleros'],
+    'ADMINISTRACION': ['Administración de Empresas'],
+    'CONTADURIA': ['Contaduría Pública'],
+    'DERECHO': ['Derecho'],
+    'BILINGUISMO': ['Licenciatura en Bilingüismo con énfasis en Inglés']
+  };
+
+  private allCareers: string[] = [
+    'Administración de Empresas', 'Contaduría Pública', 'Derecho',
+    'Licenciatura en Bilingüismo con énfasis en Inglés', 'Ingeniería Industrial',
+    'Ingeniería de Sistemas', 'Administración de Empresas Turísticas y Hoteleras',
     'Tecnología en Sistemas de Gestión de Calidad',
     'Tecnología en Desarrollo de Sistemas de Información y de Software',
     'Tecnología en Gestión de Servicios Turísticos y Hoteleros'
   ];
-  // -------------------------
+
+  public availableCareers: string[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -55,26 +72,24 @@ export class UserFormPage implements OnInit, OnDestroy {
     private loadingCtrl: LoadingController,
     private toastCtrl: ToastController,
     private navCtrl: NavController,
-    private cdr: ChangeDetectorRef,
-    private router: Router
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    console.log("UserFormPage: ngOnInit - INICIO");
     this.userForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
       password: [''],
       role: [Rol.ESTUDIANTE, Validators.required],
-      career: ['', Validators.required], // --- AGREGADO CAMPO CARRERA
+      career: ['', Validators.required],
       avatarUrl: ['']
     });
-    console.log("UserFormPage: userForm ha sido inicializado:", !!this.userForm);
 
     this.authService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe(user => {
         this.currentUser = user;
         this.loggedInUserRole = user?.role || null;
         this.setupRolesForSelect();
+        this.setupCareersForSelect(); // Filtrar carreras al inicio
         this.cdr.detectChanges();
     });
 
@@ -91,8 +106,13 @@ export class UserFormPage implements OnInit, OnDestroy {
         this.pageTitle = 'Nuevo Usuario';
         this.userForm.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
         this.userForm.get('password')?.updateValueAndValidity();
+
+        // Pre-seleccionar rol si es coordinador
+        if (this.loggedInUserRole === Rol.COORDINADOR) {
+             this.userForm.patchValue({ role: Rol.ESTUDIANTE });
+        }
       }
-       this.cdr.detectChanges();
+      this.cdr.detectChanges();
     });
   }
 
@@ -103,10 +123,34 @@ export class UserFormPage implements OnInit, OnDestroy {
         .map(key => ({ key: key.replace('_', ' '), value: Rol[key as keyof typeof Rol] }));
     } else if (this.loggedInUserRole === Rol.COORDINADOR) {
       this.rolesForSelect = Object.keys(Rol)
-        .filter(key => isNaN(Number(key)) && [Rol.ESTUDIANTE, Rol.TUTOR, Rol.PROFESOR].includes(Rol[key as keyof typeof Rol]))
+        .filter(key => isNaN(Number(key)) && (Rol[key as keyof typeof Rol] === Rol.ESTUDIANTE || Rol[key as keyof typeof Rol] === Rol.PROFESOR))
         .map(key => ({ key: key.replace('_', ' '), value: Rol[key as keyof typeof Rol] }));
     } else {
       this.rolesForSelect = [];
+    }
+  }
+
+  setupCareersForSelect() {
+    if (this.loggedInUserRole === Rol.ADMIN) {
+      this.availableCareers = [...this.allCareers];
+    } else if (this.loggedInUserRole === Rol.COORDINADOR && this.currentUser?.career) {
+      const coordinatorCareer = this.currentUser.career;
+      let foundGroup: string[] | null = null;
+
+      for (const groupKey in this.careerGroups) {
+        if (this.careerGroups[groupKey].includes(coordinatorCareer)) {
+          foundGroup = this.careerGroups[groupKey];
+          break;
+        }
+      }
+      this.availableCareers = foundGroup ? foundGroup : [coordinatorCareer];
+
+      // Auto-seleccionar si solo hay una opción
+      if (this.availableCareers.length === 1) {
+          this.userForm.patchValue({ career: this.availableCareers[0] });
+      }
+    } else {
+      this.availableCareers = [];
     }
   }
 
@@ -117,7 +161,7 @@ export class UserFormPage implements OnInit, OnDestroy {
 
   async loadUserData(id: string) {
     this.isLoading = true;
-    const loading = await this.loadingCtrl.create({ message: 'Cargando usuario...' });
+    const loading = await this.loadingCtrl.create({ message: 'Cargando...' });
     await loading.present();
 
     this.userService.getUserById(id).pipe(
@@ -132,17 +176,13 @@ export class UserFormPage implements OnInit, OnDestroy {
           name: user.name,
           email: user.email,
           role: user.role,
-          career: user.career, // --- CARGAR CARRERA ---
+          career: user.career,
           avatarUrl: user.avatarUrl
         });
-
-        if (this.loggedInUserRole !== Rol.ADMIN && this.userForm.get('role')) {
-            this.userForm.get('role')?.disable();
-        }
         this.cdr.detectChanges();
       },
       error: async (err) => {
-        this.errorMessage = err.message || 'Error al cargar datos del usuario.';
+        this.errorMessage = err.message || 'Error al cargar usuario.';
         await this.presentToast(this.errorMessage, 'danger');
         this.navCtrl.navigateBack('/app/users');
       }
@@ -150,32 +190,20 @@ export class UserFormPage implements OnInit, OnDestroy {
   }
 
   async onSubmit() {
-    if (!this.userForm || this.userForm.invalid) {
-      if(this.userForm) this.markFormGroupTouched(this.userForm);
+    if (this.userForm.invalid) {
+      this.markFormGroupTouched(this.userForm);
       await this.presentToast('Por favor, corrige los errores.', 'warning');
       return;
     }
 
     this.isLoading = true;
     this.errorMessage = '';
-    const loading = await this.loadingCtrl.create({ message: this.isEditMode ? 'Actualizando...' : 'Creando...' });
+    const loading = await this.loadingCtrl.create({ message: this.isEditMode ? 'Guardando...' : 'Creando...' });
     await loading.present();
 
     const userData = this.userForm.getRawValue();
 
-    // Si no es admin editando, o si es un coordinador, el backend manejará la asignación final,
-    // pero enviamos el dato seleccionado.
-
-    if (!this.isEditMode && !userData.password) {
-        this.isLoading = false;
-        await loading.dismiss();
-        await this.presentToast('La contraseña es requerida para nuevos usuarios.', 'warning');
-        this.userForm.get('password')?.markAsTouched();
-        return;
-    }
-    if (this.isEditMode && (userData.password === null || userData.password === '')) {
-        delete userData.password;
-    }
+    if (this.isEditMode && !userData.password) delete userData.password;
 
     let operation: Observable<User>;
     if (this.isEditMode && this.userId) {
@@ -192,13 +220,13 @@ export class UserFormPage implements OnInit, OnDestroy {
       })
     ).subscribe({
       next: async () => {
-        const message = this.isEditMode ? 'Usuario actualizado exitosamente.' : 'Usuario creado exitosamente.';
-        await this.presentToast(message, 'success');
+        await this.presentToast('Operación exitosa.', 'success');
         this.navCtrl.navigateBack('/app/users');
       },
       error: async (err) => {
-        this.errorMessage = err.message || (this.isEditMode ? 'Error al actualizar.' : 'Error al crear.');
-        await this.presentToast(this.errorMessage, 'danger');
+        let msg = err.error?.message || err.message || 'Error en la operación.';
+        if (err.status === 403) msg = 'No tienes permiso para esto.';
+        await this.presentToast(msg, 'danger');
       }
     });
   }
@@ -206,9 +234,7 @@ export class UserFormPage implements OnInit, OnDestroy {
   private markFormGroupTouched(formGroup: FormGroup) {
     Object.values(formGroup.controls).forEach(control => {
       control.markAsTouched();
-      if (control instanceof FormGroup) {
-        this.markFormGroupTouched(control);
-      }
+      if (control instanceof FormGroup) this.markFormGroupTouched(control);
     });
   }
 
