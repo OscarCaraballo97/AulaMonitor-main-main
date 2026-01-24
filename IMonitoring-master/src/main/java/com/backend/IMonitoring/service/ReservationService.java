@@ -18,11 +18,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneOffset;
+import java.time.ZoneOffset; // Import agregado
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -73,7 +76,33 @@ public class ReservationService {
     }
 
     public ReservationResponseDTO getReservationByIdDTO(String id) {
-        return convertToDTO(getReservationById(id));
+        Reservation res = getReservationById(id);
+        ReservationResponseDTO dto = convertToDTO(res);
+
+        if (res.getGroupId() != null) {
+            List<Reservation> groupReservations = reservationRepository.findByGroupId(res.getGroupId());
+            if (!groupReservations.isEmpty()) {
+                LocalDateTime minStart = groupReservations.stream()
+                        .map(Reservation::getStartTime)
+                        .min(LocalDateTime::compareTo)
+                        .orElse(res.getStartTime());
+
+                LocalDateTime maxEnd = groupReservations.stream()
+                        .map(Reservation::getEndTime)
+                        .max(LocalDateTime::compareTo)
+                        .orElse(res.getEndTime());
+
+                List<String> days = groupReservations.stream()
+                        .map(r -> r.getStartTime().getDayOfWeek().name())
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                dto.setSemesterStartDate(minStart.toLocalDate());
+                dto.setSemesterEndDate(maxEnd.toLocalDate());
+                dto.setDaysOfWeek(days);
+            }
+        }
+        return dto;
     }
 
     public List<ReservationResponseDTO> getAdminFilteredReservations(
@@ -97,9 +126,11 @@ public class ReservationService {
         return convertToDTOList(reservationsList);
     }
 
+    // CORRECCIÓN: Eliminados parámetros 'page' y 'size' no usados para limpiar warnings
     public List<ReservationResponseDTO> getFilteredUserReservations(
             String userIdAuth, ReservationStatus status, String sortField, String sortDirection,
-            Integer page, Integer size, boolean futureOnly, LocalDateTime startDate, LocalDateTime endDate) {
+            boolean futureOnly, LocalDateTime startDate, LocalDateTime endDate) {
+
         Sort sort = (sortField != null && !sortField.isEmpty()) ?
                 Sort.by((sortDirection != null && sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC), sortField) :
                 Sort.by(Sort.Direction.DESC, "startTime");
@@ -152,10 +183,10 @@ public class ReservationService {
 
         String seriesGroupId = UUID.randomUUID().toString();
 
-        String recurrenceText = request.getDaysOfWeek().stream()
-                .map(day -> day.getDisplayName(TextStyle.FULL, new Locale("es", "ES")).toUpperCase())
-                .sorted()
-                .collect(Collectors.joining(" - "));
+        List<String> daysAsStrings = request.getDaysOfWeek().stream()
+                .map(DayOfWeek::name)
+                .collect(Collectors.toList());
+        String recurrenceText = generateRecurrenceString(daysAsStrings);
 
         List<Reservation> reservationsToSave = new ArrayList<>();
         LocalDate currentDate = request.getSemesterStartDate();
@@ -251,7 +282,7 @@ public class ReservationService {
     }
 
     @Transactional
-    public List<ReservationResponseDTO> updateReservationSmart(String id, Reservation updatedData, UserDetails userDetails, boolean editSeries) {
+    public List<ReservationResponseDTO> updateReservationSmart(String id, Reservation updatedData, List<String> newDaysOfWeek, UserDetails userDetails, boolean editSeries) {
         Reservation originalReservation = getReservationById(id);
 
         validateUpdatePermissions(originalReservation, userDetails, updatedData);
@@ -267,18 +298,36 @@ public class ReservationService {
         List<Reservation> results = new ArrayList<>();
 
         if (editSeries) {
-            List<Reservation> groupReservations = reservationRepository.findByGroupId(originalReservation.getGroupId());
+            String groupId = originalReservation.getGroupId();
+            List<Reservation> groupReservations = reservationRepository.findByGroupId(groupId);
             LocalDateTime now = LocalDateTime.now();
+
+            LocalDateTime semesterEndDateTime = groupReservations.stream()
+                    .map(Reservation::getEndTime)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(originalReservation.getEndTime());
+
+            if (newDaysOfWeek != null && !newDaysOfWeek.isEmpty()) {
+                syncSemesterDays(groupId, groupReservations, newDaysOfWeek, updatedData, semesterEndDateTime, now);
+                groupReservations = reservationRepository.findByGroupId(groupId);
+            }
+
             List<Reservation> futureReservations = groupReservations.stream()
                     .filter(r -> r.getEndTime().isAfter(now))
                     .collect(Collectors.toList());
 
             if (!futureReservations.contains(originalReservation) && originalReservation.getEndTime().isAfter(now)) {
-                futureReservations.add(originalReservation);
+                if (reservationRepository.existsById(originalReservation.getId())) {
+                    futureReservations.add(originalReservation);
+                }
             }
+
+            String newRecurrenceDetails = (newDaysOfWeek != null && !newDaysOfWeek.isEmpty()) ?
+                    generateRecurrenceString(newDaysOfWeek) : originalReservation.getRecurrenceDetails();
 
             for (Reservation res : futureReservations) {
                 applyChangesToReservation(res, updatedData, true);
+                res.setRecurrenceDetails(newRecurrenceDetails);
                 if (isCoordinatorOrAdmin) {
                     res.setStatus(ReservationStatus.CONFIRMADA);
                 }
@@ -291,10 +340,70 @@ public class ReservationService {
                 originalReservation.setGroupId(null);
                 originalReservation.setRecurrenceDetails(null);
             }
-
             applyChangesToReservation(originalReservation, updatedData, false);
             return List.of(convertToDTO(reservationRepository.save(originalReservation)));
         }
+    }
+
+    private void syncSemesterDays(String groupId, List<Reservation> currentReservations, List<String> targetDays, Reservation baseData, LocalDateTime semesterEnd, LocalDateTime now) {
+        List<Reservation> futureReservations = currentReservations.stream()
+                .filter(r -> r.getStartTime().isAfter(now))
+                .collect(Collectors.toList());
+
+        Set<LocalDate> coveredDates = new HashSet<>();
+
+        for (Reservation res : futureReservations) {
+            String dayName = res.getStartTime().getDayOfWeek().name();
+            if (!targetDays.contains(dayName)) {
+                reservationRepository.delete(res);
+            } else {
+                coveredDates.add(res.getStartTime().toLocalDate());
+            }
+        }
+
+        LocalDate startDate = now.toLocalDate();
+        LocalDate endDate = semesterEnd.toLocalDate();
+        String newRecurrenceText = generateRecurrenceString(targetDays);
+
+        long daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
+        List<Reservation> newReservations = new ArrayList<>();
+
+        for (int i = 0; i <= daysBetween; i++) {
+            LocalDate currentDate = startDate.plusDays(i);
+            String dayName = currentDate.getDayOfWeek().name();
+
+            if (targetDays.contains(dayName) && !coveredDates.contains(currentDate)) {
+                LocalDateTime startDT = LocalDateTime.of(currentDate, baseData.getStartTime().toLocalTime());
+                LocalDateTime endDT = LocalDateTime.of(currentDate, baseData.getEndTime().toLocalTime());
+
+                checkAvailabilityOrThrow(baseData.getClassroom().getId(), startDT, endDT, null);
+
+                Reservation newRes = Reservation.builder()
+                        .classroom(baseData.getClassroom())
+                        .user(baseData.getUser())
+                        .purpose(baseData.getPurpose())
+                        .startTime(startDT)
+                        .endTime(endDT)
+                        .status(ReservationStatus.CONFIRMADA)
+                        .groupId(groupId)
+                        .recurrenceDetails(newRecurrenceText)
+                        .build();
+
+                newReservations.add(newRes);
+            }
+        }
+        if (!newReservations.isEmpty()) {
+            reservationRepository.saveAll(newReservations);
+        }
+    }
+
+    private String generateRecurrenceString(List<String> days) {
+        return days.stream()
+                .map(d -> DayOfWeek.valueOf(d.toUpperCase()))
+                .sorted()
+                // CORRECCIÓN: Uso de Locale.forLanguageTag para evitar warnings
+                .map(d -> d.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es-ES")).toUpperCase())
+                .collect(Collectors.joining(" - "));
     }
 
     private void applyChangesToReservation(Reservation target, Reservation source, boolean isBatchUpdate) {
@@ -347,15 +456,30 @@ public class ReservationService {
                     : reservationRepository.findOverlappingReservations(classroomId, start, end).stream()
                     .filter(r -> !r.getId().equals(excludeReservationId)).collect(Collectors.toList());
 
-            String msg = "Conflicto el " + start.toLocalDate() + " (" + start.toLocalTime() + "-" + end.toLocalTime() + ")";
             if (!conflicts.isEmpty()) {
-                Reservation c = conflicts.get(0);
-                msg += ". Ocupado por: " + (c.getUser() != null ? c.getUser().getName() : "Usuario desconocido");
+                Reservation conflict = conflicts.get(0);
+
+                // CORRECCIÓN: Uso de Locale.forLanguageTag
+                DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM", Locale.forLanguageTag("es-ES"));
+                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+                String conflictDay = conflict.getStartTime().format(dayFormatter);
+                String conflictStart = conflict.getStartTime().format(timeFormatter);
+                String conflictEnd = conflict.getEndTime().format(timeFormatter);
+                String conflictUser = (conflict.getUser() != null) ? conflict.getUser().getName() : "Usuario desconocido";
+                String conflictPurpose = (conflict.getPurpose() != null) ? conflict.getPurpose() : "Sin propósito";
+
+                String msg = String.format("Conflicto el %s de %s a %s. Ocupado por: '%s' (%s).",
+                        conflictDay, conflictStart, conflictEnd, conflictPurpose, conflictUser);
+
+                throw new InvalidReservationException(msg);
+            } else {
+                throw new InvalidReservationException("El horario seleccionado no está disponible.");
             }
-            throw new InvalidReservationException(msg);
         }
     }
 
+    // CORRECCIÓN: Este es el método que te faltaba
     private void validateUpdatePermissions(Reservation reservation, UserDetails userDetails, Reservation updatedData) {
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) userDetails;
         User userUpdating = userDetailsImpl.getUserEntity();

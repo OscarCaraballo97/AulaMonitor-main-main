@@ -25,14 +25,15 @@
   <ion-item class="mb-4 rounded-md shadow-sm">
     <ion-label position="stacked">Selecciona un Aula</ion-label>
     <ion-select interface="popover" [(ngModel)]="selectedClassroomId" (ionChange)="onClassroomSelected($event)" placeholder="Elige aula">
-      <ion-select-option *ngFor="let c of allClassrooms" [value]="c.id">{{ c.name }}</ion-select-option>
+      <ion-select-option *ngFor="let c of allClassrooms" [value]="c.id">{{ c.name }} ({{ c.buildingName }})</ion-select-option>
     </ion-select>
   </ion-item>
 
   <ng-container *ngIf="selectedClassroomId && getSelectedClassroomDetails() as room">
     <ion-card>
       <ion-card-content>
-        <h2 class="text-lg font-bold text-primary mb-2">{{ room.name }}</h2>
+        <h2 class="text-lg font-bold text-primary mb-2">{{ room.name }} ({{ room.buildingName }})</h2>
+
         <div *ngIf="isLoadingSlots" class="text-center py-4"><ion-spinner></ion-spinner></div>
 
         <div *ngIf="!isLoadingSlots && timeSlotsForSelectedClassroom.length > 0">

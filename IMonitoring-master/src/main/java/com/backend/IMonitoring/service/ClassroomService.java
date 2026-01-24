@@ -2,7 +2,7 @@ package com.backend.IMonitoring.service;
 
 import com.backend.IMonitoring.dto.ClassroomAvailabilitySummaryDTO;
 import com.backend.IMonitoring.dto.AvailabilityRequest;
-import com.backend.IMonitoring.dto.ClassroomDTO; 
+import com.backend.IMonitoring.dto.ClassroomDTO;
 import com.backend.IMonitoring.dto.ClassroomRequestDTO;
 import com.backend.IMonitoring.model.Classroom;
 import com.backend.IMonitoring.model.ClassroomType;
@@ -18,9 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset; 
+import java.time.ZoneOffset;
 import java.util.List;
-import java.util.stream.Collectors; 
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,10 +31,10 @@ public class ClassroomService {
     private final ReservationRepository reservationRepository;
 
     @Transactional
-    public List<ClassroomDTO> getAllClassroomsDTO() { 
+    public List<ClassroomDTO> getAllClassroomsDTO() {
         List<Classroom> classrooms = classroomRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
         return classrooms.stream()
-                .map(this::convertToDTO) 
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
@@ -48,7 +48,9 @@ public class ClassroomService {
                 .capacity(classroom.getCapacity())
                 .type(classroom.getType())
                 .resources(classroom.getResources())
-                .buildingId(classroom.getBuilding() != null ? classroom.getBuilding().getId() : null) // Asegurarse de obtener el buildingId
+                .buildingId(classroom.getBuilding() != null ? classroom.getBuilding().getId() : null)
+                // CAMBIO: Se asigna el nombre del edificio, o un texto por defecto si es nulo
+                .buildingName(classroom.getBuilding() != null ? classroom.getBuilding().getName() : "Sin Edificio")
                 .build();
     }
 
@@ -124,14 +126,14 @@ public class ClassroomService {
         }
         return classroomRepository.isAvailableConsideringAllStatuses(
                 request.getClassroomId(),
-                request.getStartTime(), 
-                request.getEndTime()    
+                request.getStartTime(),
+                request.getEndTime()
         );
     }
 
     public ClassroomAvailabilitySummaryDTO getAvailabilitySummary() {
-    
-        List<Classroom> available = this.getAvailableNow(); 
+
+        List<Classroom> available = this.getAvailableNow();
         List<Classroom> unavailable = this.getUnavailableNow();
         long total = classroomRepository.count();
         return new ClassroomAvailabilitySummaryDTO(available.size(), unavailable.size(), (int) total);

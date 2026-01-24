@@ -3,10 +3,10 @@ import { CommonModule, DatePipe, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, Params } from '@angular/router';
 import {
-  IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent, IonSegment, IonSegmentButton,
+  IonHeader, IonToolbar, IonButtons, IonTitle, IonContent, IonSegment, IonSegmentButton,
   IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner, IonInput, IonSelect, IonSelectOption,
-  IonChip, IonItemSliding, IonItemOptions, IonItemOption, IonRefresher, IonRefresherContent,
-  ToastController, AlertController, NavController, LoadingController
+  IonItemSliding, IonItemOptions, IonItemOption, IonRefresher, IonRefresherContent,
+  ToastController, AlertController, NavController, LoadingController, IonMenuButton
 } from '@ionic/angular/standalone';
 
 import { ReservationService } from '../../../services/reservation.service';
@@ -14,7 +14,7 @@ import { Reservation, ReservationStatus } from '../../../models/reservation.mode
 import { AuthService } from '../../../services/auth.service';
 import { User } from '../../../models/user.model';
 import { Rol } from 'src/app/models/rol.model';
-import { Subject, Observable, of } from 'rxjs';
+import { Subject, Observable } from 'rxjs';
 import { takeUntil, finalize } from 'rxjs/operators';
 import { ClassroomService } from 'src/app/services/classroom.service';
 import { Classroom } from 'src/app/models/classroom.model';
@@ -41,19 +41,19 @@ export interface ReservationViewItem {
 
 @Component({
   selector: 'app-reservation-list',
-  templateUrl: './reservation-list.page.html', // <--- IMPORTANTE: DEBE DECIR LIST, NO FORM
+  templateUrl: './reservation-list.page.html',
   styleUrls: ['./reservation-list.page.scss'],
   standalone: true,
   imports: [
     CommonModule, FormsModule, TitleCasePipe,
-    IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent,
+    IonHeader, IonToolbar, IonButtons, IonTitle, IonContent,
     IonSegment, IonSegmentButton, IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner,
     IonInput, IonSelect, IonSelectOption, IonItemSliding, IonItemOptions, IonItemOption,
-    IonRefresher, IonRefresherContent
+    IonRefresher, IonRefresherContent, IonMenuButton
   ],
   providers: [DatePipe]
 })
-export class ReservationListPage implements OnInit, OnDestroy { // <--- CLASE CORRECTA
+export class ReservationListPage implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   currentUser: User | null = null;
@@ -189,37 +189,55 @@ export class ReservationListPage implements OnInit, OnDestroy { // <--- CLASE CO
     });
   }
 
+  // --- AGRUPACIÓN DE RESERVAS ---
   private groupReservations(reservations: Reservation[]): ReservationViewItem[] {
     const groups: { [key: string]: Reservation[] } = {};
     const viewItems: ReservationViewItem[] = [];
 
+    // Agrupar por ID de Grupo (si existe) o por ID de reserva
     reservations.forEach(res => {
-      const d = new Date(res.startTime);
-      const timeKey = `${d.getHours()}:${d.getMinutes()}`;
-      const endTimeKey = new Date(res.endTime).getHours() + ':' + new Date(res.endTime).getMinutes();
-      const dayName = d.toLocaleDateString('es-CO', { weekday: 'long' });
-
-      const key = `${res.classroom?.id}_${res.user?.id}_${res.purpose}_${timeKey}_${endTimeKey}_${dayName}`;
-
+      let key = res.id;
+      if (res.groupId) {
+        key = res.groupId;
+      }
       if (!groups[key]) groups[key] = [];
       groups[key].push(res);
     });
 
     for (const key in groups) {
       const list = groups[key];
+      // Ordenar por fecha para encontrar inicio/fin reales del grupo
       list.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
       const first = list[0];
       const last = list[list.length - 1];
-      const isGroup = list.length > 1;
+      const isGroup = !!first.groupId;
 
       let dateDesc = '';
+
       if (isGroup) {
-        const startStr = this.datePipe.transform(first.startTime, 'dd MMM');
-        const endStr = this.datePipe.transform(last.startTime, 'dd MMM');
-        const dayStr = this.datePipe.transform(first.startTime, 'EEEE');
-        dateDesc = `${dayStr}s (${startStr} - ${endStr})`;
+        if (first.recurrenceDetails) {
+            // Caso ideal: el backend envía "LUNES - MIERCOLES"
+            const recurrenceFormatted = this.toTitleCase(first.recurrenceDetails);
+            const startStr = this.datePipe.transform(first.startTime, 'dd MMM');
+            const endStr = this.datePipe.transform(last.startTime, 'dd MMM');
+            dateDesc = `${recurrenceFormatted} (${startStr} - ${endStr})`;
+        } else {
+            // Caso fallback: Calcular días únicos y ordenarlos (Lunes antes que Martes)
+            const uniqueDays = Array.from(new Set(list.map(r => new Date(r.startTime).getDay())));
+
+            // Ordenar: Domingo(0) al final o al principio. Aquí Lunes=1..Sabado=6, Domingo=0.
+            uniqueDays.sort((a, b) => {
+                const isoA = a === 0 ? 7 : a;
+                const isoB = b === 0 ? 7 : b;
+                return isoA - isoB;
+            });
+
+            const daysStr = uniqueDays.map(d => this.getDayName(d)).join(' - ');
+            dateDesc = `${daysStr} (${list.length} clases)`;
+        }
       } else {
+        // Reserva individual
         dateDesc = this.datePipe.transform(first.startTime, 'EEEE, d/MM/yy') || '';
       }
 
@@ -238,9 +256,20 @@ export class ReservationListPage implements OnInit, OnDestroy { // <--- CLASE CO
       });
     }
 
+    // Ordenar la lista final por fecha de inicio más reciente
     return viewItems.sort((a, b) => {
         return new Date(b.rawReservation.startTime).getTime() - new Date(a.rawReservation.startTime).getTime();
     });
+  }
+
+  private getDayName(dayIndex: number): string {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    return days[dayIndex];
+  }
+
+  private toTitleCase(str: string): string {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
 
   applyFilters() {

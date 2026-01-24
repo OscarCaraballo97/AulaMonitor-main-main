@@ -77,9 +77,9 @@ public class ReservationController {
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) currentUserDetails;
         String currentAuthUserId = userDetailsImpl.getId();
 
+        // CORRECCIÓN: Se eliminan 'page' y 'size' de la llamada porque se quitaron del servicio
         List<ReservationResponseDTO> reservationDTOs = reservationService.getFilteredUserReservations(
                 currentAuthUserId, status, sortField, sortDirection,
-                page, size,
                 futureOnly != null && futureOnly,
                 startDate, endDate
         );
@@ -196,7 +196,14 @@ public class ReservationController {
         reservationDetailsToUpdate.setEndTime(reservationRequestDTO.getEndTime());
         reservationDetailsToUpdate.setPurpose(reservationRequestDTO.getPurpose());
 
-        List<ReservationResponseDTO> updatedReservations = reservationService.updateReservationSmart(id, reservationDetailsToUpdate, currentUserDetails, editSeries);
+        // Se pasa daysOfWeek. Si reservationRequestDTO no tiene este campo (ver abajo), esto daría error.
+        List<ReservationResponseDTO> updatedReservations = reservationService.updateReservationSmart(
+                id,
+                reservationDetailsToUpdate,
+                reservationRequestDTO.getDaysOfWeek(),
+                currentUserDetails,
+                editSeries
+        );
         return ResponseEntity.ok(updatedReservations);
     }
 

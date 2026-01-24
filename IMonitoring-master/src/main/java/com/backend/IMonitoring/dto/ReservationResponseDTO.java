@@ -6,7 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -15,7 +17,7 @@ import java.time.LocalDateTime;
 public class ReservationResponseDTO {
     private String id;
     private String groupId;
-    private String recurrenceDetails; // <--- NUEVO CAMPO
+    private String recurrenceDetails;
     private ClassroomSummaryDTO classroom;
     private UserSummaryDTO user;
     private LocalDateTime startTime;
@@ -24,4 +26,9 @@ public class ReservationResponseDTO {
     private ReservationStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // --- NUEVOS CAMPOS PARA EDICIÓN DE SEMESTRE ---
+    private LocalDate semesterStartDate;
+    private LocalDate semesterEndDate;
+    private List<String> daysOfWeek;
 }

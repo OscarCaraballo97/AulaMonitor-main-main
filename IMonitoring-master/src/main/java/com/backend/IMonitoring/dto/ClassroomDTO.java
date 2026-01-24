@@ -30,4 +30,6 @@ public class ClassroomDTO {
 
     @NotBlank(message = "El ID del edificio es obligatorio")
     private String buildingId;
+
+    private String buildingName;
 }

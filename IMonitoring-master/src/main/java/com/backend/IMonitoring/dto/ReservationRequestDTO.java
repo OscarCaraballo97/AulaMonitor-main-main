@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -25,4 +26,5 @@ public class ReservationRequestDTO {
 
     private String purpose;
     private ReservationStatus status;
+    private List<String> daysOfWeek;
 }

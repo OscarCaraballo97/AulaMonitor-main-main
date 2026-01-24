@@ -76,8 +76,10 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
   ) {
     const todayLocal = new Date();
     this.minDate = this.formatDateToLocalYYYYMMDD(todayLocal);
+
+    // CORRECCIÓN AQUÍ: Se suman 10 años en lugar de 30 días
     const maxDateCalc = new Date(todayLocal);
-    maxDateCalc.setDate(todayLocal.getDate() + 30);
+    maxDateCalc.setFullYear(todayLocal.getFullYear() + 10);
     this.maxDate = this.formatDateToLocalYYYYMMDD(maxDateCalc);
 
     const dateFromParams = this.route.snapshot.queryParamMap.get('date');
@@ -207,12 +209,11 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
     const dayStart = new Date(dateStr + 'T00:00:00');
     const dayOfWeek = dayStart.getDay();
 
-    if (dayOfWeek === 0) return []; // Domingo cerrado
+    if (dayOfWeek === 0) return [];
 
     let closingHour = this.CLOSING_HOUR_LOCAL;
     if (dayOfWeek === 6) closingHour = this.SATURDAY_CLOSING_HOUR_LOCAL;
 
-    // Generar slots de 45 min
     let pointer = new Date(dayStart);
     pointer.setHours(this.OPENING_HOUR_LOCAL, 0, 0, 0);
     const endLimit = new Date(dayStart);

@@ -33,8 +33,8 @@ export interface ReservationCreationData {
 
 export interface Reservation {
   id: string;
-  groupId?: string; // Identificador de grupo
-  recurrenceDetails?: string; // Ej: "LUNES - MIERCOLES"
+  groupId?: string; 
+  recurrenceDetails?: string;
   purpose: string;
   startTime: string;
   endTime: string;
@@ -43,4 +43,7 @@ export interface Reservation {
   classroom?: ReservationClassroomDetails;
   createdAt?: string;
   updatedAt?: string;
+  semesterStartDate?: string;
+  semesterEndDate?: string;
+  daysOfWeek?: string[];
 }

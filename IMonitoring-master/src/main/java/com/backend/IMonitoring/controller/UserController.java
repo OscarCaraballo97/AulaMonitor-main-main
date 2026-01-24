@@ -9,7 +9,7 @@ import com.backend.IMonitoring.model.User;
 import com.backend.IMonitoring.security.UserDetailsImpl;
 import com.backend.IMonitoring.service.ReservationService;
 import com.backend.IMonitoring.service.UserService;
-import com.backend.IMonitoring.utils.CareerUtils; // Importante: Agregar esta importación
+import com.backend.IMonitoring.utils.CareerUtils;
 import com.backend.IMonitoring.exceptions.UnauthorizedAccessException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +50,6 @@ public class UserController {
         if (currentUserDetails.getRoleEnum() == Rol.ADMIN) {
             usersToProcess = userService.getAllUsers();
         } else if (currentUserDetails.getRoleEnum() == Rol.COORDINADOR) {
-            // Obtener la carrera del coordinador
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
 
             List<User> students = userService.getUsersByRole(Rol.ESTUDIANTE);
@@ -62,7 +61,6 @@ public class UserController {
             allCandidates.addAll(tutors);
             allCandidates.addAll(professors);
 
-            // Filtrar solo los usuarios que pertenecen al mismo grupo académico que el coordinador
             usersToProcess = allCandidates.stream()
                     .filter(user -> CareerUtils.areSameCareerGroup(coordinatorCareer, user.getCareer()))
                     .collect(Collectors.toList());
@@ -86,7 +84,6 @@ public class UserController {
             return ResponseEntity.ok(UserDTO.fromEntity(targetUser));
         }
 
-        // Validar que el Coordinador solo vea usuarios de su grupo académico
         if (isCoordinator && (targetUser.getRole() == Rol.ESTUDIANTE || targetUser.getRole() == Rol.TUTOR || targetUser.getRole() == Rol.PROFESOR)) {
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
             if (CareerUtils.areSameCareerGroup(coordinatorCareer, targetUser.getCareer())) {
@@ -107,7 +104,6 @@ public class UserController {
             return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
         }
 
-        // Filtrar por carrera en la búsqueda por rol
         if (isCoordinator && (role == Rol.ESTUDIANTE || role == Rol.TUTOR || role == Rol.PROFESOR)) {
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
 
@@ -171,13 +167,12 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    // Filtrar reservaciones si el coordinador intenta ver las de un usuario fuera de su carrera
     @GetMapping("/{userId}/reservations")
     @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR') or #userId == authentication.principal.id")
     public ResponseEntity<List<ReservationResponseDTO>> getUserReservations(@PathVariable String userId, @AuthenticationPrincipal UserDetailsImpl currentUserDetails) {
         boolean isCoordinator = currentUserDetails.getRoleEnum() == Rol.COORDINADOR;
         if (isCoordinator && !userId.equals(currentUserDetails.getId())) {
-            User targetUser = userService.getUserById(userId); // Esto lanzará excepción si no existe
+            User targetUser = userService.getUserById(userId);
             if (!CareerUtils.areSameCareerGroup(currentUserDetails.getUserEntity().getCareer(), targetUser.getCareer())) {
                 throw new UnauthorizedAccessException("No puedes ver las reservas de un usuario de otra carrera.");
             }
@@ -202,8 +197,9 @@ public class UserController {
             @RequestParam(required = false, defaultValue = "1000") int size) {
         String currentUserId = currentUserDetails.getId();
 
+        // CORRECCIÓN AQUÍ: Se eliminan 'page' y 'size' de la llamada al servicio
         List<ReservationResponseDTO> userReservationsDTO = reservationService.getFilteredUserReservations(
-                currentUserId, status, sortField, sortDirection, page, size, futureOnly, startDate, endDate
+                currentUserId, status, sortField, sortDirection, futureOnly, startDate, endDate
         );
 
         if (limit != null && limit > 0 && userReservationsDTO.size() > limit && page == 0) {

@@ -45,8 +45,8 @@ export class ReservationFormPage implements OnInit {
   selectionEndIndex: number | null = null;
 
   minDateISO = new Date().toISOString();
+  maxDateISO = new Date(new Date().setFullYear(new Date().getFullYear() + 10)).toISOString();
 
-  // Configuración para que el texto de los selectores sea blanco (usa la clase en global.scss)
   customAlertOptions = {
     cssClass: 'white-text-alert'
   };
@@ -98,15 +98,13 @@ export class ReservationFormPage implements OnInit {
       this.loadDayReservations();
     }
 
-    this.reservationForm.get('classroomId')?.valueChanges.subscribe(() => { 
-      if (!this.isLoadingAvailability) this.loadDayReservations(); 
+    this.reservationForm.get('classroomId')?.valueChanges.subscribe(() => {
+      if (!this.isLoadingAvailability) this.loadDayReservations();
     });
     this.reservationForm.get('date')?.valueChanges.subscribe(() => {
       if (this.reservationType === 'single') this.loadDayReservations();
     });
   }
-
-  // --- MÉTODOS DE SOPORTE ---
 
   checkUserRole() {
     this.authService.getUserRole().subscribe(role => {
@@ -132,7 +130,6 @@ export class ReservationFormPage implements OnInit {
   loadClassrooms() { this.classroomService.getAllClassrooms().subscribe(data => this.classrooms = data); }
   loadUsers() { this.userService.getAllUsers().subscribe(data => this.users = data); }
 
-  // Resto de la lógica de carga y visualización de slots (mantener igual que tu original)
   loadReservation(id: string) {
     this.isLoadingAvailability = true;
     this.reservationService.getReservationById(id).subscribe({
@@ -140,6 +137,7 @@ export class ReservationFormPage implements OnInit {
         this.currentGroupId = data.groupId || null;
         this.reservationType = this.currentGroupId ? 'semester' : 'single';
         const startDateObj = new Date(data.startTime);
+
         this.reservationForm.patchValue({
           classroomId: data.classroom?.id,
           userId: data.user?.id,
@@ -147,7 +145,11 @@ export class ReservationFormPage implements OnInit {
           startTime: data.startTime,
           endTime: data.endTime,
           date: startDateObj.toISOString(),
+          semesterStartDate: data.semesterStartDate,
+          semesterEndDate: data.semesterEndDate,
+          dayOfWeek: data.daysOfWeek || []
         });
+
         this.loadDayReservations(true);
       },
       error: () => {
@@ -227,9 +229,6 @@ export class ReservationFormPage implements OnInit {
     });
   }
 
-  // --- MANEJO DE SELECCIÓN Y SUBMIT ---
-  // (Mantener tus métodos updateVisualGrid, selectSlot, updateFormValues y onSubmit tal cual los tienes)
-
   updateVisualGrid() {
     const now = new Date();
     this.timeSlots.forEach(slot => {
@@ -293,26 +292,65 @@ export class ReservationFormPage implements OnInit {
     }
   }
 
+  private toLocalISOString(dateStr: string): string {
+    const date = new Date(dateStr);
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - tzOffset);
+    return localDate.toISOString().split('.')[0];
+  }
+
   async onSubmit() {
     if (this.reservationForm.invalid) { this.reservationForm.markAllAsTouched(); return; }
+
+    if (this.reservationType === 'semester') {
+      const selectedDays: string[] = this.reservationForm.get('dayOfWeek')?.value;
+      const endTimeVal = this.reservationForm.get('endTime')?.value;
+
+      if (selectedDays && selectedDays.includes('SATURDAY') && endTimeVal) {
+        const endDate = new Date(endTimeVal);
+        const hours = endDate.getHours();
+        const minutes = endDate.getMinutes();
+        if (hours > 12 || (hours === 12 && minutes > 0)) {
+           await this.showAlert(
+             'Horario no válido',
+             'Has seleccionado "Sábado" y un horario que excede el mediodía. Los sábados la jornada es solo hasta las 12:00 PM.'
+           );
+           return;
+        }
+      }
+    }
+
     const val = this.reservationForm.value;
     const loading = await this.loadingCtrl.create({ message: 'Procesando...' });
     await loading.present();
 
-    const formatToLocalISO = (iso: string) => iso ? iso.split('.')[0] : null;
+    // Convertir a hora local para evitar problemas de zona horaria
+    const startTimeLocal = this.toLocalISOString(val.startTime);
+    const endTimeLocal = this.toLocalISOString(val.endTime);
 
     if (this.isEditMode) {
-      this.reservationService.updateReservation(this.reservationId!, { ...val, startTime: formatToLocalISO(val.startTime), endTime: formatToLocalISO(val.endTime) }, !!this.currentGroupId)
+      this.reservationService.updateReservation(
+        this.reservationId!,
+        {
+          ...val,
+          startTime: startTimeLocal,
+          endTime: endTimeLocal,
+          // CORRECCIÓN CRÍTICA: Mapear 'dayOfWeek' del formulario a 'daysOfWeek' que espera el Backend
+          daysOfWeek: val.dayOfWeek
+        },
+        !!this.currentGroupId
+      )
         .subscribe({ next: () => { loading.dismiss(); this.handleSuccess('Reserva actualizada'); }, error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); } });
     } else {
       if (this.reservationType === 'single') {
-        this.reservationService.createReservation({ ...val, startTime: formatToLocalISO(val.startTime), endTime: formatToLocalISO(val.endTime), status: 'PENDIENTE' })
+        this.reservationService.createReservation({ ...val, startTime: startTimeLocal, endTime: endTimeLocal, status: 'PENDIENTE' })
           .subscribe({ next: () => { loading.dismiss(); this.handleSuccess('Reserva creada'); }, error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); } });
       } else {
         const payload = {
           classroomId: val.classroomId, professorId: val.userId,
           semesterStartDate: val.semesterStartDate.split('T')[0], semesterEndDate: val.semesterEndDate.split('T')[0],
-          startTime: new Date(val.startTime).toTimeString().split(' ')[0], endTime: new Date(val.endTime).toTimeString().split(' ')[0],
+          startTime: startTimeLocal.split('T')[1],
+          endTime: endTimeLocal.split('T')[1],
           purpose: val.purpose, daysOfWeek: val.dayOfWeek
         };
         this.reservationService.createSemesterReservation(payload).subscribe({
@@ -323,7 +361,6 @@ export class ReservationFormPage implements OnInit {
     }
   }
 
-  // --- UTILIDADES ---
   async handleSuccess(m: string) {
     const t = await this.toastController.create({ message: m, duration: 2000, color: 'success' });
     await t.present();
