@@ -193,33 +193,35 @@ export class ProfilePage implements OnInit, OnDestroy {
   }
 
   async openAvatarOptions() {
-    if (!this.isEditing) return;
-    const actionSheet = await this.actionSheetCtrl.create({
-      header: 'Cambiar Avatar',
-      buttons: [
-        {
-          text: 'Subir desde Dispositivo',
-          icon: 'image-outline',
-          handler: () => {
-            this.fileInput.nativeElement.click();
-          }
-        },
-        {
-          text: 'Ingresar URL de imagen',
-          icon: 'link-outline',
-          handler: async () => {
-            await this.promptForAvatarUrl();
-          }
-        },
-        {
-          text: 'Cancelar',
-          icon: 'close-outline',
-          role: 'cancel'
+  if (!this.isEditing) return;
+  const actionSheet = await this.actionSheetCtrl.create({
+    header: 'Cambiar Avatar',
+    // Añadimos esta clase para poder forzar el color blanco en el CSS
+    cssClass: 'avatar-action-sheet-fixed', 
+    buttons: [
+      {
+        text: 'Subir desde Dispositivo',
+        icon: 'image-outline',
+        handler: () => {
+          this.fileInput.nativeElement.click();
         }
-      ]
-    });
-    await actionSheet.present();
-  }
+      },
+      {
+        text: 'Ingresar URL de imagen',
+        icon: 'link-outline',
+        handler: async () => {
+          await this.promptForAvatarUrl();
+        }
+      },
+      {
+        text: 'Cancelar',
+        icon: 'close-outline',
+        role: 'cancel'
+      }
+    ]
+  });
+  await actionSheet.present();
+}
 
   async onFileSelected(event: any) {
     const file: File = event.target.files[0];

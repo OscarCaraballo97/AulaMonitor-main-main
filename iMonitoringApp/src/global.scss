@@ -50,3 +50,22 @@
 .alert-radio-label, .alert-checkbox-label {
   color: white !important;
 }
+
+.avatar-action-sheet-fixed {
+  --color: white !important;
+  --button-color: white !important;
+
+  .action-sheet-title {
+    color: white !important;
+    font-weight: bold !important;
+    font-size: 1.1rem;
+  }
+
+  .action-sheet-button-inner {
+    color: white !important;
+  }
+
+  .action-sheet-icon {
+    color: white !important;
+  }
+}
