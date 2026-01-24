@@ -48,19 +48,26 @@ public class UserController {
         List<User> usersToProcess;
 
         if (currentUserDetails.getRoleEnum() == Rol.ADMIN) {
+            // El admin ve a todos (incluyendo coordinadores)
             usersToProcess = userService.getAllUsers();
         } else if (currentUserDetails.getRoleEnum() == Rol.COORDINADOR) {
+            // Obtener la carrera del coordinador
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
 
             List<User> students = userService.getUsersByRole(Rol.ESTUDIANTE);
             List<User> tutors = userService.getUsersByRole(Rol.TUTOR);
             List<User> professors = userService.getUsersByRole(Rol.PROFESOR);
 
+            // CAMBIO: Ahora incluimos también a los coordinadores
+            List<User> coordinators = userService.getUsersByRole(Rol.COORDINADOR);
+
             List<User> allCandidates = new ArrayList<>();
             allCandidates.addAll(students);
             allCandidates.addAll(tutors);
             allCandidates.addAll(professors);
+            allCandidates.addAll(coordinators); // <-- Agregado
 
+            // Filtrar solo los usuarios que pertenecen al mismo grupo académico que el coordinador
             usersToProcess = allCandidates.stream()
                     .filter(user -> CareerUtils.areSameCareerGroup(coordinatorCareer, user.getCareer()))
                     .collect(Collectors.toList());
@@ -84,7 +91,8 @@ public class UserController {
             return ResponseEntity.ok(UserDTO.fromEntity(targetUser));
         }
 
-        if (isCoordinator && (targetUser.getRole() == Rol.ESTUDIANTE || targetUser.getRole() == Rol.TUTOR || targetUser.getRole() == Rol.PROFESOR)) {
+        // Validar que el Coordinador solo vea usuarios de su grupo académico
+        if (isCoordinator) {
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
             if (CareerUtils.areSameCareerGroup(coordinatorCareer, targetUser.getCareer())) {
                 return ResponseEntity.ok(UserDTO.fromEntity(targetUser));
@@ -104,7 +112,8 @@ public class UserController {
             return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
         }
 
-        if (isCoordinator && (role == Rol.ESTUDIANTE || role == Rol.TUTOR || role == Rol.PROFESOR)) {
+        // Filtrar por carrera en la búsqueda por rol
+        if (isCoordinator) {
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
 
             List<User> filteredUsers = userService.getUsersByRole(role).stream()
@@ -192,18 +201,17 @@ public class UserController {
             @RequestParam(name = "limit", required = false) Integer limit,
             @RequestParam(name = "futureOnly", required = false, defaultValue = "false") boolean futureOnly,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(required = false, defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "1000") int size) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+
+        // NOTA: Aquí ya no pasamos page ni size porque los quitamos del servicio en pasos anteriores
         String currentUserId = currentUserDetails.getId();
 
-        // CORRECCIÓN AQUÍ: Se eliminan 'page' y 'size' de la llamada al servicio
         List<ReservationResponseDTO> userReservationsDTO = reservationService.getFilteredUserReservations(
                 currentUserId, status, sortField, sortDirection, futureOnly, startDate, endDate
         );
 
-        if (limit != null && limit > 0 && userReservationsDTO.size() > limit && page == 0) {
-            userReservationsDTO = userReservationsDTO.subList(0, Math.min(limit, userReservationsDTO.size()));
+        if (limit != null && limit > 0 && userReservationsDTO.size() > limit) {
+            userReservationsDTO = userReservationsDTO.subList(0, limit);
         }
         return ResponseEntity.ok(userReservationsDTO);
     }
