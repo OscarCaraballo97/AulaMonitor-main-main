@@ -69,3 +69,18 @@
     color: white !important;
   }
 }
+
+.custom-date-input {
+  &::-webkit-calendar-picker-indicator {
+    filter: invert(0) !important; 
+    opacity: 1;
+  }
+}
+
+:host-context(.dark) .custom-date-input,
+.dark .custom-date-input,
+body.dark .custom-date-input {
+  &::-webkit-calendar-picker-indicator {
+    filter: invert(1) !important;
+  }
+}

@@ -85,17 +85,18 @@
 
     <div *ngIf="reservationType === 'semester'">
       <ion-item class="mb-2">
-        <ion-label position="stacked">Inicio Semestre</ion-label>
-        <ion-input type="date" formControlName="semesterStartDate"></ion-input>
-      </ion-item>
-      <ion-item class="mb-2">
-        <ion-label position="stacked">Fin Semestre</ion-label>
-        <ion-input type="date" formControlName="semesterEndDate"></ion-input>
-      </ion-item>
+    <ion-label position="stacked">Inicio Semestre</ion-label>
+    <ion-input type="date" formControlName="semesterStartDate" class="text-white [filter:invert(1)] dark:[filter:invert(0)]"></ion-input>
+  </ion-item>
+  
+  <ion-item class="mb-2">
+    <ion-label position="stacked">Fin Semestre</ion-label>
+    <ion-input type="date" formControlName="semesterEndDate" class="text-white [filter:invert(1)] dark:[filter:invert(0)]"></ion-input>
+  </ion-item>
 
       <ion-item class="mb-2 !bg-transparent">
-        <ion-label position="stacked" class="!text-black">Días de la Semana</ion-label>
-        <ion-select formControlName="dayOfWeek" multiple="true" placeholder="Selecciona los días" [interfaceOptions]="customAlertOptions" class="!text-black">
+        <ion-label position="stacked" class="text-black dark:text-white">Días de la Semana</ion-label>
+        <ion-select formControlName="dayOfWeek" multiple="true" placeholder="Selecciona los días" [interfaceOptions]="customAlertOptions" class="!text-gray">
           <ion-select-option *ngFor="let day of daysOfWeek" [value]="day.value" class="!text-white">
             {{ day.label }}
           </ion-select-option>
