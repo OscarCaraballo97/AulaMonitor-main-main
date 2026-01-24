@@ -39,7 +39,7 @@
           </ion-avatar>
 
           <div class="xs:text-center xs:mt-2 md:text-left">
-            <ion-card-title class="profile-name">{{ currentUser.name }}</ion-card-title>
+            <ion-card-title class="profile-name text-gray-500 dark:text-white font-bold">{{ currentUser.name }}</ion-card-title>
             <ion-card-subtitle class="profile-role">{{ currentUser.role | titlecase }}</ion-card-subtitle>
           </div>
         </div>
@@ -89,7 +89,7 @@
 
     <ion-card class="password-card dark:bg-kwd-darker dark:text-kwd-light">
       <ion-card-header>
-        <ion-card-title class="password-card-title">Cambiar Contraseña</ion-card-title>
+        <ion-card-title class="mb-6 text-2xl font-bold text-black dark:text-white">Cambiar Contraseña</ion-card-title>
       </ion-card-header>
       <ion-card-content>
         <form [formGroup]="changePasswordForm" (ngSubmit)="changePassword()">
@@ -97,7 +97,7 @@
             <ion-item class="password-item dark:bg-kwd-darker">
               <ion-icon name="lock-closed-outline" slot="start" class="password-item-icon"></ion-icon>
               <ion-label position="stacked" class="password-label">Contraseña Actual</ion-label>
-              <ion-input type="password" formControlName="oldPassword" class="password-input dark:text-kwd-light"></ion-input>
+              <ion-input type="password" formControlName="oldPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
             <div *ngIf="changePasswordForm.get('oldPassword')?.invalid && changePasswordForm.get('oldPassword')?.touched" class="error-message">
               <small>Contraseña actual requerida.</small>
@@ -106,7 +106,7 @@
             <ion-item class="password-item dark:bg-kwd-darker">
               <ion-icon name="key-outline" slot="start" class="password-item-icon"></ion-icon>
               <ion-label position="stacked" class="password-label">Nueva Contraseña</ion-label>
-              <ion-input type="password" formControlName="newPassword" class="password-input dark:text-kwd-light"></ion-input>
+              <ion-input type="password" formControlName="oldPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
             <div *ngIf="changePasswordForm.get('newPassword')?.invalid && changePasswordForm.get('newPassword')?.touched" class="error-message">
               <small *ngIf="changePasswordForm.get('newPassword')?.errors?.['required']">Nueva contraseña requerida.</small>
@@ -116,7 +116,7 @@
             <ion-item class="password-item dark:bg-kwd-darker">
               <ion-icon name="key-outline" slot="start" class="password-item-icon"></ion-icon>
               <ion-label position="stacked" class="password-label">Confirmar Nueva Contraseña</ion-label>
-              <ion-input type="password" formControlName="confirmNewPassword" class="password-input dark:text-kwd-light"></ion-input>
+              <ion-input type="password" formControlName="oldPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
             <div *ngIf="changePasswordForm.get('confirmNewPassword')?.invalid && changePasswordForm.get('confirmNewPassword')?.touched" class="error-message">
               <small *ngIf="changePasswordForm.get('confirmNewPassword')?.errors?.['required']">Confirmación requerida.</small>
@@ -127,10 +127,13 @@
             </div>
           </ion-list>
           <div class="ion-padding-top form-actions">
-            <ion-button type="submit" expand="block" [disabled]="changePasswordForm.invalid || isLoading" color="secondary" class="change-password-button">
-              <ion-icon name="checkmark-done-outline" slot="start"></ion-icon>
-              Cambiar Contraseña
-            </ion-button>
+            <ion-button type="submit" 
+            expand="block" 
+            [disabled]="changePasswordForm.invalid || isLoading" 
+            class="change-password-button !bg-kwd-blue-DEFAULT !text-white font-bold rounded-md shadow-sm hover:bg-kwd-blue-700 transition-all duration-200">
+  <ion-icon name="checkmark-done-outline" slot="start" class="!text-white"></ion-icon>
+  Cambiar Contraseña
+</ion-button>
           </div>
         </form>
       </ion-card-content>

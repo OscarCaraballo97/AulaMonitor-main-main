@@ -26,3 +26,27 @@
   --background: var(--ion-color-warning, var(--kwd-color-yellow));
   --color: var(--ion-color-warning-contrast, black);
 }
+
+
+.white-text-alert {
+  --background: #1e3a8a; 
+
+  .alert-radio-label {
+    color: #ffffff !important; 
+  }
+
+  .alert-button-inner {
+    color: #ffffff !important; 
+  }
+
+  .alert-radio-icon {
+    border-color: #ffffff !important; 
+  }
+}
+
+.alert-wrapper {
+  --color: white !important;
+}
+.alert-radio-label, .alert-checkbox-label {
+  color: white !important;
+}
