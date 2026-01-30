@@ -1,11 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
-import {
-  IonicModule,
-  LoadingController,
-  ToastController,
-  NavController
-} from '@ionic/angular';
+import { IonicModule, LoadingController, ToastController, NavController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { UserService } from '../../../services/user.service';
@@ -20,12 +15,7 @@ import { takeUntil, finalize } from 'rxjs/operators';
   templateUrl: './user-form.page.html',
   styleUrls: ['./user-form.page.scss'],
   standalone: true,
-  imports: [
-    IonicModule, // Importa todos los componentes de Ionic (ion-button, ion-item, etc.)
-    CommonModule,
-    ReactiveFormsModule,
-    RouterModule
-  ]
+  imports: [IonicModule, CommonModule, ReactiveFormsModule, RouterModule]
 })
 export class UserFormPage implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -35,14 +25,11 @@ export class UserFormPage implements OnInit, OnDestroy {
   isLoading = false;
   errorMessage: string = '';
   pageTitle = 'Nuevo Usuario';
-
   currentUser: User | null = null;
   loggedInUserRole: Rol | null = null;
-
   public rolesForSelect: { key: string, value: Rol }[] = [];
   public RolEnum = Rol;
 
-  // Listas de Carreras
   private careerGroups: { [key: string]: string[] } = {
     'SISTEMAS': ['Ingeniería de Sistemas', 'Tecnología en Desarrollo de Sistemas de Información y de Software'],
     'INDUSTRIAL': ['Ingeniería Industrial', 'Tecnología en Sistemas de Gestión de Calidad'],
@@ -89,7 +76,7 @@ export class UserFormPage implements OnInit, OnDestroy {
         this.currentUser = user;
         this.loggedInUserRole = user?.role || null;
         this.setupRolesForSelect();
-        this.setupCareersForSelect(); // Filtrar carreras al inicio
+        this.setupCareersForSelect();
         this.cdr.detectChanges();
     });
 
@@ -99,23 +86,18 @@ export class UserFormPage implements OnInit, OnDestroy {
         this.isEditMode = true;
         this.pageTitle = 'Editar Usuario';
         this.userForm.get('password')?.clearValidators();
-        this.userForm.get('password')?.updateValueAndValidity();
         this.loadUserData(this.userId);
       } else {
         this.isEditMode = false;
         this.pageTitle = 'Nuevo Usuario';
         this.userForm.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
-        this.userForm.get('password')?.updateValueAndValidity();
-
-        // Pre-seleccionar rol si es coordinador
-        if (this.loggedInUserRole === Rol.COORDINADOR) {
-             this.userForm.patchValue({ role: Rol.ESTUDIANTE });
-        }
       }
+      this.userForm.get('password')?.updateValueAndValidity();
       this.cdr.detectChanges();
     });
   }
 
+  // MÉTODO CORREGIDO: Permite al Coordinador elegir TUTOR
   setupRolesForSelect() {
     if (this.loggedInUserRole === Rol.ADMIN) {
       this.rolesForSelect = Object.keys(Rol)
@@ -123,10 +105,11 @@ export class UserFormPage implements OnInit, OnDestroy {
         .map(key => ({ key: key.replace('_', ' '), value: Rol[key as keyof typeof Rol] }));
     } else if (this.loggedInUserRole === Rol.COORDINADOR) {
       this.rolesForSelect = Object.keys(Rol)
-        .filter(key => isNaN(Number(key)) && (Rol[key as keyof typeof Rol] === Rol.ESTUDIANTE || Rol[key as keyof typeof Rol] === Rol.PROFESOR))
+        .filter(key => isNaN(Number(key)) &&
+          (Rol[key as keyof typeof Rol] === Rol.ESTUDIANTE ||
+           Rol[key as keyof typeof Rol] === Rol.PROFESOR ||
+           Rol[key as keyof typeof Rol] === Rol.TUTOR)) // Agregado Tutor
         .map(key => ({ key: key.replace('_', ' '), value: Rol[key as keyof typeof Rol] }));
-    } else {
-      this.rolesForSelect = [];
     }
   }
 
@@ -136,7 +119,6 @@ export class UserFormPage implements OnInit, OnDestroy {
     } else if (this.loggedInUserRole === Rol.COORDINADOR && this.currentUser?.career) {
       const coordinatorCareer = this.currentUser.career;
       let foundGroup: string[] | null = null;
-
       for (const groupKey in this.careerGroups) {
         if (this.careerGroups[groupKey].includes(coordinatorCareer)) {
           foundGroup = this.careerGroups[groupKey];
@@ -144,13 +126,9 @@ export class UserFormPage implements OnInit, OnDestroy {
         }
       }
       this.availableCareers = foundGroup ? foundGroup : [coordinatorCareer];
-
-      // Auto-seleccionar si solo hay una opción
       if (this.availableCareers.length === 1) {
           this.userForm.patchValue({ career: this.availableCareers[0] });
       }
-    } else {
-      this.availableCareers = [];
     }
   }
 
@@ -163,14 +141,10 @@ export class UserFormPage implements OnInit, OnDestroy {
     this.isLoading = true;
     const loading = await this.loadingCtrl.create({ message: 'Cargando...' });
     await loading.present();
-
-    this.userService.getUserById(id).pipe(
-      takeUntil(this.destroy$),
-      finalize(async () => {
+    this.userService.getUserById(id).pipe(takeUntil(this.destroy$), finalize(async () => {
         this.isLoading = false;
         await loading.dismiss();
-      })
-    ).subscribe({
+    })).subscribe({
       next: (user) => {
         this.userForm.patchValue({
           name: user.name,
@@ -191,55 +165,36 @@ export class UserFormPage implements OnInit, OnDestroy {
 
   async onSubmit() {
     if (this.userForm.invalid) {
-      this.markFormGroupTouched(this.userForm);
       await this.presentToast('Por favor, corrige los errores.', 'warning');
       return;
     }
-
     this.isLoading = true;
-    this.errorMessage = '';
     const loading = await this.loadingCtrl.create({ message: this.isEditMode ? 'Guardando...' : 'Creando...' });
     await loading.present();
-
     const userData = this.userForm.getRawValue();
-
     if (this.isEditMode && !userData.password) delete userData.password;
 
-    let operation: Observable<User>;
-    if (this.isEditMode && this.userId) {
-      operation = this.userService.updateUser(this.userId, userData);
-    } else {
-      operation = this.userService.createUser(userData as User);
-    }
+    let operation: Observable<User> = this.isEditMode && this.userId
+      ? this.userService.updateUser(this.userId, userData)
+      : this.userService.createUser(userData as User);
 
-    operation.pipe(
-      takeUntil(this.destroy$),
-      finalize(async () => {
+    operation.pipe(takeUntil(this.destroy$), finalize(async () => {
         this.isLoading = false;
         await loading.dismiss();
-      })
-    ).subscribe({
+    })).subscribe({
       next: async () => {
         await this.presentToast('Operación exitosa.', 'success');
         this.navCtrl.navigateBack('/app/users');
       },
       error: async (err) => {
         let msg = err.error?.message || err.message || 'Error en la operación.';
-        if (err.status === 403) msg = 'No tienes permiso para esto.';
         await this.presentToast(msg, 'danger');
       }
     });
   }
 
-  private markFormGroupTouched(formGroup: FormGroup) {
-    Object.values(formGroup.controls).forEach(control => {
-      control.markAsTouched();
-      if (control instanceof FormGroup) this.markFormGroupTouched(control);
-    });
-  }
-
-  async presentToast(message: string, color: 'success' | 'danger' | 'warning', iconName?: string) {
-    const toast = await this.toastCtrl.create({ message, duration: 3000, color, position: 'top', icon: iconName });
+  async presentToast(message: string, color: 'success' | 'danger' | 'warning') {
+    const toast = await this.toastCtrl.create({ message, duration: 3000, color, position: 'top' });
     await toast.present();
   }
 

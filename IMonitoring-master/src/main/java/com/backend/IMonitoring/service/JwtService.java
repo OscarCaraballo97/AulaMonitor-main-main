@@ -71,6 +71,9 @@ public class JwtService {
                 if (appUser.getName() != null) {
                     extraClaims.put("name", appUser.getName());
                 }
+                if (appUser.getCareer() != null) {
+                    extraClaims.put("career", appUser.getCareer());
+                }
             }
         }
 
@@ -89,7 +92,7 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
 
-         try {
+        try {
             final String username = extractUsername(token);
             return (username != null && username.equals(userDetails.getUsername())) && !isTokenExpired(token);
         } catch (Exception e) {

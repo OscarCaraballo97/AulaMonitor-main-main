@@ -1,4 +1,3 @@
-
 package com.backend.IMonitoring.exceptions;
 
 import org.springframework.http.HttpStatus;
@@ -44,9 +43,18 @@ public class GlobalExceptionHandler {
         body.put("message", ex.getMessage());
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
+    
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<Object> handleUserAlreadyExistsException(
+            UserAlreadyExistsException ex, WebRequest request) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+    // ------------------------------------------------
 
-
-    @ExceptionHandler({AuthenticationException.class}) 
+    @ExceptionHandler({AuthenticationException.class})
     public ResponseEntity<Object> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
@@ -60,16 +68,17 @@ public class GlobalExceptionHandler {
         }
         return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
     }
-    // ---
 
-    @ExceptionHandler(Exception.class) 
+    @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleGlobalException(
             Exception ex, WebRequest request) {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("message", "Ocurrió un error inesperado en el servidor.");
-        
+
+        ex.printStackTrace();
+
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

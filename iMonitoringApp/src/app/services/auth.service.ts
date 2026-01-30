@@ -103,14 +103,17 @@ export class AuthService {
 
     if (decodedToken && decodedToken.exp * 1000 > Date.now()) {
       const userRoleEnum = decodedToken.role ? decodedToken.role.toUpperCase() as Rol : undefined;
+      
       const user: User = {
         id: decodedToken.userId,
         name: decodedToken.name,
         email: decodedToken.sub,
         role: userRoleEnum,
         avatarUrl: decodedToken.avatarUrl,
+        career: decodedToken.career,
         enabled: decodedToken.enabled !== undefined ? decodedToken.enabled : true
       };
+
       this.currentUserSubject.next(user);
       this.currentUserRoleSubject.next(userRoleEnum || null);
       this.isAuthenticatedSubject.next(true);
@@ -203,14 +206,11 @@ export class AuthService {
     return this.currentUserRoleSubject.asObservable();
   }
 
-  // --- NUEVO MÉTODO AGREGADO ---
-  // Convierte el rol a string para facilitar comparaciones en componentes
   public getUserRole(): Observable<string> {
     return this.currentUserRoleSubject.asObservable().pipe(
       map(role => role ? role.toString() : '')
     );
   }
-  // ----------------------------
 
   public async getToken(): Promise<string | null> {
     if (!this._storage) await this.initStorage();
