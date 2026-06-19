@@ -50,7 +50,7 @@
           <ion-list lines="none" class="profile-list">
             <ion-item class="profile-item dark:bg-kwd-darker">
               <ion-icon name="person-circle-outline" slot="start" class="profile-item-icon"></ion-icon>
-              <ion-label position="stacked" class="profile-label">Nombre Completo</ion-label>
+              <ion-label position="stacked" class="profile-label" style="font-size: 20px;">Nombre Completo</ion-label>
               <ion-input type="text" formControlName="name" class="profile-input dark:text-kwd-light" [readonly]="!isEditing"></ion-input>
             </ion-item>
             <div *ngIf="profileForm.get('name')?.invalid && profileForm.get('name')?.touched" class="error-message">
@@ -59,7 +59,7 @@
 
             <ion-item class="profile-item dark:bg-kwd-darker">
               <ion-icon name="mail-outline" slot="start" class="profile-item-icon"></ion-icon>
-              <ion-label position="stacked" class="profile-label">Correo Electrónico</ion-label>
+              <ion-label position="stacked" class="profile-label" style="font-size: 20px;">Correo Electrónico</ion-label>
               <ion-input type="email" formControlName="email" class="profile-input dark:text-kwd-light" [readonly]="true"></ion-input>
             </ion-item>
             <div *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched" class="error-message">
@@ -69,7 +69,7 @@
 
             <ion-item class="profile-item dark:bg-kwd-darker" *ngIf="isEditing">
               <ion-icon name="image-outline" slot="start" class="profile-item-icon"></ion-icon>
-              <ion-label position="stacked" class="profile-label">URL del Avatar (Opcional)</ion-label>
+              <ion-label position="stacked" class="profile-label" style="font-size: 20px;">URL del Avatar (Opcional)</ion-label>
               <ion-input type="url" formControlName="avatarUrl" class="profile-input dark:text-kwd-light" placeholder="Si no subes imagen, usa URL"></ion-input>
             </ion-item>
           </ion-list>
@@ -96,7 +96,7 @@
           <ion-list lines="none" class="password-list">
             <ion-item class="password-item dark:bg-kwd-darker">
               <ion-icon name="lock-closed-outline" slot="start" class="password-item-icon"></ion-icon>
-              <ion-label position="stacked" class="password-label">Contraseña Actual</ion-label>
+              <ion-label position="stacked" class="password-label" style="font-size: 20px;">Contraseña Actual</ion-label>
               <ion-input type="password" formControlName="oldPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
             <div *ngIf="changePasswordForm.get('oldPassword')?.invalid && changePasswordForm.get('oldPassword')?.touched" class="error-message">
@@ -105,8 +105,8 @@
 
             <ion-item class="password-item dark:bg-kwd-darker">
               <ion-icon name="key-outline" slot="start" class="password-item-icon"></ion-icon>
-              <ion-label position="stacked" class="password-label">Nueva Contraseña</ion-label>
-              <ion-input type="password" formControlName="oldPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
+              <ion-label position="stacked" class="password-label" style="font-size: 20px;">Nueva Contraseña</ion-label>
+              <ion-input type="password" formControlName="newPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
             <div *ngIf="changePasswordForm.get('newPassword')?.invalid && changePasswordForm.get('newPassword')?.touched" class="error-message">
               <small *ngIf="changePasswordForm.get('newPassword')?.errors?.['required']">Nueva contraseña requerida.</small>
@@ -115,8 +115,8 @@
 
             <ion-item class="password-item dark:bg-kwd-darker">
               <ion-icon name="key-outline" slot="start" class="password-item-icon"></ion-icon>
-              <ion-label position="stacked" class="password-label">Confirmar Nueva Contraseña</ion-label>
-              <ion-input type="password" formControlName="oldPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
+              <ion-label position="stacked" class="password-label" style="font-size: 20px;">Confirmar Nueva Contraseña</ion-label>
+              <ion-input type="password" formControlName="confirmNewPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
             <div *ngIf="changePasswordForm.get('confirmNewPassword')?.invalid && changePasswordForm.get('confirmNewPassword')?.touched" class="error-message">
               <small *ngIf="changePasswordForm.get('confirmNewPassword')?.errors?.['required']">Confirmación requerida.</small>

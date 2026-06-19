@@ -34,7 +34,7 @@
                 <ion-icon name="business-outline" class="w-6 h-6" aria-hidden="true"></ion-icon>
               </div>
               <div>
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Edificios Totales</p>
+                <p class="text-sm font-medium text-dark dark:text-white">Edificios Totales</p>
                 <p class="text-2xl font-semibold text-gray-700 dark:text-kwd-light">{{ totalBuildings }}</p>
               </div>
             </div>
@@ -45,7 +45,7 @@
                 <ion-icon name="checkmark-circle-outline" class="w-6 h-6" aria-hidden="true"></ion-icon>
               </div>
               <div>
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Aulas Disponibles Ahora</p>
+                <p class="text-sm font-medium text-dark dark:text-white">Aulas Disponibles Ahora</p>
                 <p class="text-2xl font-semibold text-gray-700 dark:text-kwd-light">{{ classroomAvailability.availableNow }} / {{ classroomAvailability.total }}</p>
               </div>
             </div>
@@ -58,7 +58,7 @@
         <ion-spinner name="dots"></ion-spinner>
         <p>Cargando reservas pendientes...</p>
       </div>
-      <div *ngIf="!isLoadingReservationsToApprove && reservationsToApprove.length === 0" class="p-4 text-center text-gray-500 bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-gray-400">
+      <div *ngIf="!isLoadingReservationsToApprove && reservationsToApprove.length === 0" class="p-4 text-center text-black bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-white">
         No hay reservas pendientes de aprobación.
       </div>
       <ion-list *ngIf="!isLoadingReservationsToApprove && reservationsToApprove.length > 0" class="rounded-lg shadow-md dark:bg-kwd-darker">
@@ -114,7 +114,7 @@
     </div>
 
     <div *ngIf="userRole === RolEnum.PROFESOR || userRole === RolEnum.TUTOR || userRole === RolEnum.ESTUDIANTE">
-      <h1 class="mb-6 text-2xl font-semibold text-gray-800 dark:text-kwd-light">
+      <h1 class="mb-6 text-2xl font-semibold text-white dark:text-white">
         <span *ngIf="userRole === RolEnum.PROFESOR">Dashboard del Profesor</span>
         <span *ngIf="userRole === RolEnum.TUTOR">Dashboard del Tutor</span>
         <span *ngIf="userRole === RolEnum.ESTUDIANTE">Bienvenido, Estudiante</span>
@@ -135,13 +135,14 @@
         </div>
       </div>
 
-      <ion-button expand="block" fill="outline" (click)="toggleMyReservationsSection()" class="my-4">
-        <ion-icon [name]="showMyReservationsSection ? 'chevron-up-outline' : 'chevron-down-outline'" slot="start" aria-hidden="true"></ion-icon>
-        {{ showMyReservationsSection ? 'Ocultar' : 'Ver' }} Mis Próximas Reservas
-      </ion-button>
+    <ion-button expand="block" fill="solid" (click)="toggleMyReservationsSection()" 
+      class="my-4 [--background:#ffffff] [--color:#1a365d] hover:[--background:#f3f4f6] dark:[--background:#1a365d] dark:[--color:#ffffff] dark:hover:[--background:#152e4d]">
+      <ion-icon [name]="showMyReservationsSection ? 'chevron-up-outline' : 'chevron-down-outline'" slot="start" aria-hidden="true"></ion-icon>
+      {{ showMyReservationsSection ? 'Ocultar' : 'Ver' }} Mis Próximas Reservas
+    </ion-button>
 
       <div *ngIf="showMyReservationsSection">
-        <h2 class="mt-2 mb-3 text-lg font-semibold text-gray-700 dark:text-kwd-light">Mis Próximas Reservas</h2>
+        <h2 class="mt-2 mb-3 text-lg font-semibold text-white dark:text-kwd-light">Mis Próximas Reservas</h2>
         <div *ngIf="isLoadingMyReservations" class="p-4 text-center text-gray-500 dark:text-gray-400">
           <ion-spinner name="dots"></ion-spinner> <p>Cargando tus reservas...</p>
         </div>

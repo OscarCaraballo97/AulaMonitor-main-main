@@ -47,18 +47,18 @@
     </div>
 
     <div class="overflow-x-auto pb-2">
-      <ion-segment [(ngModel)]="selectedView" (ionChange)="segmentChanged($event)" class="bg-white dark:bg-[#152e4d] rounded-lg shadow-md p-1 min-w-[320px]">
-        <ion-segment-button value="pending" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
-          <ion-label>Pendientes</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="my-reservations">
-          <ion-label>Mis Reservas</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="all" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
-          <ion-label>Todas</ion-label>
-        </ion-segment-button>
-      </ion-segment>
-    </div>
+  <ion-segment [(ngModel)]="selectedView" (ionChange)="segmentChanged($event)" class="bg-white dark:bg-[#152e4d] rounded-lg shadow-md p-1 min-w-[320px]">
+    <ion-segment-button value="pending" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
+      <ion-label class="text-black dark:text-white">Pendientes</ion-label>
+    </ion-segment-button>
+    <ion-segment-button value="my-reservations">
+      <ion-label class="text-black dark:text-white">Mis Reservas</ion-label>
+    </ion-segment-button>
+    <ion-segment-button value="all" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
+      <ion-label class="text-black dark:text-white">Todas</ion-label>
+    </ion-segment-button>
+  </ion-segment>
+</div>
 
     <div [ngSwitch]="selectedView" class="mt-4">
 
@@ -75,7 +75,7 @@
                 (viewType==='all' && !isLoadingAllReservations && filteredAllReservations.length === 0)"
                 class="flex flex-col items-center justify-center text-gray-500 p-8 bg-white dark:bg-[#152e4d] rounded-lg shadow-sm">
                 <ion-icon name="calendar-clear-outline" class="text-5xl mb-2 text-gray-300"></ion-icon>
-                <p>No se encontraron reservas.</p>
+                <p class="text-black dark:text-white">No se encontraron reservas.</p>
             </div>
 
             <ion-list lines="none" class="space-y-4 bg-transparent p-0">

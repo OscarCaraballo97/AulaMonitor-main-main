@@ -46,17 +46,18 @@
           </div>
         </div>
 
-        <div class="flex flex-col pt-4 space-y-3 sm:space-y-0 sm:flex-row sm:justify-end sm:space-x-3">
+      <div class="flex flex-col pt-4 space-y-3 sm:space-y-0 sm:flex-row sm:justify-end sm:space-x-3">
           <button type="button" (click)="cancel()"
-                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm dark:bg-kwd-darker dark:text-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-kwd-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kwd-blue-500">
-            Cancelar
-          </button>
-          <button type="submit" [disabled]="buildingForm.invalid || isLoading"
-           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm dark:bg-kwd-darker dark:text-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-kwd-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kwd-blue-500">
-           <ion-spinner *ngIf="isLoading" name="dots" class="w-5 h-5 mr-3 -ml-1 !text-gray-500"></ion-spinner>
-            {{ isEditMode ? 'Actualizar' : 'Crear' }} Edificio
-          </button>
-        </div>
+          class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 border border-transparent rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+          Cancelar
+        </button>
+        
+        <button type="submit" [disabled]="buildingForm.invalid || isLoading"
+          class="px-4 py-2 text-sm font-medium text-white bg-[#1a365d] hover:bg-[#152e4d] disabled:opacity-50 border border-transparent rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          <ion-spinner *ngIf="isLoading" name="dots" class="w-5 h-5 mr-3 -ml-1 !text-white"></ion-spinner>
+          {{ isEditMode ? 'Actualizar' : 'Crear' }} Edificio
+        </button>
+      </div>
       </form>
     </div>
   </div>

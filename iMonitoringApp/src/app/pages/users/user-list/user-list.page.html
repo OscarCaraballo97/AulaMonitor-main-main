@@ -19,10 +19,10 @@
       </h1>
       <div class="mt-4 md:mt-0">
         <button (click)="navigateToAddUser()"
-                class="flex items-center px-4 py-2 text-sm font-medium text-white rounded-md bg-kwd-blue-DEFAULT hover:bg-kwd-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kwd-blue-500 dark:bg-kwd-blue-600 dark:hover:bg-kwd-blue-700">
-          <ion-icon name="person-add-outline" class="w-5 h-5 mr-2"></ion-icon>
-          Nuevo Usuario
-        </button>
+        class="flex items-center px-4 py-2 text-sm font-medium text-white rounded-md bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+        <ion-icon name="person-add-outline" class="w-5 h-5 mr-2"></ion-icon>
+        Nuevo Usuario
+      </button>
       </div>
     </div>
 
@@ -34,7 +34,7 @@
         animated="true"
         mode="ios"
         class="rounded-lg shadow-sm"
-        style="--background: white; --color: black; --icon-color: gray; --padding-start: 0; --padding-end: 0;">
+        style="--background: white; --color: black; --icon-color: rgb(44, 66, 118); --padding-start: 0; --padding-end: 0;">
       </ion-searchbar>
     </div>
 
@@ -59,21 +59,19 @@
       <table class="min-w-full divide-y divide-gray-200 dark:divide-kwd-blue-800">
         <thead class="bg-gray-50 dark:bg-kwd-dark">
           <tr>
-            <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Nombre</th>
-            <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Email</th>
-
-            <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Carrera</th>
-
-            <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Rol</th>
-            <th scope="col" class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase dark:text-gray-400">Acciones</th>
+            <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left text-blue-955 uppercase">Nombre</th>
+            <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left text-blue-955 uppercase">Email</th>
+            <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left text-blue-955 uppercase">Carrera</th>
+            <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left text-blue-955 uppercase">Rol</th>
+            <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-right text-blue-955 uppercase">Acciones</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200 dark:bg-kwd-darker dark:divide-kwd-blue-800">
           <tr *ngFor="let user of users" class="hover:bg-gray-50 dark:hover:bg-kwd-dark">
             <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-kwd-light">{{ user.name || 'N/A' }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ user.email }}</td>
-
-            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
+            <td class="px-6 py-4 text-sm text-blue-955 whitespace-nowrap dark:text-white">{{ user.email }}</td>
+            
+            <td class="px-6 py-4 text-sm text-blue-955 whitespace-nowrap dark:text-white">
               {{ user.career || '-' }}
             </td>
 
@@ -82,7 +80,7 @@
                     [ngClass]="{
                       'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100': user.role === RolEnum.ADMIN,
                       'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-100': user.role === RolEnum.PROFESOR,
-                      'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100': user.role === RolEnum.TUTOR,
+                      'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100': user.role === RolEnum.COORDINADOR,
                       'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100': user.role === RolEnum.ESTUDIANTE
                     }">
                 {{ user.role | titlecase }}

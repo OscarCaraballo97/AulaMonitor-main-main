@@ -106,7 +106,7 @@
 
     <div class="mt-6 mb-2">
       <h3 class="mb-2 text-2xl font-medium text-white !important">Selecciona el Horario</h3>
-      <p class="text-xs text-black px-2 mb-2 font-medium"></p><p>Toca para inicio, toca otro para fin. </p>
+      <p class="text-xs text-black px-2 mb-2 font-medium"></p><p class="text-sm text-white px-2 mb-2 font-medium">Toca para inicio, toca otro para fin. </p>
 
       <div *ngIf="isLoadingAvailability" class="text-center py-4">
         <ion-spinner></ion-spinner>
@@ -137,7 +137,7 @@
       <strong>{{ reservationForm.get('endTime')?.value | date:'HH:mm' }}</strong>
     </div>
 
-    <ion-button expand="block" type="submit" [disabled]="reservationForm.invalid || isLoadingAvailability" class="mt-4">
+    <ion-button expand="block" type="submit" [disabled]="reservationForm.invalid || isLoadingAvailability" class="mt-4" style=" --background: #5688ce; --color: #ffffff; --background-activated: #2a4365;">
       {{ isEditMode ? 'Guardar Cambios' : 'Crear Reserva' }}
     </ion-button>
 
