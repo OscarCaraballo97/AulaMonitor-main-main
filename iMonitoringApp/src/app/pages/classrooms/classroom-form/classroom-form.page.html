@@ -1,5 +1,5 @@
 <ion-header class="md:hidden">
-  <ion-toolbar color="primary">
+  <ion-toolbar class="[--background:#1a365d] [--color:#ffffff] dark:[--background:#1a365d]">
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/app/classrooms"></ion-back-button>
     </ion-buttons>
@@ -8,11 +8,11 @@
 </ion-header>
 
 <ion-header class="hidden md:block sticky top-0 z-10">
-  <ion-toolbar color="light">
+  <ion-toolbar class="[--background:#1a365d] [--color:#ffffff] dark:[--background:#1a365d]">
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/app/classrooms"></ion-back-button>
     </ion-buttons>
-    <ion-title>{{ pageTitle }}</ion-title>
+    <ion-title class="!text.white font-semibold">{{ pageTitle }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
@@ -29,25 +29,25 @@
             class="space-y-6 bg-white p-6 rounded-lg shadow dark:bg-kwd-darker">
 
         <ion-item lines="full" class="rounded-md">
-          <ion-label position="stacked">Nombre del Aula <span class="text-red-500">*</span></ion-label>
+          <ion-label position="stacked" style="font-size: 20px;">Nombre del aula <span class="text-red-500">*</span></ion-label>
           <ion-input formControlName="name" type="text" placeholder="Ej: Salón 101, Laboratorio B"></ion-input>
         </ion-item>
         <div *ngIf="classroomForm.get('name')?.invalid && classroomForm.get('name')?.touched" class="text-xs text-red-500 px-4 py-1">
-            <small *ngIf="classroomForm.get('name')?.errors?.['required']">El nombre es requerido.</small>
-            <small *ngIf="classroomForm.get('name')?.errors?.['minlength']">Mínimo 3 caracteres.</small>
+            <small *ngIf="classroomForm.get('name')?.errors?.['required']" class="text-[15px]">El nombre es requerido.</small>
+            <small *ngIf="classroomForm.get('name')?.errors?.['minlength']" class="text-[15px]">Mínimo 3 caracteres.</small>
         </div>
 
         <ion-item lines="full" class="rounded-md">
-          <ion-label position="stacked">Capacidad <span class="text-red-500">*</span></ion-label>
+          <ion-label position="stacked" style="font-size: 20px;">Capacidad <span class="text-red-500">*</span></ion-label>
           <ion-input formControlName="capacity" type="number" placeholder="Ej: 30"></ion-input>
         </ion-item>
          <div *ngIf="classroomForm.get('capacity')?.invalid && classroomForm.get('capacity')?.touched" class="text-xs text-red-500 px-4 py-1">
-            <small *ngIf="classroomForm.get('capacity')?.errors?.['required']">La capacidad es requerida.</small>
-            <small *ngIf="classroomForm.get('capacity')?.errors?.['min']">La capacidad debe ser al menos 1.</small>
+            <small *ngIf="classroomForm.get('capacity')?.errors?.['required']" class="text-[15px]">La capacidad es requerida.</small>
+            <small *ngIf="classroomForm.get('capacity')?.errors?.['min']" class="text-[15px]">La capacidad debe ser al menos 1.</small>
         </div>
 
         <ion-item lines="full" class="rounded-md">
-          <ion-label position="stacked">Tipo de Aula <span class="text-red-500">*</span></ion-label>
+          <ion-label position="stacked" style="font-size: 20px;">Tipo de Aula <span class="text-red-500">*</span></ion-label>
           <ion-select formControlName="type" interface="popover" placeholder="Seleccionar tipo">
             <ion-select-option *ngFor="let typeEntry of ClassroomTypeEnum | keyvalue" [value]="typeEntry.value">
               {{ typeEntry.value | titlecase }}
@@ -55,16 +55,16 @@
           </ion-select>
         </ion-item>
         <div *ngIf="classroomForm.get('type')?.invalid && classroomForm.get('type')?.touched" class="text-xs text-red-500 px-4 py-1">
-            <small *ngIf="classroomForm.get('type')?.errors?.['required']">El tipo de aula es requerido.</small>
+            <small *ngIf="classroomForm.get('type')?.errors?.['required']" class="text-[15px]">El tipo de aula es requerido.</small>
         </div>
 
         <ion-item lines="full" class="rounded-md">
-          <ion-label position="stacked">Recursos</ion-label>
+          <ion-label position="stacked" style="font-size: 20px;">Recursos</ion-label>
           <ion-textarea formControlName="resources" auto-grow placeholder="Ej: Proyector, Aire acondicionado..."></ion-textarea>
         </ion-item>
 
         <ion-item lines="full" class="rounded-md">
-          <ion-label position="stacked">Edificio <span class="text-red-500">*</span></ion-label>
+          <ion-label position="stacked" style="font-size: 20px;">Edificio <span class="text-red-500">*</span></ion-label>
           <ion-select formControlName="buildingId" interface="popover" placeholder="Seleccionar edificio">
             <ion-select-option *ngFor="let building of buildings" [value]="building.id">
               {{ building.name }}
@@ -72,7 +72,7 @@
           </ion-select>
         </ion-item>
         <div *ngIf="classroomForm.get('buildingId')?.invalid && classroomForm.get('buildingId')?.touched" class="text-xs text-red-500 px-4 py-1">
-            <small *ngIf="classroomForm.get('buildingId')?.errors?.['required']">El edificio es requerido.</small>
+            <small *ngIf="classroomForm.get('buildingId')?.errors?.['required']" class="text-[15px]">El edificio es requerido.</small>
         </div>
         <div *ngIf="!isLoadingInitialData && buildings.length === 0 && userRole === RolEnum.ADMIN" class="text-xs text-orange-500 px-4 py-1">
           <small>No hay edificios disponibles. Por favor, crea un edificio primero.</small>

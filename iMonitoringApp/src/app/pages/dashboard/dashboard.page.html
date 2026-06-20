@@ -146,7 +146,7 @@
         <div *ngIf="isLoadingMyReservations" class="p-4 text-center text-gray-500 dark:text-gray-400">
           <ion-spinner name="dots"></ion-spinner> <p>Cargando tus reservas...</p>
         </div>
-        <div *ngIf="!isLoadingMyReservations && myUpcomingReservations.length === 0" class="p-4 text-center text-gray-500 bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-gray-400">
+        <div *ngIf="!isLoadingMyReservations && myUpcomingReservations.length === 0" class="p-4 text-center text-blue-850 bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-gray-400">
           No tienes próximas reservas.
         </div>
         <ion-list *ngIf="!isLoadingMyReservations && myUpcomingReservations.length > 0" class="rounded-lg shadow-md dark:bg-kwd-darker">

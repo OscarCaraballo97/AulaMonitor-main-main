@@ -159,17 +159,15 @@
                                 <ion-icon name="close-outline" slot="start"></ion-icon> Rechazar
                             </ion-button>
                         </ng-container>
-
-                        <ion-button *ngIf="canCancelReservation(item)" size="small" fill="clear" color="medium" (click)="confirmAction(item, 'cancel')">
-                            <ion-icon name="trash-outline" slot="start"></ion-icon> Cancelar
-                        </ion-button>
+                        <ion-button *ngIf="canCancelReservation(item)" size="small" fill="solid" (click)="confirmAction(item, 'cancel')"
+                        class="[--background:#dc2626] [--color:#ffffff] hover:[--background:#b91c1c] font-medium rounded-md shadow-sm">
+                        <ion-icon name="trash-outline" slot="start" class="!text-white"></ion-icon> Cancelar
+                      </ion-button>
                     </div>
-
                 </ion-card>
             </ion-list>
         </div>
       </ng-container>
-
     </div>
   </div>
 </ion-content>

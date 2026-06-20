@@ -149,6 +149,7 @@ export class UserListPage implements OnInit, OnDestroy {
     const alert = await this.alertCtrl.create({
       header: 'Confirmar Eliminación',
       message: `¿Estás seguro de eliminar al usuario "${user.name || user.email}"?`,
+      cssClass: 'alerta-cancelar',
       buttons: [
         { text: 'Cancelar', role: 'cancel' },
         { text: 'Eliminar', cssClass: 'text-danger', handler: () => this.deleteUser(user.id!) }

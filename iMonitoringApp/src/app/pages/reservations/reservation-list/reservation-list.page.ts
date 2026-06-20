@@ -312,6 +312,7 @@ export class ReservationListPage implements OnInit, OnDestroy {
     let header = '';
     let message = '';
     let serviceCall: Observable<Reservation>;
+    let alertclass = '';
 
     const groupSuffix = item.isGroup ? ` (y las ${item.count - 1} restantes de la serie)` : '';
 
@@ -327,10 +328,11 @@ export class ReservationListPage implements OnInit, OnDestroy {
       header = 'Cancelar Reserva';
       message = `¿Cancelar esta reserva?${groupSuffix}`;
       serviceCall = this.reservationService.cancelMyReservation(reservation.id);
+      alertclass = 'alerta-cancelar';
     } else { return; }
 
     const alert = await this.alertCtrl.create({
-      header, message,
+      header, message, cssClass: alertclass,
       buttons: [
         { text: 'No', role: 'cancel' },
         {
@@ -390,8 +392,8 @@ export class ReservationListPage implements OnInit, OnDestroy {
     switch (status) {
       case ReservationStatus.PENDIENTE: return '#FFC107';
       case ReservationStatus.CONFIRMADA: return '#28A745';
-      case ReservationStatus.RECHAZADA: return '#DC3545';
-      case ReservationStatus.CANCELADA: return '#6C757D';
+      case ReservationStatus.RECHAZADA: return '#13205d';
+      case ReservationStatus.CANCELADA: return '#df2121';
       default: return '#007BFF';
     }
   }

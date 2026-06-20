@@ -84,3 +84,25 @@ body.dark .custom-date-input {
     filter: invert(1) !important;
   }
 }
+
+body .alerta-cancelar {
+  --color: #ffffff !important; 
+  --background: #246e8b !important;
+
+  .alert-header {
+    color: #ffffff !important;
+  }
+
+  .alert-title {
+    color: #ffffff !important;
+  }
+
+  .alert-message {
+    color: #ffffff !important;
+  }
+
+  .alert-button-group .alert-button {
+    color: #ffffff !important;
+    font-weight: bold;
+  }
+}
