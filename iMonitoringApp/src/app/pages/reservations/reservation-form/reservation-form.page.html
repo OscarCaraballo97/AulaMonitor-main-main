@@ -36,7 +36,7 @@
       </ion-select>
     </ion-item>
 
-    <div *ngIf="reservationForm.get('classroomId')?.touched && reservationForm.get('classroomId')?.invalid" class="text-red-500 text-sm px-4">
+    <div *ngIf="reservationForm.get('classroomId')?.touched && reservationForm.get('classroomId')?.invalid" class="text-red-600 text-[15px] px-4" >
       El aula es obligatoria.
     </div>
 
@@ -53,7 +53,7 @@
       <ion-label position="stacked">Propósito / Materia</ion-label>
       <ion-input formControlName="purpose" type="text" placeholder="Ej. Clase de Matemáticas"></ion-input>
     </ion-item>
-    <div *ngIf="reservationForm.get('purpose')?.touched && reservationForm.get('purpose')?.invalid" class="text-red-500 text-sm px-4">
+    <div *ngIf="reservationForm.get('purpose')?.touched && reservationForm.get('purpose')?.invalid" class="text-red-600 text-[15px] px-4">
       El propósito es obligatorio.
     </div>
 
@@ -126,7 +126,7 @@
         </div>
       </div>
 
-      <div *ngIf="!isLoadingAvailability && timeSlots.length === 0" class="text-center py-4 text-gray-500">
+      <div *ngIf="!isLoadingAvailability && timeSlots.length === 0" class="text-center py-4 text-white">
         No hay horarios disponibles o el aula está cerrada.
       </div>
     </div>

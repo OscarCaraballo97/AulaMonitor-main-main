@@ -99,8 +99,8 @@
               <ion-label position="stacked" class="password-label" style="font-size: 20px;">Contraseña Actual</ion-label>
               <ion-input type="password" formControlName="oldPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
-            <div *ngIf="changePasswordForm.get('oldPassword')?.invalid && changePasswordForm.get('oldPassword')?.touched" class="error-message">
-              <small>Contraseña actual requerida.</small>
+            <div *ngIf="changePasswordForm.get('oldPassword')?.invalid && changePasswordForm.get('oldPassword')?.touched" class="error-message" style="font-size: 20px;" class="mb-6 text-red-500 dark:text-white">
+              <small>Contraseña requerida.</small>
             </div>
 
             <ion-item class="password-item dark:bg-kwd-darker">
@@ -108,7 +108,7 @@
               <ion-label position="stacked" class="password-label" style="font-size: 20px;">Nueva Contraseña</ion-label>
               <ion-input type="password" formControlName="newPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
-            <div *ngIf="changePasswordForm.get('newPassword')?.invalid && changePasswordForm.get('newPassword')?.touched" class="error-message">
+            <div *ngIf="changePasswordForm.get('newPassword')?.invalid && changePasswordForm.get('newPassword')?.touched" class="error-message" style="font-size: 20px;" class="mb-6 text-red-500 dark:text-white">
               <small *ngIf="changePasswordForm.get('newPassword')?.errors?.['required']">Nueva contraseña requerida.</small>
               <small *ngIf="changePasswordForm.get('newPassword')?.errors?.['minlength']">Mínimo 6 caracteres.</small>
             </div>
@@ -118,7 +118,7 @@
               <ion-label position="stacked" class="password-label" style="font-size: 20px;">Confirmar Nueva Contraseña</ion-label>
               <ion-input type="password" formControlName="confirmNewPassword"class="password-input border-b border-gray-300 dark:border-gray-600 focus:border-kwd-blue-DEFAULT !text-black dark:!text-white transition-colors duration-200"></ion-input>
             </ion-item>
-            <div *ngIf="changePasswordForm.get('confirmNewPassword')?.invalid && changePasswordForm.get('confirmNewPassword')?.touched" class="error-message">
+            <div *ngIf="changePasswordForm.get('confirmNewPassword')?.invalid && changePasswordForm.get('confirmNewPassword')?.touched" class="error-message" style="font-size: 20px;" class="mb-6 text-red-500 dark:text-white">
               <small *ngIf="changePasswordForm.get('confirmNewPassword')?.errors?.['required']">Confirmación requerida.</small>
               <small *ngIf="changePasswordForm.get('confirmNewPassword')?.errors?.['passwordMismatch']">Las contraseñas no coinciden.</small>
             </div>

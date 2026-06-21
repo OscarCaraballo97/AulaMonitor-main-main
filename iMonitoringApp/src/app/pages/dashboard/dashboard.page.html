@@ -84,14 +84,14 @@
     </div>
 
     <div *ngIf="userRole === RolEnum.COORDINADOR">
-        <h1 class="mb-6 text-2xl font-semibold text-gray-800 dark:text-kwd-light">Dashboard del Coordinador</h1>
+        <h1 class="mb-6 text-2xl font-semibold text-white dark:text-kwd-light">Dashboard del Coordinador</h1>
         <div *ngIf="isLoadingReservationsToApprove" class="text-center mb-6">
           <ion-spinner name="dots"></ion-spinner>
           <p>Cargando datos del dashboard...</p>
         </div>
   
-        <h2 class="mt-8 mb-3 text-lg font-semibold text-gray-700 dark:text-kwd-light">Reservas de Estudiantes Pendientes</h2>
-        <div *ngIf="!isLoadingReservationsToApprove && reservationsToApprove.length === 0" class="p-4 text-center text-gray-500 bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-gray-400">
+        <h2 class="mt-8 mb-3 text-lg font-semibold text-white dark:text-kwd-light">Reservas de Estudiantes Pendientes</h2>
+        <div *ngIf="!isLoadingReservationsToApprove && reservationsToApprove.length === 0" class="p-4 text-center text-blue-650 bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-white">
           No hay reservas de estudiantes pendientes de aprobación.
         </div>
         <ion-list *ngIf="!isLoadingReservationsToApprove && reservationsToApprove.length > 0" class="rounded-lg shadow-md dark:bg-kwd-darker">

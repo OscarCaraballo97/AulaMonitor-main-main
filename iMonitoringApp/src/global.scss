@@ -27,7 +27,6 @@
   --color: var(--ion-color-warning-contrast, black);
 }
 
-
 .white-text-alert {
   --background: #1e3a8a; 
 
@@ -105,4 +104,13 @@ body .alerta-cancelar {
     color: #ffffff !important;
     font-weight: bold;
   }
+}
+
+.bg-custom {
+  --background: #000742 !important;
+}
+
+.toolbar-color {
+  --background: #135f23 !important;
+  --color: #ffffff !important;
 }

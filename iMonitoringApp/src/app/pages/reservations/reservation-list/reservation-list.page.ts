@@ -19,7 +19,7 @@ import { takeUntil, finalize } from 'rxjs/operators';
 import { ClassroomService } from 'src/app/services/classroom.service';
 import { Classroom } from 'src/app/models/classroom.model';
 import { ClassroomType } from 'src/app/models/classroom-type.enum';
-
+import { RouterLink } from '@angular/router';
 interface StatusOption {
   value: ReservationStatus | 'ALL';
   label: string;
@@ -49,7 +49,7 @@ export interface ReservationViewItem {
     IonHeader, IonToolbar, IonButtons, IonTitle, IonContent,
     IonSegment, IonSegmentButton, IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner,
     IonInput, IonSelect, IonSelectOption, IonItemSliding, IonItemOptions, IonItemOption,
-    IonRefresher, IonRefresherContent, IonMenuButton
+    IonRefresher, IonRefresherContent, IonMenuButton, RouterLink, IonButton
   ],
   providers: [DatePipe]
 })
