@@ -45,16 +45,17 @@
       </ion-toolbar>
 
     <ion-toolbar class="kwd-toolbar-tabs toolbar-color dark:bg-kwd-darker border-b border-gray-700">
-      <nav class="flex justify-start md:justify-center space-x-1 md:space-x-2 px-2 whitespace-nowrap" aria-label="Main navigation tabs">
-        <a *ngFor="let link of filteredNavLinks" [routerLink]="link.route" routerDirection="root"
-        class="px-3 py-3 text-sm font-medium rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-kwd-blue-500"
-        [ngClass]="{'text-white font-semibold bg-blue-900 shadow-sm': isLinkActive(link),'text-white hover:text-white hover:bg-gray-700 dark:text-white dark:hover:text-kwd-light dark:hover:bg-kwd-dark': !isLinkActive(link)}"
-        [attr.aria-current]="isLinkActive(link) ? 'page' : undefined">
-        <ion-icon *ngIf="link.icon" [name]="link.icon" class="w-5 h-5 mr-1 -ml-1 inline-block md:mr-2" aria-hidden="true"></ion-icon>
-          <span class="hidden md:inline">{{ link.title }}</span> 
-        </a>
-       </nav>
-    </ion-toolbar>
+  <nav class="flex justify-start md:justify-center space-x-1 md:space-x-2 px-2 whitespace-nowrap" aria-label="Main navigation tabs">
+    <a *ngFor="let link of filteredNavLinks" [routerLink]="link.route" routerDirection="root"
+       class="px-3 py-3 text-[15px] font-medium rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-kwd-blue-500"
+       [ngClass]="{'text-white font-semibold bg-blue-900 shadow-sm': isLinkActive(link),'text-white hover:text-white hover:bg-gray-700 dark:text-white dark:hover:text-kwd-light dark:hover:bg-kwd-dark': !isLinkActive(link)}"
+       [attr.aria-current]="isLinkActive(link) ? 'page' : undefined">
+       
+       <ion-icon *ngIf="link.icon" [name]="link.icon" class="w-5 h-5 mr-1 -ml-1 inline-block md:mr-2" aria-hidden="true"></ion-icon>
+       <span class="hidden md:inline">{{ link.title }}</span> 
+    </a>
+  </nav>
+</ion-toolbar>
     </ion-header>
 
     <ion-content class="flex-1 h-full bg-gray-100 dark:bg-kwd-dark">

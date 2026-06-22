@@ -111,6 +111,15 @@ body .alerta-cancelar {
 }
 
 .toolbar-color {
-  --background: #636663 !important;
+  --background: #394582 !important;
+  --color: #ffffff !important;
+}
+
+.btn-md {
+  --color: #1a369a !important;
+  transition: --color 0.3s ease;
+}
+
+.dark .btn-md {
   --color: #ffffff !important;
 }
