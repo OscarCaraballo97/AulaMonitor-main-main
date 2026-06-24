@@ -1,13 +1,13 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { IonicModule, AlertController, LoadingController, ToastController, NavController, IonRefresher } from '@ionic/angular';
+import { IonicModule, AlertController, LoadingController, ToastController, NavController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
-import { ClassroomService, ClassroomRequestData } from '../../../services/classroom.service';
+import { ClassroomService } from '../../../services/classroom.service';
 import { Classroom } from '../../../models/classroom.model';
 import { AuthService } from '../../../services/auth.service';
 import { Rol } from '../../../models/rol.model';
-import { Subject, Observable } from 'rxjs';
-import { takeUntil, finalize, catchError } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { takeUntil, finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-classroom-list',
@@ -67,7 +67,7 @@ export class ClassroomListPage implements OnInit, OnDestroy {
         finalize(async () => {
           this.isLoading = false;
           if (loadingOverlay) await loadingOverlay.dismiss();
-          if (event && event.target) (event.target as unknown as IonRefresher).complete();
+          if (event && event.target) (event.target as any).complete();
           this.cdr.detectChanges();
         })
       )
@@ -127,7 +127,6 @@ export class ClassroomListPage implements OnInit, OnDestroy {
       event.target.value = null;
     }
   }
-  // ----------------------------------------------------
 
   async confirmDelete(classroom: Classroom) {
     if (!classroom || !classroom.id) return;

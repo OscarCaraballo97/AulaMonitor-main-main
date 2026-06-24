@@ -70,7 +70,18 @@
             <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.buildingName }}</td>
             <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.capacity }}</td>
             <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.type | titlecase }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.resources || 'N/A' }}</td>
+
+            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
+              <div *ngIf="classroom.resources | keyvalue as recursos; else noResources">
+                <ng-container *ngIf="recursos.length > 0; else noResources">
+                  <span *ngFor="let item of recursos; let last = last">
+                    {{ item.key }} ({{ item.value }})<span *ngIf="!last">, </span>
+                  </span>
+                </ng-container>
+              </div>
+              <ng-template #noResources>N/A</ng-template>
+            </td>
+
             <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
               <button (click)="navigateToViewAvailability(classroom.id)" class="text-kwd-blue-DEFAULT hover:text-kwd-blue-700 dark:text-kwd-blue-400 dark:hover:text-kwd-blue-300" title="Ver Disponibilidad">
                 <ion-icon name="calendar-outline" class="w-5 h-5"></ion-icon>

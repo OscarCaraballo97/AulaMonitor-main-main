@@ -45,6 +45,9 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
 
+                        // --- LOGS DE AUDITORÍA ---
+                        .requestMatchers(HttpMethod.GET, "/api/audit-logs").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+
                         // --- BUILDINGS (Solo ADMIN) ---
                         .requestMatchers(HttpMethod.GET, "/api/buildings/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/buildings").hasAuthority("ROLE_" + Rol.ADMIN.name())

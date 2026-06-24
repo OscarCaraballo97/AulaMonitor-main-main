@@ -38,6 +38,8 @@ public class ReservationService {
     private final UserService userService;
     private final EmailService emailService;
 
+    private final AuditLogService auditLogService;
+
     public ReservationResponseDTO convertToDTO(Reservation reservation) {
         if (reservation == null) return null;
 
@@ -229,7 +231,15 @@ public class ReservationService {
             throw new InvalidReservationException("No se generaron reservas.");
         }
 
-        return convertToDTOList(reservationRepository.saveAll(reservationsToSave));
+        List<Reservation> saved = reservationRepository.saveAll(reservationsToSave);
+
+        auditLogService.logAction(
+                "RESERVAS_SEMESTRE_CREADAS",
+                userPerformingAction.getEmail(),
+                "Se crearon " + saved.size() + " reservas recurrentes para el aula '" + classroom.getName() + "' asignadas a " + professor.getEmail()
+        );
+
+        return convertToDTOList(saved);
     }
 
     @Transactional
@@ -284,7 +294,15 @@ public class ReservationService {
         reservationInput.setGroupId(null);
         reservationInput.setRecurrenceDetails(null);
 
-        return reservationRepository.save(reservationInput);
+        Reservation savedReservation = reservationRepository.save(reservationInput);
+
+        auditLogService.logAction(
+                "RESERVA_CREADA",
+                userMakingReservation.getEmail(),
+                "Creó una reserva para el aula '" + classroom.getName() + "' (" + savedReservation.getStartTime() + "). Estado: " + savedReservation.getStatus()
+        );
+
+        return savedReservation;
     }
 
     @Transactional
@@ -294,7 +312,8 @@ public class ReservationService {
         validateUpdatePermissions(originalReservation, userDetails, updatedData);
 
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) userDetails;
-        boolean isCoordinatorOrAdmin = userDetailsImpl.getUserEntity().getRole() == Rol.COORDINADOR || userDetailsImpl.getUserEntity().getRole() == Rol.ADMIN;
+        User userUpdating = userDetailsImpl.getUserEntity();
+        boolean isCoordinatorOrAdmin = userUpdating.getRole() == Rol.COORDINADOR || userUpdating.getRole() == Rol.ADMIN;
 
         boolean isSeries = originalReservation.getGroupId() != null;
         if (editSeries && !isSeries) {
@@ -339,7 +358,15 @@ public class ReservationService {
                 }
                 results.add(res);
             }
-            return convertToDTOList(reservationRepository.saveAll(results));
+            List<Reservation> savedList = reservationRepository.saveAll(results);
+
+            auditLogService.logAction(
+                    "RESERVAS_ACTUALIZADAS_EN_SERIE",
+                    userUpdating.getEmail(),
+                    "Editó la serie recurrente de reservas (ID Grupo: " + groupId + "). Se actualizaron " + savedList.size() + " reservas."
+            );
+
+            return convertToDTOList(savedList);
 
         } else {
             if (isSeries) {
@@ -347,7 +374,16 @@ public class ReservationService {
                 originalReservation.setRecurrenceDetails(null);
             }
             applyChangesToReservation(originalReservation, updatedData, false);
-            return List.of(convertToDTO(reservationRepository.save(originalReservation)));
+            Reservation saved = reservationRepository.save(originalReservation);
+
+            // --- LOG: EDICIÓN INDIVIDUAL ---
+            auditLogService.logAction(
+                    "RESERVA_ACTUALIZADA",
+                    userUpdating.getEmail(),
+                    "Actualizó los datos de la reserva individual (ID: " + id + ")"
+            );
+
+            return List.of(convertToDTO(saved));
         }
     }
 
@@ -542,8 +578,12 @@ public class ReservationService {
         reservation.setStatus(newStatus);
         Reservation savedReservation = reservationRepository.save(reservation);
 
-        // Envía el correo para Confirmada, Rechazada o Cancelada
-        sendReservationEmail(savedReservation, reason, newStatus);
+        sendReservationEmail(savedReservation, reason, newStatus);// --- LOG: CAMBIO DE ESTADO ---
+        auditLogService.logAction(
+                "ESTADO_RESERVA_ACTUALIZADO",
+                user.getEmail(),
+                "Cambió el estado de la reserva (ID: " + id + ") a " + newStatus.name()
+        );
 
         return savedReservation;
     }
@@ -572,8 +612,13 @@ public class ReservationService {
             reservation.setStatus(ReservationStatus.CANCELADA);
             Reservation savedReservation = reservationRepository.save(reservation);
 
-            // Notifica la cancelación
             sendReservationEmail(savedReservation, reason, ReservationStatus.CANCELADA);
+
+            auditLogService.logAction(
+                    "RESERVA_CANCELADA",
+                    userCancelling.getEmail(),
+                    "Canceló la reserva (ID: " + id + "). Motivo: " + (reason != null ? reason : "Ninguno")
+            );
 
             return savedReservation;
         } else {
@@ -626,6 +671,12 @@ public class ReservationService {
 
         if (isAdmin || (isCoordinator && allowedStatus) || (isOwner && allowedStatus)) {
             reservationRepository.deleteById(id);
+
+            auditLogService.logAction(
+                    "RESERVA_ELIMINADA",
+                    userDeleting.getEmail(),
+                    "Eliminó físicamente la reserva de la base de datos (ID: " + id + ")"
+            );
         } else {
             throw new UnauthorizedAccessException("No tienes permiso para eliminar esta reserva o el estado actual no lo permite.");
         }
