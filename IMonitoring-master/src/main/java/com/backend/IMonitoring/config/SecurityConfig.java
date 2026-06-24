@@ -53,33 +53,27 @@ public class SecurityConfig {
 
                         // --- CLASSROOMS (Solo ADMIN, lectura todos) ---
                         .requestMatchers(HttpMethod.GET, "/api/classrooms/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/classrooms").hasAuthority("ROLE_" + Rol.ADMIN.name())
+                        .requestMatchers(HttpMethod.POST, "/api/classrooms", "/api/classrooms/upload").hasAuthority("ROLE_" + Rol.ADMIN.name())
                         .requestMatchers(HttpMethod.PUT, "/api/classrooms/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
                         .requestMatchers(HttpMethod.DELETE, "/api/classrooms/**").hasAuthority("ROLE_" + Rol.ADMIN.name())
 
                         // --- RESERVATIONS ---
-                        // Crear reserva: Todos los roles autenticados pueden intentarlo (validado en servicio)
                         .requestMatchers(HttpMethod.POST, "/api/reservations").authenticated()
-
-                        // Cambiar estado: ADMIN y COORDINADOR
                         .requestMatchers(HttpMethod.PUT, "/api/reservations/{id}/status").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
                         .requestMatchers(HttpMethod.PATCH, "/api/reservations/{id}/status").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
-
-                        // Otras operaciones de reserva
                         .requestMatchers("/api/reservations/**").authenticated()
 
-                        // --- USERS (CORRECCIÓN AQUÍ) ---
-                        // PERMITIR A COORDINADORES CREAR USUARIOS (POST)
-                        .requestMatchers(HttpMethod.POST, "/api/users").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
 
-                        // Listar usuarios: ADMIN y COORDINADOR
-                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+                        .requestMatchers(HttpMethod.POST, "/api/users/*/image").authenticated()
 
-                        // Editar usuarios: ADMIN y COORDINADOR
-                        .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+                        .requestMatchers(HttpMethod.POST, "/api/users", "/api/users/upload").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
 
-                        // Eliminar usuarios: ADMIN y COORDINADOR (validado en servicio)
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+
+                        .requestMatchers(HttpMethod.GET, "/api/users").hasAnyAuthority("ROLE_" + Rol.ADMIN.name(), "ROLE_" + Rol.COORDINADOR.name())
+
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").authenticated()
 
                         // Perfil propio
                         .requestMatchers("/api/users/me/**").authenticated()

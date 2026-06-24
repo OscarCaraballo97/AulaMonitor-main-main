@@ -24,17 +24,7 @@
     </ion-item>
     <div *ngIf="userForm.get('email')?.invalid && userForm.get('email')?.touched" class="text-xs text-red-600 mb-3 px-1">
       <small style="font-size: 15px;">Correo inválido o requerido.</small>
-    </div>
-
-    <ion-item lines="full" class="mb-4 rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark dark:text-kwd-light">
-      <ion-label position="stacked" style="font-size: 20px;">
-        Contraseña <span *ngIf="!isEditMode" class="text-red-500">*</span>
-      </ion-label>
-      <ion-input type="password" formControlName="password"></ion-input>
-    </ion-item>
-    <div *ngIf="userForm.get('password')?.invalid && userForm.get('password')?.touched" class="text-xs text-red-600 mb-3 px-1">
-      <small style="font-size: 15px;">La contraseña es requerida.</small>
-    </div>
+     </div>
 
     <ion-item lines="full" class="mb-4 rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark dark:text-kwd-light">
       <ion-label position="stacked" style="font-size: 20px;">Rol <span class="text-red-500">*</span></ion-label>
@@ -68,7 +58,7 @@
               class="[--background:#dc2626] [--background-hover:#b91c1c] text-white font-medium rounded-md shadow-sm">
               Cancelar
       </ion-button>
-      
+
       <ion-button type="submit" [disabled]="userForm.invalid || isLoading"
               class="[--background:#1a365d] [--background-hover:#152e4d] text-white font-medium rounded-md shadow-sm">
               <ion-spinner *ngIf="isLoading" name="dots" slot="start" class="!text-white"></ion-spinner>

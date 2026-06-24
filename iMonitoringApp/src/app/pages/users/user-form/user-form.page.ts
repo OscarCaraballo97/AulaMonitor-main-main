@@ -63,10 +63,10 @@ export class UserFormPage implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    // ELIMINADO EL CAMPO 'password' DEL FORMULARIO
     this.userForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: [''],
       role: [Rol.ESTUDIANTE, Validators.required],
       career: ['', Validators.required],
       avatarUrl: ['']
@@ -85,19 +85,15 @@ export class UserFormPage implements OnInit, OnDestroy {
       if (this.userId) {
         this.isEditMode = true;
         this.pageTitle = 'Editar Usuario';
-        this.userForm.get('password')?.clearValidators();
         this.loadUserData(this.userId);
       } else {
         this.isEditMode = false;
         this.pageTitle = 'Nuevo Usuario';
-        this.userForm.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
       }
-      this.userForm.get('password')?.updateValueAndValidity();
       this.cdr.detectChanges();
     });
   }
 
-  // MÉTODO CORREGIDO: Permite al Coordinador elegir TUTOR
   setupRolesForSelect() {
     if (this.loggedInUserRole === Rol.ADMIN) {
       this.rolesForSelect = Object.keys(Rol)
@@ -108,7 +104,7 @@ export class UserFormPage implements OnInit, OnDestroy {
         .filter(key => isNaN(Number(key)) &&
           (Rol[key as keyof typeof Rol] === Rol.ESTUDIANTE ||
            Rol[key as keyof typeof Rol] === Rol.PROFESOR ||
-           Rol[key as keyof typeof Rol] === Rol.TUTOR)) // Agregado Tutor
+           Rol[key as keyof typeof Rol] === Rol.TUTOR))
         .map(key => ({ key: key.replace('_', ' '), value: Rol[key as keyof typeof Rol] }));
     }
   }
@@ -172,7 +168,6 @@ export class UserFormPage implements OnInit, OnDestroy {
     const loading = await this.loadingCtrl.create({ message: this.isEditMode ? 'Guardando...' : 'Creando...' });
     await loading.present();
     const userData = this.userForm.getRawValue();
-    if (this.isEditMode && !userData.password) delete userData.password;
 
     let operation: Observable<User> = this.isEditMode && this.userId
       ? this.userService.updateUser(this.userId, userData)
@@ -183,7 +178,7 @@ export class UserFormPage implements OnInit, OnDestroy {
         await loading.dismiss();
     })).subscribe({
       next: async () => {
-        await this.presentToast('Operación exitosa.', 'success');
+        await this.presentToast('Operación exitosa. Si es un nuevo usuario, recibirá su contraseña por correo.', 'success');
         this.navCtrl.navigateBack('/app/users');
       },
       error: async (err) => {
@@ -194,7 +189,7 @@ export class UserFormPage implements OnInit, OnDestroy {
   }
 
   async presentToast(message: string, color: 'success' | 'danger' | 'warning') {
-    const toast = await this.toastCtrl.create({ message, duration: 3000, color, position: 'top' });
+    const toast = await this.toastCtrl.create({ message, duration: 4000, color, position: 'top' });
     await toast.present();
   }
 

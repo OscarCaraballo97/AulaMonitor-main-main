@@ -196,8 +196,7 @@ export class ProfilePage implements OnInit, OnDestroy {
   if (!this.isEditing) return;
   const actionSheet = await this.actionSheetCtrl.create({
     header: 'Cambiar Avatar',
-    // Añadimos esta clase para poder forzar el color blanco en el CSS
-    cssClass: 'avatar-action-sheet-fixed', 
+    cssClass: 'avatar-action-sheet-fixed',
     buttons: [
       {
         text: 'Subir desde Dispositivo',
