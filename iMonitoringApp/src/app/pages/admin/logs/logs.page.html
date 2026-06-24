@@ -1,0 +1,90 @@
+<ion-header>
+  <ion-toolbar color="primary" class="dark:bg-kwd-darker">
+    <ion-buttons slot="start">
+      <ion-menu-button class="text-white dark:text-kwd-light"></ion-menu-button>
+    </ion-buttons>
+    <ion-title class="text-white dark:text-kwd-light font-semibold tracking-wide">
+      Historial y Auditoría de Aulas
+    </ion-title>
+
+    <ion-buttons slot="end" class="mr-2">
+      <ion-button fill="solid" color="tertiary" (click)="downloadPDF()" [disabled]="filteredLogs.length === 0 || isLoading" class="rounded-md font-bold text-sm">
+        <ion-icon name="download-outline" slot="start"></ion-icon>
+        Exportar Filtro a PDF
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="bg-gray-50 dark:bg-kwd-dark ion-padding">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <div class="bg-white dark:bg-kwd-darker p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 grid grid-cols-1 md:grid-cols-4 gap-4 items-end animate-fade-in-up">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Aula</label>
+        <ion-select [(ngModel)]="selectedClassroom" (ionChange)="applyFilters()" interface="popover" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]">
+          <ion-select-option value="ALL">Todas las aulas</ion-select-option>
+          <ion-select-option *ngFor="let c of classrooms" [value]="c.name">{{ c.name }}</ion-select-option>
+        </ion-select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Día Específico</label>
+        <ion-input type="date" [(ngModel)]="selectedDate" (ionChange)="applyFilters()" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]"></ion-input>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Buscar (Usuario/Motivo)</label>
+        <ion-input [(ngModel)]="searchTerm" (ionInput)="applyFilters()" placeholder="Ej: Laboratorio..." clearInput class="border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]"></ion-input>
+      </div>
+
+      <div>
+        <ion-button expand="block" fill="outline" color="medium" (click)="clearFilters()" class="min-h-[42px] font-bold">
+          Limpiar Filtros
+        </ion-button>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-kwd-darker rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 overflow-x-auto animate-fade-in-up">
+
+      <div *ngIf="isLoading" class="flex justify-center items-center py-16">
+        <ion-spinner name="crescent" color="primary"></ion-spinner>
+      </div>
+
+      <table *ngIf="!isLoading" class="w-full text-left border-collapse min-w-[800px]">
+        <thead>
+          <tr class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm">
+            <th class="p-3 border-b dark:border-gray-700 font-bold">Aula</th>
+            <th class="p-3 border-b dark:border-gray-700 font-bold">Responsable</th>
+            <th class="p-3 border-b dark:border-gray-700 font-bold">Rol</th>
+            <th class="p-3 border-b dark:border-gray-700 font-bold">Día</th>
+            <th class="p-3 border-b dark:border-gray-700 font-bold">Horario</th>
+            <th class="p-3 border-b dark:border-gray-700 font-bold">Motivo Original</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of filteredLogs" class="hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700 text-sm transition-colors">
+            <td class="p-3 font-bold text-gray-800 dark:text-gray-100">{{ log.classroomName }}</td>
+            <td class="p-3 text-gray-700 dark:text-gray-300 font-medium">{{ log.userName }}</td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                {{ log.role }}
+              </span>
+            </td>
+            <td class="p-3 text-gray-600 dark:text-gray-400">{{ log.startTime | date:'dd/MMM/yyyy' }}</td>
+            <td class="p-3 text-gray-600 dark:text-gray-400 font-semibold">{{ log.startTime | date:'HH:mm' }} - {{ log.endTime | date:'HH:mm' }}</td>
+            <td class="p-3 text-gray-600 dark:text-gray-400 italic">"{{ log.purpose }}"</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div *ngIf="!isLoading && filteredLogs.length === 0" class="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
+        <ion-icon name="document-text-outline" class="text-6xl mb-4"></ion-icon>
+        <p class="text-lg font-medium">No se encontraron registros de auditoría</p>
+        <p class="text-sm">Intenta ajustar los filtros de fecha o buscar con otra palabra.</p>
+      </div>
+
+    </div>
+  </div>
+</ion-content>

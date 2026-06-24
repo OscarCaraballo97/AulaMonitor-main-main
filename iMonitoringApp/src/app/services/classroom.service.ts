@@ -76,7 +76,7 @@ export class ClassroomService {
     return this.http.get<Reservation[]>(`${this.apiUrl}/${classroomId}/reservations-by-date`, { params })
       .pipe(catchError(err => this.handleError(err, `obtener reservas para aula ${classroomId} en rango de fechas`)));
   }
-  
+
   getAvailabilitySummary(): Observable<ClassroomAvailabilitySummaryDTO> {
     return this.http.get<ClassroomAvailabilitySummaryDTO>(`${this.apiUrl}/stats/availability`)
       .pipe(catchError(err => this.handleError(err, 'obtener resumen de disponibilidad de aulas')));
@@ -101,5 +101,11 @@ export class ClassroomService {
   getClassroomsByMinCapacity(minCapacity: number): Observable<Classroom[]> {
     return this.http.get<Classroom[]>(`${this.apiUrl}/capacity/${minCapacity}`)
       .pipe(catchError(err => this.handleError(err, `obtener aulas por capacidad mínima ${minCapacity}`)));
+  }
+  uploadClassroomsExcel(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<any>(`${this.apiUrl}/upload`, formData)
+      .pipe(catchError(err => this.handleError(err, 'subir excel de aulas')));
   }
 }

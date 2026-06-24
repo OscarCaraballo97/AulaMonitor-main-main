@@ -9,8 +9,12 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @Data
@@ -33,7 +37,16 @@ public class Classroom {
     @Column(nullable = false)
     private ClassroomType type;
 
-    private String resources;
+    // Cantidad de recursos
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    @Builder.Default
+    private Map<String, Integer> resources = new HashMap<>();
+
+    // Mantenimiento
+    @Column(name = "is_under_maintenance", nullable = false)
+    @Builder.Default
+    private Boolean isUnderMaintenance = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "building_id", nullable = false)
@@ -43,7 +56,7 @@ public class Classroom {
     private Building building;
 
     @OneToMany(mappedBy = "classroom", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @ToString.Exclude 
+    @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @JsonManagedReference("classroom-reservations")
     private List<Reservation> reservations;
@@ -53,4 +66,3 @@ public class Classroom {
         return (this.building != null) ? this.building.getId() : null;
     }
 }
-

@@ -4,6 +4,7 @@ import com.backend.IMonitoring.model.Reservation;
 import com.backend.IMonitoring.model.ReservationStatus;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -17,10 +18,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
     List<Reservation> findByStatus(ReservationStatus status, Sort sort);
     List<Reservation> findByUserId(String userId, Sort sort);
     List<Reservation> findByClassroomId(String classroomId, Sort sort);
-
-    // --- NUEVO: Buscar por grupo ---
     List<Reservation> findByGroupId(String groupId);
-    // -------------------------------
 
     List<Reservation> findByClassroomIdAndStartTimeBetween(String classroomId, LocalDateTime startTime, LocalDateTime endTime, Sort sort);
     List<Reservation> findByUserIdAndStartTimeBetween(String userId, LocalDateTime startTime, LocalDateTime endTime, Sort sort);
@@ -34,6 +32,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
 
     List<Reservation> findByStatusAndStartTimeAfter(ReservationStatus status, LocalDateTime startTime, Sort sort);
 
+    @Modifying
+    @Query("DELETE FROM Reservation r WHERE r.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") String userId);
+
     @Query("SELECT r FROM Reservation r WHERE r.user.id = :userId AND r.status = com.backend.IMonitoring.model.ReservationStatus.CONFIRMADA AND r.startTime > :currentTime")
     List<Reservation> findUpcomingConfirmedByUserId(@Param("userId") String userId, @Param("currentTime") LocalDateTime currentTime, Sort sort);
 
@@ -43,7 +45,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
     @Query("SELECT r FROM Reservation r WHERE r.classroom.id = :classroomId AND r.startTime >= :startDate AND r.endTime <= :endDate")
     List<Reservation> findByClassroomIdAndDateTimeRange(@Param("classroomId") String classroomId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // Método para validar conflictos
     @Query("SELECT r FROM Reservation r WHERE r.classroom.id = :classroomId " +
             "AND r.startTime < :endTime AND r.endTime > :startTime " +
             "AND r.status IN (com.backend.IMonitoring.model.ReservationStatus.CONFIRMADA, com.backend.IMonitoring.model.ReservationStatus.PENDIENTE)")
@@ -51,7 +52,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
                                                   @Param("startTime") LocalDateTime startTime,
                                                   @Param("endTime") LocalDateTime endTime);
 
-    // Método legacy (puedes conservarlo si lo usas en otra parte, pero la lógica nueva usa group_id)
     @Query("SELECT r FROM Reservation r WHERE r.user.id = :userId " +
             "AND r.purpose = :purpose " +
             "AND r.classroom.id = :classroomId " +
@@ -62,4 +62,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
             @Param("classroomId") String classroomId,
             @Param("baseDate") LocalDateTime baseDate
     );
+
+    @Query("SELECT r FROM Reservation r WHERE r.status = com.backend.IMonitoring.model.ReservationStatus.CONFIRMADA AND r.endTime < :now ORDER BY r.startTime DESC")
+    List<Reservation> findPastConfirmedReservationsAsLogs(@Param("now") LocalDateTime now);
 }

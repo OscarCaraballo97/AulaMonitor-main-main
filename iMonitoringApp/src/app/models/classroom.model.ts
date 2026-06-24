@@ -6,13 +6,16 @@ export interface Classroom {
   name: string;
   capacity: number;
   type: ClassroomType;
-  resources?: string;
+  resources?: { [key: string]: number };
+  isUnderMaintenance?: boolean;
   buildingId: string;
   building?: Building;
   buildingName?: string;
 }
+
 export interface ClassroomSummary {
   id: string;
   name: string;
   buildingName?: string;
+  isUnderMaintenance?: boolean;
 }

@@ -95,7 +95,6 @@ export class ReservationService {
     );
   }
 
-  // --- MODIFICADO: Acepta editSeries y lo manda como Query Param ---
   updateReservation(id: string, reservation: Partial<ReservationCreationData>, editSeries: boolean = false): Observable<Reservation> {
     const url = `${this.apiUrl}/${id}?editSeries=${editSeries}`;
     return this.http.put<Reservation>(url, reservation).pipe(
@@ -109,8 +108,9 @@ export class ReservationService {
     );
   }
 
-  updateReservationStatus(id: string, status: ReservationStatus): Observable<Reservation> {
-    return this.http.patch<Reservation>(`${this.apiUrl}/${id}/status`, { status }).pipe(
+
+  updateReservationStatus(id: string, status: ReservationStatus, reason?: string): Observable<Reservation> {
+    return this.http.patch<Reservation>(`${this.apiUrl}/${id}/status`, { status, reason }).pipe(
       catchError(err => this.handleError(err, 'Actualizar estado'))
     );
   }
@@ -121,8 +121,10 @@ export class ReservationService {
     );
   }
 
-  cancelMyReservation(id: string): Observable<Reservation> {
-    return this.http.patch<Reservation>(`${this.apiUrl}/${id}/cancel-by-user`, {}).pipe(
+
+  cancelMyReservation(id: string, reason: string): Observable<Reservation> {
+    const url = `${this.apiUrl}/${id}/cancel-by-user?reason=${encodeURIComponent(reason)}`;
+    return this.http.patch<Reservation>(url, {}).pipe(
       catchError(err => this.handleError(err, 'Cancelar reserva'))
     );
   }

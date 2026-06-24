@@ -3,6 +3,7 @@ package com.backend.IMonitoring.controller;
 import com.backend.IMonitoring.dto.ReservationRequestDTO;
 import com.backend.IMonitoring.dto.ReservationResponseDTO;
 import com.backend.IMonitoring.dto.SemesterReservationRequestDTO;
+import com.backend.IMonitoring.dto.UsageLogDTO;
 import com.backend.IMonitoring.model.Classroom;
 import com.backend.IMonitoring.model.Reservation;
 import com.backend.IMonitoring.model.ReservationStatus;
@@ -29,6 +30,7 @@ import java.util.List;
 @Setter
 class UpdateStatusRequest {
     private ReservationStatus status;
+    private String reason;
 }
 
 @RestController
@@ -77,7 +79,6 @@ public class ReservationController {
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) currentUserDetails;
         String currentAuthUserId = userDetailsImpl.getId();
 
-        // CORRECCIÓN: Se eliminan 'page' y 'size' de la llamada porque se quitaron del servicio
         List<ReservationResponseDTO> reservationDTOs = reservationService.getFilteredUserReservations(
                 currentAuthUserId, status, sortField, sortDirection,
                 futureOnly != null && futureOnly,
@@ -98,6 +99,12 @@ public class ReservationController {
 
         List<ReservationResponseDTO> upcoming = reservationService.getMyUpcomingReservationsDTO(userId, limit);
         return ResponseEntity.ok(upcoming);
+    }
+
+    @GetMapping("/logs")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
+    public ResponseEntity<List<UsageLogDTO>> getUsageLogs() {
+        return ResponseEntity.ok(reservationService.getUsageLogs());
     }
 
     @GetMapping("/{id}")
@@ -166,7 +173,10 @@ public class ReservationController {
         if (statusRequest.getStatus() == null) {
             throw new IllegalArgumentException("El nuevo estado es obligatorio.");
         }
-        Reservation updatedReservationEntity = reservationService.updateReservationStatus(id, statusRequest.getStatus(), currentUserDetails);
+
+        Reservation updatedReservationEntity = reservationService.updateReservationStatus(
+                id, statusRequest.getStatus(), statusRequest.getReason(), currentUserDetails);
+
         return ResponseEntity.ok(reservationService.convertToDTO(updatedReservationEntity));
     }
 
@@ -196,7 +206,6 @@ public class ReservationController {
         reservationDetailsToUpdate.setEndTime(reservationRequestDTO.getEndTime());
         reservationDetailsToUpdate.setPurpose(reservationRequestDTO.getPurpose());
 
-        // Se pasa daysOfWeek. Si reservationRequestDTO no tiene este campo (ver abajo), esto daría error.
         List<ReservationResponseDTO> updatedReservations = reservationService.updateReservationSmart(
                 id,
                 reservationDetailsToUpdate,
@@ -211,8 +220,10 @@ public class ReservationController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReservationResponseDTO> cancelMyReservation(
             @PathVariable String id,
+            @RequestParam(required = false) String reason,
             @AuthenticationPrincipal UserDetails currentUserDetails) {
-        Reservation cancelledReservation = reservationService.cancelMyReservation(id, currentUserDetails);
+
+        Reservation cancelledReservation = reservationService.cancelMyReservation(id, reason, currentUserDetails);
         return ResponseEntity.ok(reservationService.convertToDTO(cancelledReservation));
     }
 
@@ -220,8 +231,9 @@ public class ReservationController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReservationResponseDTO> cancelMyReservationAlias(
             @PathVariable String id,
+            @RequestParam(required = false) String reason,
             @AuthenticationPrincipal UserDetails currentUserDetails) {
-        return cancelMyReservation(id, currentUserDetails);
+        return cancelMyReservation(id, reason, currentUserDetails);
     }
 
     @DeleteMapping("/{id}")

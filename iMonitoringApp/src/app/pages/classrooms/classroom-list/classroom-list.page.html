@@ -20,14 +20,22 @@
   <div class="p-4 md:p-6 lg:p-8 group">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
 
-      <h1 class="mb-6 text-2xl font-bold text-white transition-colors duration-300 group-hover:text-gray-400 group-hover:no-underline">
+      <h1 class="mb-6 md:mb-0 text-2xl font-bold text-gray-800 dark:text-white transition-colors duration-300 group-hover:text-gray-600 group-hover:no-underline">
         Gestión de Aulas
       </h1>
-      <button *ngIf="canManageClassrooms()" (click)="navigateToAddClassroom()"
-        class="mt-4 md:mt-0 flex items-center justify-center px-4 py-2 text-sm font-bold text-white rounded-md bg-blue-600 hover:bg-blue-700 hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-        <ion-icon name="add-outline" class="w-5 h-5 mr-2 !text-white"></ion-icon>
-        Nueva Aula
-      </button>
+
+      <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-4 md:mt-0" *ngIf="canManageClassrooms()">
+        <input type="file" (change)="onFileSelected($event)" accept=".xlsx, .xls" #fileInput hidden>
+        <button (click)="fileInput.click()" class="flex items-center justify-center px-4 py-2 text-sm font-bold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none transition-all duration-200">
+          <ion-icon name="cloud-upload-outline" class="w-5 h-5 mr-2 text-gray-700"></ion-icon>
+          Importar Excel
+        </button>
+
+        <button (click)="navigateToAddClassroom()" class="flex items-center justify-center px-4 py-2 text-sm font-bold text-white rounded-md bg-blue-600 hover:bg-blue-700 hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+          <ion-icon name="add-outline" class="w-5 h-5 mr-2 !text-white"></ion-icon>
+          Nueva Aula
+        </button>
+      </div>
     </div>
 
     <div *ngIf="isLoading && classrooms.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
@@ -37,7 +45,7 @@
 
     <div *ngIf="!isLoading && classrooms.length === 0 && !errorMessage" class="p-8 text-center text-gray-500 bg-white rounded-lg shadow-md dark:bg-kwd-darker dark:text-gray-400 mt-6">
       <ion-icon name="cube-outline" class="w-12 h-12 mx-auto"></ion-icon>
-      <p class="mt-2">No hay aulas registradas. <a *ngIf="canManageClassrooms()" (click)="navigateToAddClassroom()" class="text-kwd-blue-DEFAULT hover:underline">Crea una nueva.</a></p>
+      <p class="mt-2">No hay aulas registradas. <a *ngIf="canManageClassrooms()" (click)="navigateToAddClassroom()" class="text-kwd-blue-DEFAULT hover:underline cursor-pointer">Crea una nueva.</a></p>
     </div>
 
     <div *ngIf="errorMessage && !isLoading" class="p-4 my-4 text-sm text-center text-red-700 bg-red-100 rounded-lg dark:text-kwd-red dark:bg-red-900/30">
@@ -58,16 +66,13 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200 dark:bg-kwd-darker dark:divide-gray-700">
           <tr *ngFor="let classroom of classrooms" class="border-b dark:border-gray-700 bg-white dark:bg-kwd-darker transition-none">
-      <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-kwd-light">{{ classroom.name }}</td>
-
-      <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.buildingName }}</td>
-
-      <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.capacity }}</td>
-      <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.type | titlecase }}</td>
-      <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.resources || 'N/A' }}</td>
-      <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-
-        <button (click)="navigateToViewAvailability(classroom.id)" class="text-kwd-blue-DEFAULT hover:text-kwd-blue-700 dark:text-kwd-blue-400 dark:hover:text-kwd-blue-300" title="Ver Disponibilidad">
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-kwd-light">{{ classroom.name }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.buildingName }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.capacity }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.type | titlecase }}</td>
+            <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">{{ classroom.resources || 'N/A' }}</td>
+            <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
+              <button (click)="navigateToViewAvailability(classroom.id)" class="text-kwd-blue-DEFAULT hover:text-kwd-blue-700 dark:text-kwd-blue-400 dark:hover:text-kwd-blue-300" title="Ver Disponibilidad">
                 <ion-icon name="calendar-outline" class="w-5 h-5"></ion-icon>
               </button>
               <button *ngIf="canManageClassrooms()" (click)="navigateToEditClassroom(classroom.id)" class="ml-3 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" title="Editar">

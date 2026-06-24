@@ -2,11 +2,16 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, Params } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+import { PdfService } from '../../../services/pdf.service';
+
 import {
   IonHeader, IonToolbar, IonButtons, IonTitle, IonContent, IonSegment, IonSegmentButton,
-  IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner, IonInput, IonSelect, IonSelectOption,
+  IonList, IonItem, IonIcon, IonLabel, IonButton, IonSpinner, IonInput, IonSelect, IonSelectOption,
   IonItemSliding, IonItemOptions, IonItemOption, IonRefresher, IonRefresherContent,
-  ToastController, AlertController, NavController, LoadingController, IonMenuButton
+  ToastController, AlertController, NavController, LoadingController, IonMenuButton,
+  IonFab, IonFabButton // <-- CORREGIDO: Importados aquí
 } from '@ionic/angular/standalone';
 
 import { ReservationService } from '../../../services/reservation.service';
@@ -20,6 +25,7 @@ import { ClassroomService } from 'src/app/services/classroom.service';
 import { Classroom } from 'src/app/models/classroom.model';
 import { ClassroomType } from 'src/app/models/classroom-type.enum';
 import { RouterLink } from '@angular/router';
+
 interface StatusOption {
   value: ReservationStatus | 'ALL';
   label: string;
@@ -45,11 +51,12 @@ export interface ReservationViewItem {
   styleUrls: ['./reservation-list.page.scss'],
   standalone: true,
   imports: [
-    CommonModule, FormsModule, TitleCasePipe,
+    CommonModule, FormsModule,
     IonHeader, IonToolbar, IonButtons, IonTitle, IonContent,
-    IonSegment, IonSegmentButton, IonList, IonCard, IonItem, IonIcon, IonLabel, IonButton, IonSpinner,
+    IonSegment, IonSegmentButton, IonList, IonItem, IonIcon, IonLabel, IonButton, IonSpinner,
     IonInput, IonSelect, IonSelectOption, IonItemSliding, IonItemOptions, IonItemOption,
-    IonRefresher, IonRefresherContent, IonMenuButton, RouterLink, IonButton
+    IonRefresher, IonRefresherContent, IonMenuButton, RouterLink,
+    IonFab, IonFabButton // <-- CORREGIDO: Registrados en el componente (IonCard eliminado)
   ],
   providers: [DatePipe]
 })
@@ -74,7 +81,7 @@ export class ReservationListPage implements OnInit, OnDestroy {
   isLoadingPending = true;
 
   errorMessage: string | null = null;
-  selectedView: 'my-reservations' | 'pending' | 'all' = 'my-reservations';
+  selectedView: 'my-reservations' | 'pending' | 'all' | 'calendar' = 'my-reservations';
 
   classrooms: Classroom[] = [];
   selectedStatusFilter: StatusOption['value'] = 'ALL';
@@ -100,7 +107,9 @@ export class ReservationListPage implements OnInit, OnDestroy {
     private router: Router,
     private loadingCtrl: LoadingController,
     private activatedRoute: ActivatedRoute,
-    private datePipe: DatePipe
+    private datePipe: DatePipe,
+    private pdfService: PdfService,
+    private http: HttpClient
   ) { }
 
   ngOnInit() {
@@ -114,8 +123,8 @@ export class ReservationListPage implements OnInit, OnDestroy {
     });
 
     this.activatedRoute.queryParams.pipe(takeUntil(this.destroy$)).subscribe((params: Params) => {
-      if (params['view'] && ['my-reservations', 'pending', 'all'].includes(params['view'])) {
-        this.selectedView = params['view'] as 'my-reservations' | 'pending' | 'all';
+      if (params['view'] && ['my-reservations', 'pending', 'all', 'calendar'].includes(params['view'])) {
+        this.selectedView = params['view'] as 'my-reservations' | 'pending' | 'all' | 'calendar';
         this.cdr.detectChanges();
       }
     });
@@ -189,12 +198,10 @@ export class ReservationListPage implements OnInit, OnDestroy {
     });
   }
 
-  // --- AGRUPACIÓN DE RESERVAS ---
   private groupReservations(reservations: Reservation[]): ReservationViewItem[] {
     const groups: { [key: string]: Reservation[] } = {};
     const viewItems: ReservationViewItem[] = [];
 
-    // Agrupar por ID de Grupo (si existe) o por ID de reserva
     reservations.forEach(res => {
       let key = res.id;
       if (res.groupId) {
@@ -206,7 +213,6 @@ export class ReservationListPage implements OnInit, OnDestroy {
 
     for (const key in groups) {
       const list = groups[key];
-      // Ordenar por fecha para encontrar inicio/fin reales del grupo
       list.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
       const first = list[0];
@@ -217,16 +223,12 @@ export class ReservationListPage implements OnInit, OnDestroy {
 
       if (isGroup) {
         if (first.recurrenceDetails) {
-            // Caso ideal: el backend envía "LUNES - MIERCOLES"
             const recurrenceFormatted = this.toTitleCase(first.recurrenceDetails);
             const startStr = this.datePipe.transform(first.startTime, 'dd MMM');
             const endStr = this.datePipe.transform(last.startTime, 'dd MMM');
             dateDesc = `${recurrenceFormatted} (${startStr} - ${endStr})`;
         } else {
-            // Caso fallback: Calcular días únicos y ordenarlos (Lunes antes que Martes)
             const uniqueDays = Array.from(new Set(list.map(r => new Date(r.startTime).getDay())));
-
-            // Ordenar: Domingo(0) al final o al principio. Aquí Lunes=1..Sabado=6, Domingo=0.
             uniqueDays.sort((a, b) => {
                 const isoA = a === 0 ? 7 : a;
                 const isoB = b === 0 ? 7 : b;
@@ -237,7 +239,6 @@ export class ReservationListPage implements OnInit, OnDestroy {
             dateDesc = `${daysStr} (${list.length} clases)`;
         }
       } else {
-        // Reserva individual
         dateDesc = this.datePipe.transform(first.startTime, 'EEEE, d/MM/yy') || '';
       }
 
@@ -256,7 +257,6 @@ export class ReservationListPage implements OnInit, OnDestroy {
       });
     }
 
-    // Ordenar la lista final por fecha de inicio más reciente
     return viewItems.sort((a, b) => {
         return new Date(b.rawReservation.startTime).getTime() - new Date(a.rawReservation.startTime).getTime();
     });
@@ -311,35 +311,65 @@ export class ReservationListPage implements OnInit, OnDestroy {
     const reservation = item.rawReservation;
     let header = '';
     let message = '';
-    let serviceCall: Observable<Reservation>;
     let alertclass = '';
+    let requireReason = false;
 
     const groupSuffix = item.isGroup ? ` (y las ${item.count - 1} restantes de la serie)` : '';
 
     if (actionType === 'confirm') {
       header = 'Confirmar Reserva';
       message = `¿Confirmar reserva de ${reservation.user?.name}?${groupSuffix}`;
-      serviceCall = this.reservationService.updateReservationStatus(reservation.id, ReservationStatus.CONFIRMADA);
     } else if (actionType === 'reject') {
       header = 'Rechazar Reserva';
-      message = `¿Rechazar reserva de ${reservation.user?.name}?${groupSuffix}`;
-      serviceCall = this.reservationService.updateReservationStatus(reservation.id, ReservationStatus.RECHAZADA);
+      message = `¿Rechazar reserva de ${reservation.user?.name}? Indica el motivo.${groupSuffix}`;
+      requireReason = true;
     } else if (actionType === 'cancel') {
       header = 'Cancelar Reserva';
-      message = `¿Cancelar esta reserva?${groupSuffix}`;
-      serviceCall = this.reservationService.cancelMyReservation(reservation.id);
+      message = `¿Cancelar esta reserva? Indica el motivo.${groupSuffix}`;
       alertclass = 'alerta-cancelar';
+      requireReason = true;
     } else { return; }
 
+    const alertInputs: any[] = requireReason ? [
+      {
+        name: 'reason',
+        type: 'textarea',
+        placeholder: 'Escribe el motivo aquí...'
+      }
+    ] : [];
+
     const alert = await this.alertCtrl.create({
-      header, message, cssClass: alertclass,
+      header,
+      message,
+      cssClass: alertclass,
+      inputs: alertInputs,
       buttons: [
         { text: 'No', role: 'cancel' },
         {
           text: 'Sí',
-          handler: async () => {
+          handler: async (data) => {
+            let reasonStr = '';
+
+            if (requireReason) {
+              if (!data.reason || data.reason.trim() === '') {
+                this.presentToast('Debes indicar un motivo para esta acción.', 'warning');
+                return false;
+              }
+              reasonStr = data.reason.trim();
+            }
+
             const loading = await this.loadingCtrl.create({ message: 'Procesando...' });
             await loading.present();
+
+            let serviceCall: Observable<Reservation>;
+
+            if (actionType === 'confirm') {
+              serviceCall = this.reservationService.updateReservationStatus(reservation.id, ReservationStatus.CONFIRMADA);
+            } else if (actionType === 'reject') {
+              serviceCall = this.reservationService.updateReservationStatus(reservation.id, ReservationStatus.RECHAZADA, reasonStr);
+            } else {
+              serviceCall = this.reservationService.cancelMyReservation(reservation.id, reasonStr);
+            }
 
             serviceCall.pipe(
               finalize(async () => await loading.dismiss()),
@@ -351,11 +381,37 @@ export class ReservationListPage implements OnInit, OnDestroy {
               },
               error: (err) => { this.presentToast(err.message || 'Error al procesar.', 'danger'); }
             });
+            return true;
           }
         }
       ]
     });
     await alert.present();
+  }
+
+  async downloadAdminLogs() {
+    const loading = await this.loadingCtrl.create({ message: 'Generando Reporte...' });
+    await loading.present();
+
+    this.http.get<any[]>(`${environment.apiUrl}/reservations/logs`).subscribe({
+      next: (logs) => {
+        this.pdfService.exportAdminLogs(logs);
+        loading.dismiss();
+      },
+      error: () => {
+        this.presentToast('Error al descargar logs de auditoría', 'danger');
+        loading.dismiss();
+      }
+    });
+  }
+
+  downloadMySchedule() {
+    const confirmed = this.filteredMyReservations.filter(r => r.status === ReservationStatus.CONFIRMADA);
+    if (confirmed.length === 0) {
+      this.presentToast('No tienes clases confirmadas para exportar.', 'warning');
+      return;
+    }
+    this.pdfService.exportProfessorSchedule(confirmed, this.currentUser?.name || 'Usuario');
   }
 
   navigateToEdit(item: ReservationViewItem) {

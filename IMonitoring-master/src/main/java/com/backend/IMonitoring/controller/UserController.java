@@ -26,6 +26,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -48,26 +49,23 @@ public class UserController {
         List<User> usersToProcess;
 
         if (currentUserDetails.getRoleEnum() == Rol.ADMIN) {
-            // El admin ve a todos (incluyendo coordinadores)
             usersToProcess = userService.getAllUsers();
         } else if (currentUserDetails.getRoleEnum() == Rol.COORDINADOR) {
-            // Obtener la carrera del coordinador
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
 
             List<User> students = userService.getUsersByRole(Rol.ESTUDIANTE);
             List<User> tutors = userService.getUsersByRole(Rol.TUTOR);
             List<User> professors = userService.getUsersByRole(Rol.PROFESOR);
 
-            // CAMBIO: Ahora incluimos también a los coordinadores
+
             List<User> coordinators = userService.getUsersByRole(Rol.COORDINADOR);
 
             List<User> allCandidates = new ArrayList<>();
             allCandidates.addAll(students);
             allCandidates.addAll(tutors);
             allCandidates.addAll(professors);
-            allCandidates.addAll(coordinators); // <-- Agregado
+            allCandidates.addAll(coordinators);
 
-            // Filtrar solo los usuarios que pertenecen al mismo grupo académico que el coordinador
             usersToProcess = allCandidates.stream()
                     .filter(user -> CareerUtils.areSameCareerGroup(coordinatorCareer, user.getCareer()))
                     .collect(Collectors.toList());
@@ -91,7 +89,6 @@ public class UserController {
             return ResponseEntity.ok(UserDTO.fromEntity(targetUser));
         }
 
-        // Validar que el Coordinador solo vea usuarios de su grupo académico
         if (isCoordinator) {
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
             if (CareerUtils.areSameCareerGroup(coordinatorCareer, targetUser.getCareer())) {
@@ -112,7 +109,6 @@ public class UserController {
             return ResponseEntity.ok(userService.getUsersByRole(role).stream().map(UserDTO::fromEntity).collect(Collectors.toList()));
         }
 
-        // Filtrar por carrera en la búsqueda por rol
         if (isCoordinator) {
             String coordinatorCareer = currentUserDetails.getUserEntity().getCareer();
 
@@ -203,7 +199,6 @@ public class UserController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
-        // NOTA: Aquí ya no pasamos page ni size porque los quitamos del servicio en pasos anteriores
         String currentUserId = currentUserDetails.getId();
 
         List<ReservationResponseDTO> userReservationsDTO = reservationService.getFilteredUserReservations(
@@ -222,5 +217,16 @@ public class UserController {
         User performingUser = currentUserDetails.getUserEntity();
         userService.deleteUser(id, performingUser);
         return ResponseEntity.noContent().build();
+    }
+    @PostMapping("/upload")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
+    public ResponseEntity<Map<String, String>> uploadUsers(@RequestParam("file") MultipartFile file,
+                                                           @AuthenticationPrincipal UserDetailsImpl currentUserDetails) {
+        try {
+            String resultMessage = userService.uploadUsersFromExcel(file, currentUserDetails.getUserEntity());
+            return ResponseEntity.ok(Map.of("message", resultMessage));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Error procesando el archivo: " + e.getMessage()));
+        }
     }
 }

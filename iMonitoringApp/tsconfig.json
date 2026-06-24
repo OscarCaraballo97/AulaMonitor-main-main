@@ -1,10 +1,11 @@
 {
   "compileOnSave": false,
-  "ignoreDeprecations": "6.0",
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "src/*": ["src/*"]
+      "src/*": [
+        "src/*"
+      ]
     },
     "outDir": "./dist/out-tsc",
     "forceConsistentCasingInFileNames": true,

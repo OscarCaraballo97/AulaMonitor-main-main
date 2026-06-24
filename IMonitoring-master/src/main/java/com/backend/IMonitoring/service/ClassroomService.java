@@ -16,9 +16,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,12 +54,11 @@ public class ClassroomService {
                 .capacity(classroom.getCapacity())
                 .type(classroom.getType())
                 .resources(classroom.getResources())
+                .isUnderMaintenance(classroom.getIsUnderMaintenance())
                 .buildingId(classroom.getBuilding() != null ? classroom.getBuilding().getId() : null)
-                // CAMBIO: Se asigna el nombre del edificio, o un texto por defecto si es nulo
                 .buildingName(classroom.getBuilding() != null ? classroom.getBuilding().getName() : "Sin Edificio")
                 .build();
     }
-
 
     public Classroom getClassroomById(String id) {
         return classroomRepository.findById(id)
@@ -70,6 +75,7 @@ public class ClassroomService {
                 .capacity(dto.getCapacity())
                 .type(dto.getType())
                 .resources(dto.getResources())
+                .isUnderMaintenance(dto.getIsUnderMaintenance() != null ? dto.getIsUnderMaintenance() : false)
                 .building(building)
                 .build();
         return classroomRepository.save(classroom);
@@ -85,6 +91,9 @@ public class ClassroomService {
         classroomToUpdate.setCapacity(dto.getCapacity());
         classroomToUpdate.setType(dto.getType());
         classroomToUpdate.setResources(dto.getResources());
+        if (dto.getIsUnderMaintenance() != null) {
+            classroomToUpdate.setIsUnderMaintenance(dto.getIsUnderMaintenance());
+        }
         classroomToUpdate.setBuilding(building);
         return classroomRepository.save(classroomToUpdate);
     }
@@ -132,7 +141,6 @@ public class ClassroomService {
     }
 
     public ClassroomAvailabilitySummaryDTO getAvailabilitySummary() {
-
         List<Classroom> available = this.getAvailableNow();
         List<Classroom> unavailable = this.getUnavailableNow();
         long total = classroomRepository.count();
@@ -144,5 +152,52 @@ public class ClassroomService {
             throw new ResourceNotFoundException("Aula no encontrada con ID: " + classroomId);
         }
         return reservationRepository.findByClassroomIdAndStartTimeBetween(classroomId, startDate, endDate, Sort.by(Sort.Direction.ASC, "startTime"));
+    }
+    @Transactional
+    public String uploadClassroomsFromExcel(MultipartFile file) throws IOException {
+        int successCount = 0;
+        int errorCount = 0;
+        List<String> errors = new ArrayList<>();
+        DataFormatter formatter = new DataFormatter();
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            for (Row row : sheet) {
+                if (row.getRowNum() == 0) continue;
+
+                try {
+                    String name = formatter.formatCellValue(row.getCell(0)).trim();
+                    String capacityStr = formatter.formatCellValue(row.getCell(1)).trim();
+                    String typeStr = formatter.formatCellValue(row.getCell(2)).trim();
+                    String buildingName = formatter.formatCellValue(row.getCell(3)).trim(); // Leemos el nombre
+
+                    if (name.isEmpty() || capacityStr.isEmpty() || buildingName.isEmpty()) continue;
+
+                    Building building = buildingRepository.findByName(buildingName)
+                            .orElseThrow(() -> new ResourceNotFoundException("El edificio '" + buildingName + "' no existe en la base de datos."));
+
+                    Classroom classroom = Classroom.builder()
+                            .name(name)
+                            .capacity(Integer.parseInt(capacityStr))
+                            .type(ClassroomType.valueOf(typeStr.toUpperCase()))
+                            .isUnderMaintenance(false)
+                            .building(building)
+                            .build();
+
+                    classroomRepository.save(classroom);
+                    successCount++;
+                } catch (Exception e) {
+                    errorCount++;
+                    errors.add("Fila " + (row.getRowNum() + 1) + ": " + e.getMessage());
+                }
+            }
+        }
+
+        if (errorCount > 0) {
+            String primerError = errors.isEmpty() ? "Error desconocido" : errors.get(0);
+            return "Se cargaron " + successCount + " aulas. Fallaron " + errorCount + " (Ej: " + primerError + ")";
+        }
+        return "Carga masiva exitosa: " + successCount + " aulas creadas.";
     }
 }

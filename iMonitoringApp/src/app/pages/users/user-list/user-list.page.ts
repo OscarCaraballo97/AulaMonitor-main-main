@@ -122,7 +122,6 @@ export class UserListPage implements OnInit, OnDestroy {
     return this.currentUserRole === Rol.ADMIN && userToList.role !== Rol.ADMIN;
   }
 
-  // MÉTODO CORREGIDO: Permite el acceso a COORDINADOR
   navigateToAddUser() {
     if (this.currentUserRole === Rol.ADMIN || this.currentUserRole === Rol.COORDINADOR) {
         this.navCtrl.navigateForward('/app/users/new');
@@ -138,6 +137,30 @@ export class UserListPage implements OnInit, OnDestroy {
         this.navCtrl.navigateForward(`/app/users/edit/${userId}`);
     } else {
         this.presentToast('No tienes permisos para editar este usuario.', 'warning');
+    }
+  }
+
+  async onFileSelected(event: any) {
+    const file: File = event.target.files[0];
+    if (file) {
+      const loading = await this.loadingCtrl.create({ message: 'Procesando Excel de Usuarios...' });
+      await loading.present();
+
+      this.userService.uploadUsersExcel(file)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: async (res) => {
+            await loading.dismiss();
+            await this.presentToast(res.message || 'Carga masiva exitosa', 'success');
+            this.loadUsers();
+          },
+          error: async (err) => {
+            await loading.dismiss();
+            await this.presentToast(err.error?.error || 'Error al subir el archivo Excel', 'danger');
+          }
+        });
+
+      event.target.value = null;
     }
   }
 

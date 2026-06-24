@@ -30,6 +30,13 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "allowedCommonJsDependencies": [
+              "localforage",
+              "html2canvas",
+              "core-js",
+              "raf",
+              "rgbcolor"
+            ],
             "assets": [
               {
                 "glob": "**/*",
@@ -76,7 +83,7 @@
               "namedChunks": true
             },
             "ci": {
-            
+
             }
           },
           "defaultConfiguration": "production"
@@ -91,7 +98,7 @@
               "buildTarget": "app:build:development"
             },
             "ci": {
-              
+
             }
           },
           "defaultConfiguration": "development"
@@ -116,14 +123,14 @@
                 "input": "src/assets",
                 "output": "assets"
               },
-              { 
+              {
                 "glob": "**/*.svg",
                 "input": "node_modules/ionicons/dist/ionicons/svg",
                 "output": "./svg"
               }
             ],
             "styles": [
-              "src/global.scss" 
+              "src/global.scss"
             ],
             "scripts": []
           },
@@ -134,7 +141,7 @@
             }
           }
         },
-        "lint": { 
+        "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
             "lintFilePatterns": [
@@ -146,16 +153,16 @@
       }
     }
   },
-  "cli": { 
+  "cli": {
     "schematicCollections": [
       "@ionic/angular-toolkit"
     ],
-    "analytics": false 
+    "analytics": false
   },
   "schematics": {
     "@ionic/angular-toolkit:component": {
       "styleext": "scss",
-      "standalone": true 
+      "standalone": true
     },
     "@ionic/angular-toolkit:page": {
       "styleext": "scss",

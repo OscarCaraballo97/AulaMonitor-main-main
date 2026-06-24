@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,7 +28,9 @@ public class ClassroomDTO {
     @NotNull(message = "El tipo de aula es obligatorio")
     private ClassroomType type;
 
-    private String resources;
+    private Map<String, Integer> resources;
+
+    private Boolean isUnderMaintenance;
 
     @NotBlank(message = "El ID del edificio es obligatorio")
     private String buildingId;

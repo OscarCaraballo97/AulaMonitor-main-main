@@ -4,6 +4,7 @@ import com.backend.IMonitoring.dto.ReservationResponseDTO;
 import com.backend.IMonitoring.dto.ClassroomSummaryDTO;
 import com.backend.IMonitoring.dto.SemesterReservationRequestDTO;
 import com.backend.IMonitoring.dto.UserSummaryDTO;
+import com.backend.IMonitoring.dto.UsageLogDTO;
 import com.backend.IMonitoring.model.*;
 import com.backend.IMonitoring.repository.ClassroomRepository;
 import com.backend.IMonitoring.repository.ReservationRepository;
@@ -22,7 +23,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneOffset; // Import agregado
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
@@ -35,6 +36,7 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final ClassroomRepository classroomRepository;
     private final UserService userService;
+    private final EmailService emailService;
 
     public ReservationResponseDTO convertToDTO(Reservation reservation) {
         if (reservation == null) return null;
@@ -47,7 +49,12 @@ public class ReservationService {
         ClassroomSummaryDTO classroomSummary = null;
         if (classroomEntity != null) {
             String buildingName = (classroomEntity.getBuilding() != null) ? classroomEntity.getBuilding().getName() : null;
-            classroomSummary = new ClassroomSummaryDTO(classroomEntity.getId(), classroomEntity.getName(), buildingName);
+            classroomSummary = new ClassroomSummaryDTO(
+                    classroomEntity.getId(),
+                    classroomEntity.getName(),
+                    buildingName,
+                    classroomEntity.getIsUnderMaintenance()
+            );
         }
 
         return ReservationResponseDTO.builder()
@@ -126,7 +133,6 @@ public class ReservationService {
         return convertToDTOList(reservationsList);
     }
 
-    // CORRECCIÓN: Eliminados parámetros 'page' y 'size' no usados para limpiar warnings
     public List<ReservationResponseDTO> getFilteredUserReservations(
             String userIdAuth, ReservationStatus status, String sortField, String sortDirection,
             boolean futureOnly, LocalDateTime startDate, LocalDateTime endDate) {
@@ -401,7 +407,6 @@ public class ReservationService {
         return days.stream()
                 .map(d -> DayOfWeek.valueOf(d.toUpperCase()))
                 .sorted()
-                // CORRECCIÓN: Uso de Locale.forLanguageTag para evitar warnings
                 .map(d -> d.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es-ES")).toUpperCase())
                 .collect(Collectors.joining(" - "));
     }
@@ -459,7 +464,6 @@ public class ReservationService {
             if (!conflicts.isEmpty()) {
                 Reservation conflict = conflicts.get(0);
 
-                // CORRECCIÓN: Uso de Locale.forLanguageTag
                 DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM", Locale.forLanguageTag("es-ES"));
                 DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -479,7 +483,6 @@ public class ReservationService {
         }
     }
 
-    // CORRECCIÓN: Este es el método que te faltaba
     private void validateUpdatePermissions(Reservation reservation, UserDetails userDetails, Reservation updatedData) {
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) userDetails;
         User userUpdating = userDetailsImpl.getUserEntity();
@@ -517,7 +520,7 @@ public class ReservationService {
     }
 
     @Transactional
-    public Reservation updateReservationStatus(String id, ReservationStatus newStatus, UserDetails adminOrCoordinatorDetails) {
+    public Reservation updateReservationStatus(String id, ReservationStatus newStatus, String reason, UserDetails adminOrCoordinatorDetails) {
         Reservation reservation = getReservationById(id);
         UserDetailsImpl userDetails = (UserDetailsImpl) adminOrCoordinatorDetails;
         User user = userDetails.getUserEntity();
@@ -537,11 +540,16 @@ public class ReservationService {
             checkAvailabilityOrThrow(reservation.getClassroom().getId(), reservation.getStartTime(), reservation.getEndTime(), reservation.getId());
         }
         reservation.setStatus(newStatus);
-        return reservationRepository.save(reservation);
+        Reservation savedReservation = reservationRepository.save(reservation);
+
+        // Envía el correo para Confirmada, Rechazada o Cancelada
+        sendReservationEmail(savedReservation, reason, newStatus);
+
+        return savedReservation;
     }
 
     @Transactional
-    public Reservation cancelMyReservation(String id, UserDetails userDetails) {
+    public Reservation cancelMyReservation(String id, String reason, UserDetails userDetails) {
         Reservation reservation = getReservationById(id);
         UserDetailsImpl userDetailsImpl = (UserDetailsImpl) userDetails;
         User userCancelling = userDetailsImpl.getUserEntity();
@@ -562,9 +570,39 @@ public class ReservationService {
 
         if (reservation.getStatus() == ReservationStatus.PENDIENTE || reservation.getStatus() == ReservationStatus.CONFIRMADA) {
             reservation.setStatus(ReservationStatus.CANCELADA);
-            return reservationRepository.save(reservation);
+            Reservation savedReservation = reservationRepository.save(reservation);
+
+            // Notifica la cancelación
+            sendReservationEmail(savedReservation, reason, ReservationStatus.CANCELADA);
+
+            return savedReservation;
         } else {
             throw new InvalidReservationException("Solo se pueden cancelar reservas PENDIENTES o CONFIRMADAS.");
+        }
+    }
+
+    private void sendReservationEmail(Reservation reservation, String reason, ReservationStatus status) {
+        if (reservation.getUser() != null && reservation.getUser().getEmail() != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'a las' HH:mm", Locale.forLanguageTag("es-ES"));
+            String startFormatted = reservation.getStartTime().format(formatter);
+            String classroomName = (reservation.getClassroom() != null) ? reservation.getClassroom().getName() : "Desconocida";
+
+            String subject = "Actualización de Reserva en AulaMonitor";
+            String body = "Hola " + reservation.getUser().getName() + ",\n\n";
+
+            if (status == ReservationStatus.CONFIRMADA) {
+                body += "Nos complace informarle que su reserva para el aula " + classroomName + " programada para el " + startFormatted + " ha sido APROBADA exitosamente.\n\n";
+            } else if (status == ReservationStatus.RECHAZADA) {
+                body += "Le informamos que su solicitud de reserva para el aula " + classroomName + " programada para el " + startFormatted + " ha sido DENEGADA.\n\n";
+                body += "Motivo del rechazo: " + (reason != null && !reason.trim().isEmpty() ? reason : "No especificado.") + "\n\n";
+            } else if (status == ReservationStatus.CANCELADA) {
+                body += "Le informamos que su reserva confirmada para el aula " + classroomName + " programada para el " + startFormatted + " ha sido CANCELADA.\n\n";
+                body += "Motivo de cancelación: " + (reason != null && !reason.trim().isEmpty() ? reason : "Cancelación manual.") + "\n\n";
+            }
+
+            body += "Saludos,\nEl equipo de AulaMonitor.";
+
+            emailService.sendEmail(reservation.getUser().getEmail(), subject, body);
         }
     }
 
@@ -609,5 +647,17 @@ public class ReservationService {
     }
     public List<ReservationResponseDTO> getReservationsByUserIdDTO(String userId) {
         return convertToDTOList(reservationRepository.findByUserId(userId, Sort.by(Sort.Direction.DESC, "startTime")));
+    }
+    public List<UsageLogDTO> getUsageLogs() {
+        List<Reservation> pastReservations = reservationRepository.findPastConfirmedReservationsAsLogs(LocalDateTime.now(ZoneOffset.UTC));
+        return pastReservations.stream().map(r -> UsageLogDTO.builder()
+                .reservationId(r.getId())
+                .classroomName(r.getClassroom() != null ? r.getClassroom().getName() : "Desconocida")
+                .userName(r.getUser() != null ? r.getUser().getName() : "Desconocido")
+                .role(r.getUser() != null && r.getUser().getRole() != null ? r.getUser().getRole().name() : "N/A")
+                .startTime(r.getStartTime())
+                .endTime(r.getEndTime())
+                .purpose(r.getPurpose())
+                .build()).collect(Collectors.toList());
     }
 }

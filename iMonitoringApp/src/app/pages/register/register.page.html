@@ -9,7 +9,7 @@
 
 <ion-content class="bg-custom ion-padding bg-kwd-light dark:bg-kwd-dark">
   <div class="flex flex-col items-center justify-center min-h-full w-full">
-    
+
     <div class="w-full max-w-md p-6 md:p-8 space-y-6 bg-white rounded-lg shadow-xl dark:bg-kwd-darker">
       <div>
         <h2 class="text-2xl font-bold text-center text-gray-900 dark:text-kwd-light">
@@ -42,7 +42,7 @@
         </ion-item>
         <div *ngIf="registerForm.get('password_hash')?.invalid && registerForm.get('password_hash')?.touched" style="font-size: 18px;" class="mt-1 text-xs text-red-600 dark:text-kwd-red">
           <small *ngIf="registerForm.get('password_hash')?.errors?.['required']">Contraseña es requerida.</small>
-          <small *ngIf="registerForm.get('password_hash')?.errors?.['minlength']">Mínimo 6 caracteres.</small>
+          <small *ngIf="registerForm.get('password_hash')?.errors?.['pattern']">Debe tener mínimo 8 caracteres, 1 mayúscula y 1 número.</small>
         </div>
 
         <ion-item lines="none" class="rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark focus-within:ring-2 focus-within:ring-inset focus-within:ring-kwd-blue-DEFAULT">

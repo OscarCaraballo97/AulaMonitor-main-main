@@ -75,11 +75,12 @@ export class RegisterPage implements OnInit {
     this.registerForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password_hash: ['', [Validators.required, Validators.minLength(6)]],
+      password_hash: ['', [
+        Validators.required,
+        Validators.pattern(/^(?=.*[A-Z])(?=.*\d).{8,}$/)
+      ]],
       confirmPassword_hash: ['', Validators.required],
-      // --- ROL FIJO: ESTUDIANTE ---
       role: [Rol.ESTUDIANTE, [Validators.required]],
-      // ----------------------------
       career: ['', [Validators.required]]
     }, { validators: passwordMatchValidator() });
   }
@@ -88,8 +89,12 @@ export class RegisterPage implements OnInit {
   get email() { return this.registerForm.get('email'); }
   get password_hash() { return this.registerForm.get('password_hash'); }
   get confirmPassword_hash() { return this.registerForm.get('confirmPassword_hash'); }
-  // get role() ya no es estrictamente necesario para la vista, pero se mantiene en el form
   get career() { return this.registerForm.get('career'); }
+
+  get passwordInvalid() {
+    const passControl = this.registerForm.get('password_hash');
+    return passControl?.hasError('pattern') && passControl?.touched;
+  }
 
   async onSubmit() {
     if (this.registerForm.invalid) {

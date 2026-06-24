@@ -302,6 +302,19 @@ export class ReservationFormPage implements OnInit {
   async onSubmit() {
     if (this.reservationForm.invalid) { this.reservationForm.markAllAsTouched(); return; }
 
+    // --- NUEVO: Validación de Aula en Mantenimiento ---
+    const classroomId = this.reservationForm.get('classroomId')?.value;
+    const selectedClassroom = this.classrooms.find(c => c.id === classroomId);
+
+    if (selectedClassroom && selectedClassroom.isUnderMaintenance) {
+      await this.showAlert(
+        'Aula Deshabilitada',
+        'Esta aula se encuentra actualmente en mantenimiento y no puede recibir reservas.'
+      );
+      return;
+    }
+    // ---------------------------------------------------
+
     if (this.reservationType === 'semester') {
       const selectedDays: string[] = this.reservationForm.get('dayOfWeek')?.value;
       const endTimeVal = this.reservationForm.get('endTime')?.value;
@@ -324,7 +337,6 @@ export class ReservationFormPage implements OnInit {
     const loading = await this.loadingCtrl.create({ message: 'Procesando...' });
     await loading.present();
 
-    // Convertir a hora local para evitar problemas de zona horaria
     const startTimeLocal = this.toLocalISOString(val.startTime);
     const endTimeLocal = this.toLocalISOString(val.endTime);
 
@@ -335,7 +347,6 @@ export class ReservationFormPage implements OnInit {
           ...val,
           startTime: startTimeLocal,
           endTime: endTimeLocal,
-          // CORRECCIÓN CRÍTICA: Mapear 'dayOfWeek' del formulario a 'daysOfWeek' que espera el Backend
           daysOfWeek: val.dayOfWeek
         },
         !!this.currentGroupId

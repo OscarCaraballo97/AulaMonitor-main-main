@@ -6,7 +6,7 @@ import { ClassroomService, ClassroomRequestData } from '../../../services/classr
 import { Classroom } from '../../../models/classroom.model';
 import { AuthService } from '../../../services/auth.service';
 import { Rol } from '../../../models/rol.model';
-import { Subject, Observable } from 'rxjs'; 
+import { Subject, Observable } from 'rxjs';
 import { takeUntil, finalize, catchError } from 'rxjs/operators';
 
 @Component({
@@ -22,7 +22,7 @@ export class ClassroomListPage implements OnInit, OnDestroy {
   isLoading = false;
   userRole: Rol | null = null;
   public RolEnum = Rol;
-  errorMessage: string = ''; 
+  errorMessage: string = '';
 
   constructor(
     private classroomService: ClassroomService,
@@ -54,7 +54,7 @@ export class ClassroomListPage implements OnInit, OnDestroy {
 
   async loadClassrooms(event?: CustomEvent) {
     this.isLoading = true;
-    this.errorMessage = ''; 
+    this.errorMessage = '';
     let loadingOverlay: HTMLIonLoadingElement | undefined;
     if (!event) {
       loadingOverlay = await this.loadingCtrl.create({ message: 'Cargando aulas...' });
@@ -94,19 +94,42 @@ export class ClassroomListPage implements OnInit, OnDestroy {
     if (!classroomId) return;
     this.navCtrl.navigateForward(`/app/classrooms/edit/${classroomId}`);
   }
-  
+
   navigateToViewAvailability(classroomId: string | undefined) {
     if(!classroomId) return;
     this.navCtrl.navigateForward(`/app/classrooms/availability/${classroomId}`);
   }
-
 
   getBuildingNamePlaceholder(buildingId: string | undefined): string {
     if (!buildingId) return 'N/A';
     return `Edificio ID: ${buildingId}`;
   }
 
-  async confirmDelete(classroom: Classroom) { 
+  async onFileSelected(event: any) {
+    const file: File = event.target.files[0];
+    if (file) {
+      const loading = await this.loadingCtrl.create({ message: 'Procesando Excel de Aulas...' });
+      await loading.present();
+
+      this.classroomService.uploadClassroomsExcel(file)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: async (res) => {
+            await loading.dismiss();
+            await this.presentToast(res.message || 'Carga masiva exitosa', 'success');
+            this.loadClassrooms();
+          },
+          error: async (err) => {
+            await loading.dismiss();
+            await this.presentToast(err.error?.error || 'Error al subir el archivo Excel', 'danger');
+          }
+        });
+      event.target.value = null;
+    }
+  }
+  // ----------------------------------------------------
+
+  async confirmDelete(classroom: Classroom) {
     if (!classroom || !classroom.id) return;
     const classroomId = classroom.id;
     const alert = await this.alertCtrl.create({
@@ -135,7 +158,7 @@ export class ClassroomListPage implements OnInit, OnDestroy {
       .subscribe({
         next: async () => {
           await this.presentToast('Aula eliminada correctamente.', 'success');
-          this.loadClassrooms(); 
+          this.loadClassrooms();
         },
         error: async (err: Error) => {
           await this.presentToast(err.message || 'Error al eliminar el aula.', 'danger');

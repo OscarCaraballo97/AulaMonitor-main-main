@@ -54,17 +54,14 @@ export class UserService {
     );
   }
 
-  // --- NUEVO MÉTODO PARA SUBIR IMAGEN ---
   uploadProfilePicture(userId: string, file: File): Observable<User> {
     const formData = new FormData();
-    formData.append('file', file); // El nombre 'file' debe coincidir con el @RequestParam del backend
-
+    formData.append('file', file);
     return this.http.post<User>(`${this.apiUrl}/${userId}/image`, formData).pipe(
         tap(() => console.log(`Foto de perfil actualizada para usuario ${userId}`)),
         catchError(this.handleError<User>('subir foto de perfil'))
     );
   }
-  // --------------------------------------
 
   deleteUser(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`)
@@ -76,10 +73,15 @@ export class UserService {
     if (passwordData.currentPassword) {
         actualPayload = { oldPassword: passwordData.currentPassword, newPassword: passwordData.newPassword };
     }
-
     return this.http.patch<string>(`${this.apiUrl}/${userId}/password`, actualPayload, { responseType: 'text' as 'json' }).pipe(
         tap(response => console.log('Respuesta de actualización de contraseña:', response)),
         catchError(this.handleError<string>(`actualizar contraseña para usuario ${userId}`))
     );
+  }
+  uploadUsersExcel(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<any>(`${this.apiUrl}/upload`, formData)
+      .pipe(catchError(this.handleError<any>('subir excel de usuarios')));
   }
 }

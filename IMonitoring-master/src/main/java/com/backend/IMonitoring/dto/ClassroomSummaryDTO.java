@@ -11,4 +11,5 @@ public class ClassroomSummaryDTO {
     private String id;
     private String name;
     private String buildingName;
+    private Boolean isUnderMaintenance;
 }

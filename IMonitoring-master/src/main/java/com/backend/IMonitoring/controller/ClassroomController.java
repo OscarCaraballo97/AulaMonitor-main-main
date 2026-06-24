@@ -2,7 +2,7 @@ package com.backend.IMonitoring.controller;
 
 import com.backend.IMonitoring.dto.AvailabilityRequest;
 import com.backend.IMonitoring.dto.ClassroomAvailabilitySummaryDTO;
-import com.backend.IMonitoring.dto.ClassroomDTO; // Importar ClassroomDTO
+import com.backend.IMonitoring.dto.ClassroomDTO;
 import com.backend.IMonitoring.dto.ClassroomRequestDTO;
 import com.backend.IMonitoring.model.Classroom;
 import com.backend.IMonitoring.model.ClassroomType;
@@ -19,6 +19,10 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/classrooms")
@@ -96,9 +100,19 @@ public class ClassroomController {
     @GetMapping("/{classroomId}/reservations-by-date")
     public ResponseEntity<List<Reservation>> getClassroomReservationsForDateRange(
             @PathVariable String classroomId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate, // Espera formato ISO
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         List<Reservation> reservations = classroomService.getClassroomReservationsForDateRange(classroomId, startDate, endDate);
         return ResponseEntity.ok(reservations);
+    }
+    @PostMapping("/upload")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
+    public ResponseEntity<Map<String, String>> uploadClassrooms(@RequestParam("file") MultipartFile file) {
+        try {
+            String resultado = classroomService.uploadClassroomsFromExcel(file);
+            return ResponseEntity.ok(Map.of("mensaje", resultado));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Error procesando el archivo: " + e.getMessage()));
+        }
     }
 }

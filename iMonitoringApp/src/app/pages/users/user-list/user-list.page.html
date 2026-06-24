@@ -14,15 +14,21 @@
 
   <div class="p-4 md:p-6 lg:p-8">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-      <h1 class="mb-6 text-2xl font-semibold text-white text-2xl font-bold">
+      <h1 class="mb-6 md:mb-0 text-2xl font-semibold text-gray-800 dark:text-white font-bold">
         Gestión de Usuarios
       </h1>
-      <div class="mt-4 md:mt-0">
-        <button (click)="navigateToAddUser()"
-        class="flex items-center px-4 py-2 text-sm font-medium text-white rounded-md bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-        <ion-icon name="person-add-outline" class="w-5 h-5 mr-2"></ion-icon>
-        Nuevo Usuario
-      </button>
+
+      <div class="mt-4 md:mt-0 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+        <input type="file" (change)="onFileSelected($event)" accept=".xlsx, .xls" #fileInput hidden>
+        <button (click)="fileInput.click()" class="flex items-center justify-center px-4 py-2 text-sm font-bold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none transition-all duration-200">
+          <ion-icon name="cloud-upload-outline" class="w-5 h-5 mr-2 text-gray-700"></ion-icon>
+          Importar Excel
+        </button>
+
+        <button (click)="navigateToAddUser()" class="flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-md bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+          <ion-icon name="person-add-outline" class="w-5 h-5 mr-2"></ion-icon>
+          Nuevo Usuario
+        </button>
       </div>
     </div>
 
@@ -70,7 +76,7 @@
           <tr *ngFor="let user of users" class="hover:bg-gray-50 dark:hover:bg-kwd-dark">
             <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-kwd-light">{{ user.name || 'N/A' }}</td>
             <td class="px-6 py-4 text-sm text-blue-955 whitespace-nowrap dark:text-white">{{ user.email }}</td>
-            
+
             <td class="px-6 py-4 text-sm text-blue-955 whitespace-nowrap dark:text-white">
               {{ user.career || '-' }}
             </td>

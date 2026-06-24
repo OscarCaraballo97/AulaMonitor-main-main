@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { IonicModule, LoadingController, ToastController, NavController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
@@ -13,8 +13,7 @@ import { Rol } from '../../../models/rol.model';
 import { Observable, Subject, forkJoin, of } from 'rxjs';
 import { takeUntil, finalize, catchError, tap, take } from 'rxjs/operators';
 import { User } from '../../../models/user.model';
-import { UserService } from '../../../services/user.service'; 
-
+import { UserService } from '../../../services/user.service';
 
 @Component({
   selector: 'app-classroom-form',
@@ -49,25 +48,39 @@ export class ClassroomFormPage implements OnInit, OnDestroy {
     private navCtrl: NavController,
     private cdr: ChangeDetectorRef,
     private router: Router,
-    private userService: UserService 
+    private userService: UserService
   ) {}
 
   ngOnInit() {
-    console.log("ClassroomFormPage: ngOnInit - INICIO. isLoadingInitialData:", this.isLoadingInitialData);
-    this.isLoadingInitialData = true; 
+    this.isLoadingInitialData = true;
     this.cdr.detectChanges();
-
 
     this.classroomForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       capacity: [null, [Validators.required, Validators.min(1)]],
       type: [ClassroomType.AULA, Validators.required],
-      resources: [''],
+      isUnderMaintenance: [false], // NUEVO: Control de mantenimiento
+      resourcesArray: this.fb.array([]), // NUEVO: Arreglo dinámico para recursos
       buildingId: [null, Validators.required]
     });
-    console.log("ClassroomFormPage: classroomForm ha sido inicializado:", !!this.classroomForm);
 
     this.loadInitialData();
+  }
+
+
+  get resourcesArray(): FormArray {
+    return this.classroomForm.get('resourcesArray') as FormArray;
+  }
+
+  addResource(key: string = '', value: number = 1) {
+    this.resourcesArray.push(this.fb.group({
+      key: [key, Validators.required],
+      value: [value, [Validators.required, Validators.min(1)]]
+    }));
+  }
+
+  removeResource(index: number) {
+    this.resourcesArray.removeAt(index);
   }
 
   loadInitialData() {
@@ -78,9 +91,7 @@ export class ClassroomFormPage implements OnInit, OnDestroy {
       user: this.authService.getCurrentUser().pipe(take(1)),
       role: this.authService.getCurrentUserRole().pipe(take(1)),
       buildingsData: this.buildingService.getAllBuildings().pipe(
-        tap(bldgs => console.log("ClassroomFormPage: Edificios recibidos en forkJoin:", bldgs)),
         catchError(err => {
-          console.error("ClassroomFormPage: Error crítico cargando edificios:", err);
           this.presentToast('Error crítico: No se pudieron cargar los edificios.', 'danger');
           return of([] as Building[]);
         })
@@ -88,8 +99,7 @@ export class ClassroomFormPage implements OnInit, OnDestroy {
     };
 
     this.authService.getCurrentUserRole().pipe(take(1)).subscribe(roleValue => {
-      this.userRole = roleValue; 
-      console.log("ClassroomFormPage: Rol obtenido en la suscripción externa:", this.userRole);
+      this.userRole = roleValue;
 
       if (this.userRole === Rol.COORDINADOR) {
         observables['studentUsersData'] = this.userService.getUsersByRole(Rol.ESTUDIANTE).pipe(
@@ -103,47 +113,38 @@ export class ClassroomFormPage implements OnInit, OnDestroy {
       forkJoin(observables).pipe(
         takeUntil(this.destroy$),
         finalize(() => {
-          console.log("ClassroomFormPage: forkJoin FINALIZE. Estado ANTERIOR de isLoadingInitialData:", this.isLoadingInitialData);
           this.isLoadingInitialData = false;
-          console.log("ClassroomFormPage: forkJoin FINALIZE. Estado NUEVO de isLoadingInitialData:", this.isLoadingInitialData);
           this.cdr.detectChanges();
         })
       ).subscribe({
         next: (results: any) => {
-          console.log("ClassroomFormPage: forkJoin next - Resultados:", results);
           this.buildings = results.buildingsData || [];
-          if (results.studentUsersData) { 
+          if (results.studentUsersData) {
             this.studentUsers = results.studentUsersData;
           }
 
           if (this.userRole !== Rol.ADMIN) {
-            console.log("ClassroomFormPage: Acceso denegado (dentro de forkJoin), el rol no es ADMIN.");
             this.presentToast('Acceso denegado. Solo los administradores pueden gestionar aulas.', 'danger');
-         
             this.navCtrl.navigateBack('/app/dashboard');
-            return; 
+            return;
           }
 
           this.classroomId = this.route.snapshot.paramMap.get('id');
           if (this.classroomId) {
             this.isEditMode = true;
             this.pageTitle = 'Editar Aula';
-            console.log('ClassroomFormPage: Modo Edición, ID de Aula:', this.classroomId);
             this.loadClassroomData(this.classroomId);
           } else {
             this.pageTitle = 'Nueva Aula';
-            console.log('ClassroomFormPage: Modo Creación (dentro de forkJoin).');
           }
         },
         error: (err: Error) => {
           this.presentToast(`Error al cargar datos del formulario: ${err.message}`, 'danger');
-          console.error("ClassroomFormPage: Error en el forkJoin principal:", err);
           this.navCtrl.navigateBack('/app/classrooms');
         }
       });
     });
   }
-
 
   ngOnDestroy() {
     this.destroy$.next();
@@ -151,28 +152,32 @@ export class ClassroomFormPage implements OnInit, OnDestroy {
   }
 
   async loadClassroomData(id: string) {
-    this.isLoading = true; 
+    this.isLoading = true;
     const loading = await this.loadingCtrl.create({ message: 'Cargando datos del aula...' });
     await loading.present();
 
     this.classroomService.getClassroomById(id).pipe(
       takeUntil(this.destroy$),
       finalize(async () => {
-        this.isLoading = false; 
+        this.isLoading = false;
         await loading.dismiss();
         this.cdr.detectChanges();
-        console.log("ClassroomFormPage: loadClassroomData finalizado.");
       })
     ).subscribe({
       next: (classroom: Classroom) => {
-        console.log("ClassroomFormPage: Datos del aula cargados para edición:", classroom);
         this.classroomForm.patchValue({
           name: classroom.name,
           capacity: classroom.capacity,
           type: classroom.type,
-          resources: classroom.resources,
+          isUnderMaintenance: classroom.isUnderMaintenance || false,
           buildingId: classroom.building?.id || classroom.buildingId
         });
+        this.resourcesArray.clear();
+        if (classroom.resources && typeof classroom.resources === 'object') {
+          Object.keys(classroom.resources).forEach(key => {
+            this.addResource(key, classroom.resources![key]);
+          });
+        }
       },
       error: async (err: Error) => {
         await this.presentToast(err.message || 'Error al cargar el aula.', 'danger');
@@ -193,11 +198,23 @@ export class ClassroomFormPage implements OnInit, OnDestroy {
     await loadingSubmit.present();
 
     const formValue = this.classroomForm.value;
-    const classroomData: ClassroomRequestData = {
+
+
+    const resourcesDict: { [key: string]: number } = {};
+    this.resourcesArray.controls.forEach(control => {
+      const k = control.get('key')?.value;
+      const v = control.get('value')?.value;
+      if (k && k.trim() !== '') {
+        resourcesDict[k.trim()] = Number(v);
+      }
+    });
+
+    const classroomData: any = {
       name: formValue.name,
       capacity: formValue.capacity,
       type: formValue.type,
-      resources: formValue.resources,
+      isUnderMaintenance: formValue.isUnderMaintenance,
+      resources: resourcesDict,
       buildingId: formValue.buildingId
     };
 
@@ -229,7 +246,14 @@ export class ClassroomFormPage implements OnInit, OnDestroy {
   markFormGroupTouched(formGroup: FormGroup) {
     Object.values(formGroup.controls).forEach(control => {
       control.markAsTouched();
-      if (control instanceof FormGroup) this.markFormGroupTouched(control);
+      if (control instanceof FormGroup) {
+        this.markFormGroupTouched(control);
+      } else if (control instanceof FormArray) {
+        control.controls.forEach(c => {
+          if (c instanceof FormGroup) this.markFormGroupTouched(c);
+          c.markAsTouched();
+        });
+      }
     });
   }
 

@@ -1,173 +1,130 @@
-<ion-header [translucent]="true">
-  <ion-toolbar class="bg-gray-100 dark:bg-kwd-dark-light">
+<ion-header>
+  <ion-toolbar color="primary" class="dark:bg-kwd-darker">
     <ion-buttons slot="start">
-      <ion-menu-button menu="kwd-sidebar"></ion-menu-button>
+      <ion-menu-button class="text-white dark:text-kwd-light"></ion-menu-button>
     </ion-buttons>
-    <ion-title class="text-gray-900 dark:text-kwd-light font-bold">Gestión de Reservas</ion-title>
-    <ion-buttons slot="end">
-      <ion-button routerLink="/app/reservations/new" class="btn-md">
-        <ion-icon name="add-circle-outline" slot="icon-only"></ion-icon>
-      </ion-button>
-    </ion-buttons>
+    <ion-title class="text-white dark:text-kwd-light font-semibold tracking-wide">
+      Gestión de Reservas
+    </ion-title>
+  </ion-toolbar>
+
+  <ion-toolbar class="bg-white dark:bg-kwd-dark" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
+    <ion-segment [(ngModel)]="selectedView" (ionChange)="segmentChanged($event)" color="primary" class="dark:text-kwd-light">
+      <ion-segment-button value="my-reservations">
+        <ion-label>Mis Reservas</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="pending">
+        <ion-label>Pendientes</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="all">
+        <ion-label>Todas</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
+
+  <ion-toolbar class="bg-white dark:bg-kwd-dark" *ngIf="userRole !== RolEnum.ADMIN && userRole !== RolEnum.COORDINADOR">
+    <div class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
+      Historial completo de tus reservas
+    </div>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding bg-gray-100 dark:bg-kwd-dark">
+<ion-content class="bg-gray-50 dark:bg-kwd-dark ion-padding">
   <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <div class="p-2 md:p-4">
+  <div class="max-w-7xl mx-auto space-y-6">
 
-    <div class="bg-white dark:bg-[#152e4d] rounded-lg shadow-md p-4 mb-6">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-kwd-light mb-3">Filtros</h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <ion-item class="dark:bg-kwd-dark dark:text-kwd-light rounded-md" lines="none">
-          <ion-label position="stacked" class="text-gray-500">Estado</ion-label>
-          <ion-select interface="popover" [(ngModel)]="selectedStatusFilter" (ionChange)="applyFilters()" placeholder="Todos">
+    <div class="bg-white dark:bg-kwd-darker p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 animate-fade-in-up">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Buscar</label>
+          <ion-input [(ngModel)]="searchTerm" (ionInput)="applyFilters()" placeholder="Motivo, usuario o aula..." clearInput class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-800"></ion-input>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
+          <ion-select [(ngModel)]="selectedStatusFilter" (ionChange)="applyFilters()" interface="popover" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]">
             <ion-select-option *ngFor="let status of availableStatuses" [value]="status.value">{{ status.label }}</ion-select-option>
           </ion-select>
-        </ion-item>
-
-        <ion-item class="dark:bg-kwd-dark dark:text-kwd-light rounded-md" lines="none">
-          <ion-label position="stacked" class="text-gray-500">Aula</ion-label>
-          <ion-select interface="popover" [(ngModel)]="selectedClassroomFilter" (ionChange)="applyFilters()" placeholder="Todas">
-            <ion-select-option value="ALL">Todas</ion-select-option>
-            <ion-select-option *ngFor="let c of classrooms" [value]="c.id">{{ c.name }}</ion-select-option>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Aula</label>
+          <ion-select [(ngModel)]="selectedClassroomFilter" (ionChange)="applyFilters()" interface="popover" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]">
+            <ion-select-option value="ALL">Todas las aulas</ion-select-option>
+            <ion-select-option *ngFor="let c of classrooms" [value]="c.id">{{ c.name }} ({{c.building?.name}})</ion-select-option>
           </ion-select>
-        </ion-item>
-
-        <ion-item class="dark:bg-kwd-dark dark:text-kwd-light rounded-md" lines="none">
-          <ion-label position="stacked" class="text-gray-500">Buscar</ion-label>
-          <ion-input type="text" [(ngModel)]="searchTerm" (ionChange)="applyFilters()" placeholder="Motivo, usuario..."></ion-input>
-          <ion-icon name="search-outline" slot="end" class="text-gray-400 mt-6"></ion-icon>
-        </ion-item>
+        </div>
       </div>
     </div>
 
-    <div class="overflow-x-auto pb-2">
-  <ion-segment [(ngModel)]="selectedView" (ionChange)="segmentChanged($event)" class="bg-white dark:bg-[#152e4d] rounded-lg shadow-md p-1 min-w-[320px]">
-    <ion-segment-button value="pending" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
-      <ion-label class="text-black dark:text-white">Pendientes</ion-label>
-    </ion-segment-button>
-    <ion-segment-button value="my-reservations">
-      <ion-label class="text-black dark:text-white">Mis Reservas</ion-label>
-    </ion-segment-button>
-    <ion-segment-button value="all" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
-      <ion-label class="text-black dark:text-white">Todas</ion-label>
-    </ion-segment-button>
-  </ion-segment>
-</div>
+    <div>
+      <div *ngIf="(selectedView === 'my-reservations' && isLoadingMyReservations) || (selectedView === 'pending' && isLoadingPending) || (selectedView === 'all' && isLoadingAllReservations)" class="flex justify-center items-center py-20">
+        <ion-spinner name="crescent" color="primary"></ion-spinner>
+      </div>
 
-    <div [ngSwitch]="selectedView" class="mt-4">
+      <div *ngIf="!isLoadingMyReservations && selectedView === 'my-reservations' && filteredMyReservations.length === 0" class="text-center py-20 bg-white dark:bg-kwd-darker rounded-xl shadow-sm animate-fade-in">
+        <ion-icon name="calendar-clear-outline" class="text-6xl text-gray-300 dark:text-gray-600 mb-4"></ion-icon>
+        <h3 class="text-xl font-medium text-gray-700 dark:text-gray-300">No hay reservas</h3>
+        <p class="text-gray-500 mt-2">Intenta ajustar los filtros o crea una nueva reserva.</p>
+      </div>
 
-      <ng-container *ngFor="let viewType of ['pending', 'my-reservations', 'all']">
-        <div *ngSwitchCase="viewType">
+      <ion-list class="bg-transparent" *ngIf="
+          (selectedView === 'my-reservations' && filteredMyReservations.length > 0) ||
+          (selectedView === 'pending' && filteredPendingReservations.length > 0) ||
+          (selectedView === 'all' && filteredAllReservations.length > 0)
+        ">
+        <ion-item-sliding *ngFor="let item of (selectedView === 'my-reservations' ? filteredMyReservations : selectedView === 'pending' ? filteredPendingReservations : filteredAllReservations)" class="mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 animate-fade-in-up">
 
-            <div *ngIf="(viewType==='pending' && isLoadingPending) || (viewType==='my-reservations' && isLoadingMyReservations) || (viewType==='all' && isLoadingAllReservations)" class="flex justify-center h-48 items-center">
-                <ion-spinner name="crescent" color="primary"></ion-spinner>
+          <ion-item detail="false" lines="none" class="bg-white dark:bg-kwd-darker hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+
+            <div slot="start" class="flex flex-col items-center justify-center w-16 md:w-20 h-full border-r border-gray-100 dark:border-gray-700 py-3 pr-4">
+               <div class="w-3 h-3 rounded-full mb-2" [style.backgroundColor]="getStatusColor(item.status)"></div>
+               <span class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-center" [style.color]="getStatusColor(item.status)">{{ item.status }}</span>
             </div>
 
-            <div *ngIf="
-                (viewType==='pending' && !isLoadingPending && filteredPendingReservations.length === 0) ||
-                (viewType==='my-reservations' && !isLoadingMyReservations && filteredMyReservations.length === 0) ||
-                (viewType==='all' && !isLoadingAllReservations && filteredAllReservations.length === 0)"
-                class="flex flex-col items-center justify-center text-gray-500 p-8 bg-white dark:bg-[#152e4d] rounded-lg shadow-sm">
-                <ion-icon name="calendar-clear-outline" class="text-5xl mb-2 text-gray-300"></ion-icon>
-                <p class="text-black dark:text-white">No se encontraron reservas.</p>
+            <div class="py-3 pl-2 w-full">
+              <div class="flex justify-between items-start w-full mb-1">
+                 <h3 class="text-base md:text-lg font-bold text-gray-800 dark:text-gray-100 line-clamp-1">{{ item.title }}</h3>
+                 <span *ngIf="item.isGroup" class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full whitespace-nowrap ml-2">Serie ({{item.count}})</span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 font-medium mb-1"><ion-icon name="location-outline" class="align-text-bottom mr-1"></ion-icon>{{ item.subtitle }}</p>
+              <p *ngIf="selectedView !== 'my-reservations'" class="text-xs text-gray-500 mb-1"><ion-icon name="person-outline" class="align-text-bottom mr-1"></ion-icon>{{ item.userName }}</p>
+
+              <div class="mt-3 flex items-center text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-md p-2 w-fit">
+                <ion-icon name="time-outline" class="mr-1.5 text-base"></ion-icon>
+                <span>{{ item.dateDescription }} • <strong class="text-gray-700 dark:text-gray-300">{{ item.startTimeLabel }} - {{ item.endTimeLabel }}</strong></span>
+              </div>
             </div>
 
-            <ion-list lines="none" class="space-y-4 bg-transparent p-0">
-                <ion-card *ngFor="let item of (viewType==='pending' ? filteredPendingReservations : (viewType==='my-reservations' ? filteredMyReservations : filteredAllReservations))"
-                    class="mx-0 dark:bg-kwd-darker shadow-lg rounded-xl overflow-hidden border-l-4 transition-all hover:shadow-xl group"
-                    [style.border-left-color]="getStatusColor(item.status)">
+            <div slot="end" class="md:hidden">
+              <ion-icon name="chevron-back-outline" class="text-gray-400"></ion-icon>
+            </div>
 
-                    <ion-item-sliding>
-                        <ion-item button detail="false" class="--background-hover:transparent dark:bg-kwd-darker p-1 cursor-pointer" (click)="viewReservationDetails(item)">
+            <div slot="end" class="hidden md:flex flex-col items-end justify-center space-y-2 h-full pl-4 border-l border-gray-100 dark:border-gray-700">
+               <ion-button *ngIf="canApproveOrReject(item)" fill="clear" color="success" size="small" (click)="confirmAction(item, 'confirm')"><ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>Aprobar</ion-button>
+               <ion-button *ngIf="canApproveOrReject(item)" fill="clear" color="danger" size="small" (click)="confirmAction(item, 'reject')"><ion-icon name="close-circle-outline" slot="start"></ion-icon>Rechazar</ion-button>
+               <ion-button *ngIf="canEditReservation(item)" fill="clear" color="primary" size="small" (click)="viewReservationDetails(item)"><ion-icon name="create-outline" slot="start"></ion-icon>Editar</ion-button>
+               <ion-button *ngIf="canCancelReservation(item)" fill="clear" color="danger" size="small" (click)="confirmAction(item, 'cancel')"><ion-icon name="trash-outline" slot="start"></ion-icon>Cancelar</ion-button>
+            </div>
+          </ion-item>
 
-                            <div slot="start" class="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-800 mr-4">
-                                <ion-icon *ngIf="item.isGroup" name="layers-outline" class="text-2xl text-indigo-500"></ion-icon>
-                                <ion-icon *ngIf="!item.isGroup" name="calendar-number-outline" class="text-2xl text-gray-500" [style.color]="getStatusColor(item.status)"></ion-icon>
-                            </div>
+          <ion-item-options side="end" class="md:hidden">
+            <ion-item-option *ngIf="canApproveOrReject(item)" color="success" (click)="confirmAction(item, 'confirm')"><ion-icon slot="icon-only" name="checkmark-circle"></ion-icon></ion-item-option>
+            <ion-item-option *ngIf="canApproveOrReject(item)" color="danger" (click)="confirmAction(item, 'reject')"><ion-icon slot="icon-only" name="close-circle"></ion-icon></ion-item-option>
+            <ion-item-option *ngIf="canEditReservation(item)" color="primary" (click)="viewReservationDetails(item)"><ion-icon slot="icon-only" name="create"></ion-icon></ion-item-option>
+            <ion-item-option *ngIf="canCancelReservation(item)" color="danger" (click)="confirmAction(item, 'cancel')"><ion-icon slot="icon-only" name="trash"></ion-icon></ion-item-option>
+          </ion-item-options>
 
-                            <ion-label class="py-2">
-                                <div class="flex justify-between items-start mb-1">
-                                    <h2 class="font-bold text-lg text-gray-800 dark:text-gray-100 tracking-tight">
-                                        {{ item.title | titlecase }}
-                                    </h2>
-                                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-white shadow-sm"
-                                          [style.backgroundColor]="getStatusColor(item.status)">
-                                        {{ item.status }}
-                                    </span>
-                                </div>
-
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-1 flex items-center">
-                                    <ion-icon name="location-outline" class="mr-1.5 text-base text-gray-400"></ion-icon>
-                                    <span class="font-medium">{{ item.subtitle }}</span>
-                                </p>
-
-                                <p class="text-sm text-gray-500 dark:text-gray-500 mb-2 flex items-center" *ngIf="item.userName !== 'N/A'">
-                                    <ion-icon name="person-outline" class="mr-1.5 text-base text-gray-400"></ion-icon>
-                                    {{ item.userName }}
-                                </p>
-
-                                <div class="mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-100 dark:border-gray-700">
-                                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-start">
-                                        <ion-icon name="time-outline" class="mr-2 text-lg text-kwd-blue-DEFAULT mt-0.5"></ion-icon>
-                                        <span class="flex-1">
-                                            {{ item.dateDescription }}
-                                            <br>
-                                            <span class="font-normal text-gray-500 text-xs">
-                                                {{ item.startTimeLabel }} - {{ item.endTimeLabel }}
-                                                <span *ngIf="item.isGroup" class="ml-1 text-indigo-500 font-bold">• {{ item.count }} clases</span>
-                                            </span>
-                                        </span>
-                                    </p>
-                                </div>
-                            </ion-label>
-                        </ion-item>
-
-                        <ion-item-options side="end">
-                            <ion-item-option *ngIf="canApproveOrReject(item)" color="success" (click)="confirmAction(item, 'confirm')">
-                                <ion-icon name="checkmark-circle-outline" slot="top" class="text-2xl"></ion-icon>
-                                Aprobar
-                            </ion-item-option>
-                            <ion-item-option *ngIf="canApproveOrReject(item)" color="danger" (click)="confirmAction(item, 'reject')">
-                                <ion-icon name="close-circle-outline" slot="top" class="text-2xl"></ion-icon>
-                                Rechazar
-                            </ion-item-option>
-                            <ion-item-option *ngIf="canEditReservation(item)" color="warning" (click)="navigateToEdit(item)">
-                                <ion-icon name="create-outline" slot="top" class="text-2xl"></ion-icon>
-                                Editar
-                            </ion-item-option>
-                            <ion-item-option *ngIf="canCancelReservation(item)" color="light" (click)="confirmAction(item, 'cancel')">
-                                <ion-icon name="trash-outline" color="danger" slot="top" class="text-2xl"></ion-icon>
-                                <span class="text-red-500">Cancelar</span>
-                            </ion-item-option>
-                        </ion-item-options>
-                    </ion-item-sliding>
-
-                    <div class="flex justify-end p-2 bg-gray-50 dark:bg-kwd-darker border-t border-gray-100 dark:border-gray-700"
-                         *ngIf="canApproveOrReject(item) || canCancelReservation(item)">
-
-                        <ng-container *ngIf="canApproveOrReject(item)">
-                            <ion-button size="small" fill="clear" color="success" (click)="confirmAction(item, 'confirm')">
-                                <ion-icon name="checkmark-outline" slot="start"></ion-icon> Aprobar
-                            </ion-button>
-                            <ion-button size="small" fill="clear" color="danger" (click)="confirmAction(item, 'reject')">
-                                <ion-icon name="close-outline" slot="start"></ion-icon> Rechazar
-                            </ion-button>
-                        </ng-container>
-                        <ion-button *ngIf="canCancelReservation(item)" size="small" fill="solid" (click)="confirmAction(item, 'cancel')"
-                        class="[--background:#dc2626] [--color:#ffffff] hover:[--background:#b91c1c] font-medium rounded-md shadow-sm">
-                        <ion-icon name="trash-outline" slot="start" class="!text-white"></ion-icon> Cancelar
-                      </ion-button>
-                    </div>
-                </ion-card>
-            </ion-list>
-        </div>
-      </ng-container>
+        </ion-item-sliding>
+      </ion-list>
     </div>
+
   </div>
+
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed" class="mb-4 mr-4 animate-bounce-in">
+    <ion-fab-button routerLink="/app/reservations/new" color="primary" class="shadow-lg">
+      <ion-icon name="add"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
 </ion-content>

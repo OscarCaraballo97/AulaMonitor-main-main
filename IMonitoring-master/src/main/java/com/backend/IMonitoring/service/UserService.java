@@ -5,7 +5,6 @@ import com.backend.IMonitoring.model.User;
 import com.backend.IMonitoring.model.Rol;
 import com.backend.IMonitoring.repository.UserRepository;
 import com.backend.IMonitoring.repository.ReservationRepository;
-import com.backend.IMonitoring.model.Reservation;
 import com.backend.IMonitoring.exceptions.UnauthorizedAccessException;
 import com.backend.IMonitoring.exceptions.ResourceNotFoundException;
 import com.backend.IMonitoring.exceptions.UserAlreadyExistsException;
@@ -20,7 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import com.backend.IMonitoring.security.UserDetailsImpl;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +33,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ReservationRepository reservationRepository;
+    private final EmailService emailService;
 
     public List<User> getAllUsers() {
         return userRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
@@ -40,59 +44,58 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
     }
 
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-
     public List<User> getUsersByRole(Rol role) {
         return userRepository.findByRole(role, Sort.by(Sort.Direction.ASC, "name"));
     }
 
     @Transactional
     public User createUser(UserDTO userDTO, User performingUser) {
-        // --- VALIDACIÓN DE PERMISOS Y CARRERA ---
-
-        if (performingUser.getRole() == Rol.COORDINADOR) {
-            // 1. Validar Rol permitido
-            if (userDTO.getRole() != Rol.ESTUDIANTE && userDTO.getRole() != Rol.PROFESOR) {
-                throw new UnauthorizedAccessException("Los Coordinadores solo pueden crear cuentas de Estudiante o Profesor.");
-            }
-
-            // 2. Validar que el Coordinador tenga carrera
-            if (performingUser.getCareer() == null) {
-                throw new UnauthorizedAccessException("Tu cuenta de Coordinador no tiene una carrera asignada.");
-            }
-
-            // 3. VALIDACIÓN ESTRICTA DE GRUPO ACADÉMICO
-            // El usuario que se crea DEBE pertenecer al mismo grupo académico que el coordinador.
-            // Si userDTO.getCareer() viene vacío, se asigna la del coordinador.
-            // Si viene lleno, se verifica que sea compatible.
-            if (userDTO.getCareer() == null || userDTO.getCareer().isEmpty()) {
-                userDTO.setCareer(performingUser.getCareer());
-            } else {
-                if (!CareerUtils.areSameCareerGroup(performingUser.getCareer(), userDTO.getCareer())) {
-                    throw new UnauthorizedAccessException("No puedes asignar la carrera '" + userDTO.getCareer() + "' porque no pertenece a tu grupo académico.");
+        if (performingUser != null) {
+            if (performingUser.getRole() == Rol.COORDINADOR) {
+                if (userDTO.getRole() != Rol.ESTUDIANTE && userDTO.getRole() != Rol.PROFESOR) {
+                    throw new UnauthorizedAccessException("Los Coordinadores solo pueden crear cuentas de Estudiante o Profesor.");
+                }
+                if (performingUser.getCareer() == null) {
+                    throw new UnauthorizedAccessException("Tu cuenta de Coordinador no tiene una carrera asignada.");
+                }
+                if (userDTO.getCareer() == null || userDTO.getCareer().isEmpty()) {
+                    userDTO.setCareer(performingUser.getCareer());
+                } else {
+                    if (!CareerUtils.areSameCareerGroup(performingUser.getCareer(), userDTO.getCareer())) {
+                        throw new UnauthorizedAccessException("No puedes asignar la carrera '" + userDTO.getCareer() + "' porque no pertenece a tu grupo académico.");
+                    }
                 }
             }
-        }
-        else if (performingUser.getRole() == Rol.ADMIN) {
-            // Admin puede crear todo, pero validamos consistencia básica
-            if (userDTO.getRole() == Rol.COORDINADOR && (userDTO.getCareer() == null || userDTO.getCareer().isEmpty())) {
-                throw new IllegalArgumentException("Al crear un Coordinador, debes asignarle una carrera.");
+            else if (performingUser.getRole() == Rol.ADMIN) {
+                if (userDTO.getRole() == Rol.COORDINADOR && (userDTO.getCareer() == null || userDTO.getCareer().isEmpty())) {
+                    throw new IllegalArgumentException("Al crear un Coordinador, debes asignarle una carrera.");
+                }
+            }
+            else {
+                throw new UnauthorizedAccessException("No tienes permiso para crear usuarios.");
             }
         }
-        else {
-            throw new UnauthorizedAccessException("No tienes permiso para crear usuarios.");
+
+        // --- GENERACIÓN AUTOMÁTICA DE CONTRASEÑA SI ESTÁ VACÍA ---
+        if (userDTO.getPassword() == null || userDTO.getPassword().trim().isEmpty()) {
+            if (userDTO.getEmail() != null && userDTO.getEmail().contains("@")) {
+                String baseName = userDTO.getEmail().split("@")[0].toLowerCase();
+                int currentYearTwoDigits = java.time.Year.now().getValue() % 100;
+                userDTO.setPassword(baseName + currentYearTwoDigits);
+            } else {
+                throw new IllegalArgumentException("Correo inválido para generar contraseña.");
+            }
         }
+        // ---------------------------------------------------------
 
         User user = userDTO.toEntity();
-        user.setCareer(userDTO.getCareer()); // Asegurar persistencia
+        user.setCareer(userDTO.getCareer());
 
-        return createUserEntityLogic(user, performingUser);
+        return createUserEntityLogic(user);
     }
 
     @Transactional
-    protected User createUserEntityLogic(User user, User performingUser) {
+    protected User createUserEntityLogic(User user) {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new UserAlreadyExistsException("El correo electrónico '" + user.getEmail() + "' ya está registrado.");
         }
@@ -101,13 +104,27 @@ public class UserService {
             throw new IllegalArgumentException("La contraseña es obligatoria para crear un nuevo usuario.");
         }
 
+        String rawPassword = user.getPassword();
+
         if (!user.getPassword().startsWith("$2a$")) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
 
         user.setEnabled(true);
+        User savedUser = userRepository.save(user);
 
-        return userRepository.save(user);
+        String subject = "Bienvenido a AulaMonitor - Su cuenta ha sido creada";
+        String body = "Hola " + savedUser.getName() + ",\n\n" +
+                "Su cuenta en la plataforma AulaMonitor ha sido creada exitosamente.\n\n" +
+                "Sus credenciales de acceso son las siguientes:\n" +
+                "Usuario: " + savedUser.getEmail() + "\n" +
+                "Contraseña temporal: " + rawPassword + "\n\n" +
+                "Le recomendamos que inicie sesión y cambie su contraseña lo antes posible.\n\n" +
+                "Saludos,\nEl equipo de AulaMonitor.";
+
+        emailService.sendEmail(savedUser.getEmail(), subject, body);
+
+        return savedUser;
     }
 
     @Transactional
@@ -122,18 +139,13 @@ public class UserService {
             throw new UnauthorizedAccessException("No tienes permiso para actualizar este usuario.");
         }
 
-        // VALIDACIÓN COORDINADOR AL EDITAR
         if (isPerformingCoordinator && !isSelf) {
-            // Solo puede editar gente de su grupo
             if (!CareerUtils.areSameCareerGroup(performingUser.getCareer(), existingUser.getCareer())) {
                 throw new UnauthorizedAccessException("No puedes gestionar usuarios de otro grupo académico.");
             }
-            // Solo estudiantes o profesores
             if (existingUser.getRole() != Rol.ESTUDIANTE && existingUser.getRole() != Rol.PROFESOR) {
                 throw new UnauthorizedAccessException("Solo puedes gestionar Estudiantes o Profesores.");
             }
-
-            // Si intenta cambiar la carrera del usuario, validar que la nueva carrera siga siendo del grupo
             if (userDTO.getCareer() != null && !userDTO.getCareer().equals(existingUser.getCareer())) {
                 if (!CareerUtils.areSameCareerGroup(performingUser.getCareer(), userDTO.getCareer())) {
                     throw new UnauthorizedAccessException("No puedes cambiar al usuario a una carrera fuera de tu grupo.");
@@ -141,13 +153,11 @@ public class UserService {
             }
         }
 
-        boolean hasPermission = isSelf || isPerformingAdmin || isPerformingCoordinator;
-
-        if (userDTO.getName() != null && hasPermission) {
+        if (userDTO.getName() != null) {
             existingUser.setName(userDTO.getName());
         }
 
-        if (userDTO.getEmail() != null && !existingUser.getEmail().equalsIgnoreCase(userDTO.getEmail()) && hasPermission) {
+        if (userDTO.getEmail() != null && !existingUser.getEmail().equalsIgnoreCase(userDTO.getEmail())) {
             Optional<User> userWithNewEmail = userRepository.findByEmail(userDTO.getEmail());
             if (userWithNewEmail.isPresent() && !userWithNewEmail.get().getId().equals(existingUser.getId())) {
                 throw new UserAlreadyExistsException("El nuevo correo electrónico ya está en uso.");
@@ -155,11 +165,11 @@ public class UserService {
             existingUser.setEmail(userDTO.getEmail());
         }
 
-        if (userDTO.getCareer() != null && hasPermission) {
+        if (userDTO.getCareer() != null) {
             existingUser.setCareer(userDTO.getCareer());
         }
 
-        if (userDTO.getAvatarUrl() != null && hasPermission) {
+        if (userDTO.getAvatarUrl() != null) {
             existingUser.setAvatarUrl(userDTO.getAvatarUrl().isEmpty() ? null : userDTO.getAvatarUrl());
         }
 
@@ -177,6 +187,9 @@ public class UserService {
         if (userDTO.getEnabled() != null && existingUser.isEnabled() != userDTO.getEnabled()) {
             if (isPerformingAdmin || (isPerformingCoordinator && !isSelf)) {
                 existingUser.setEnabled(userDTO.getEnabled());
+                if (!userDTO.getEnabled()) {
+                    reservationRepository.deleteAllByUserId(existingUser.getId());
+                }
             } else if (isSelf) {
                 throw new UnauthorizedAccessException("No puedes deshabilitar tu propia cuenta.");
             } else {
@@ -266,25 +279,57 @@ public class UserService {
             throw new UnauthorizedAccessException("No tienes permiso para eliminar este usuario.");
         }
 
-        List<Reservation> userReservations = reservationRepository.findByUserId(id, Sort.unsorted());
-        if (userReservations != null && !userReservations.isEmpty()) {
-            reservationRepository.deleteAll(userReservations);
-        }
+        String subject = "Aviso: Su cuenta ha sido eliminada - AulaMonitor";
+        String body = "Hola " + userToDelete.getName() + ",\n\n" +
+                "Le informamos que su cuenta en la plataforma AulaMonitor ha sido eliminada permanentemente por la administración.\n\n" +
+                "Si considera que esto es un error, por favor contacte a su coordinador.\n\n" +
+                "Saludos,\nEl equipo de AulaMonitor.";
+        emailService.sendEmail(userToDelete.getEmail(), subject, body);
+
+        reservationRepository.deleteAllByUserId(id);
         userRepository.delete(userToDelete);
     }
 
-    public List<Reservation> getReservationsByUserId(String userId) {
-        getUserById(userId);
-        return reservationRepository.findByUserId(userId, Sort.by(Sort.Direction.DESC, "startTime"));
-    }
+    // --- NUEVO MÉTODO DE CARGA DE EXCEL ---
+    @Transactional
+    public String uploadUsersFromExcel(MultipartFile file, User performingUser) throws IOException {
+        int successCount = 0;
+        int errorCount = 0;
+        List<String> errors = new ArrayList<>();
+        DataFormatter formatter = new DataFormatter();
 
-    public User getCurrentAuthenticatedUser() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetailsImpl) {
-            return ((UserDetailsImpl) principal).getUserEntity();
-        } else if (principal instanceof String && "anonymousUser".equals(principal)) {
-            throw new UnauthorizedAccessException("Usuario no autenticado.");
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            for (Row row : sheet) {
+                if (row.getRowNum() == 0) continue; // Saltar cabecera
+
+                try {
+                    String name = formatter.formatCellValue(row.getCell(0));
+                    String email = formatter.formatCellValue(row.getCell(1));
+                    String roleStr = formatter.formatCellValue(row.getCell(2));
+                    String career = formatter.formatCellValue(row.getCell(3));
+
+                    if (name.isEmpty() || email.isEmpty() || roleStr.isEmpty()) continue;
+
+                    UserDTO dto = new UserDTO();
+                    dto.setName(name);
+                    dto.setEmail(email);
+                    dto.setRole(Rol.valueOf(roleStr.toUpperCase()));
+                    dto.setCareer(career.isEmpty() ? null : career);
+
+                    createUser(dto, performingUser); // Creará y enviará correo automáticamente
+                    successCount++;
+                } catch (Exception e) {
+                    errorCount++;
+                    errors.add("Fila " + (row.getRowNum() + 1) + ": " + e.getMessage());
+                }
+            }
         }
-        throw new IllegalStateException("Principal no válido.");
+
+        if (errorCount > 0) {
+            return "Se cargaron " + successCount + " usuarios. Fallaron " + errorCount + " (Ej: " + errors.getFirst() + ")";
+        }
+        return "Carga masiva exitosa: " + successCount + " usuarios creados.";
     }
 }
