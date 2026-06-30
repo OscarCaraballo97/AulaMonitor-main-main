@@ -10,4 +10,8 @@ export interface User {
   profilePicture?: string;
   imageType?: string;
   enabled: boolean;
+  documentType?: string;
+  documentNumber?: string;
+  institution?: string;
+  studentCode?: string;
 }

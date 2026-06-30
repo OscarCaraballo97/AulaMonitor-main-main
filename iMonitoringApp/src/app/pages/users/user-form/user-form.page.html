@@ -49,6 +49,36 @@
     </div>
 
     <ion-item lines="full" class="mb-4 rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark dark:text-kwd-light">
+      <ion-label position="stacked" style="font-size: 20px;">Tipo de Documento</ion-label>
+      <ion-select formControlName="documentType" interface="popover" placeholder="Seleccionar Tipo">
+        <ion-select-option value="CC">Cédula de Ciudadanía (CC)</ion-select-option>
+        <ion-select-option value="TI">Tarjeta de Identidad (TI)</ion-select-option>
+        <ion-select-option value="CE">Cédula de Extranjería (CE)</ion-select-option>
+        <ion-select-option value="PASAPORTE">Pasaporte</ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    <ion-item lines="full" class="mb-4 rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark dark:text-kwd-light">
+      <ion-label position="stacked" style="font-size: 20px;">Número de Documento</ion-label>
+      <ion-input type="text" formControlName="documentNumber" placeholder="Ej: 1001234567"></ion-input>
+    </ion-item>
+
+    <ion-item lines="full" class="mb-4 rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark dark:text-kwd-light">
+      <ion-label position="stacked" style="font-size: 20px;">Institución</ion-label>
+      <ion-select formControlName="institution" interface="popover" placeholder="Seleccionar Institución">
+        <ion-select-option value="Colombo">Colombo</ion-select-option>
+        <ion-select-option value="Unicolombo">Unicolombo</ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    <div *ngIf="userForm.get('role')?.value === RolEnum.ESTUDIANTE">
+      <ion-item lines="full" class="mb-4 rounded-md shadow-sm bg-gray-50 border-l-4 border-blue-500 dark:bg-kwd-dark dark:border-blue-500 dark:text-kwd-light">
+        <ion-label position="stacked" style="font-size: 20px;">Código Estudiantil</ion-label>
+        <ion-input type="text" formControlName="studentCode" placeholder="Ej: 1045239"></ion-input>
+      </ion-item>
+    </div>
+
+    <ion-item lines="full" class="mb-4 rounded-md shadow-sm bg-gray-50 dark:bg-kwd-dark dark:text-kwd-light">
       <ion-label position="stacked" style="font-size: 20px;">URL del Avatar (Opcional)</ion-label>
       <ion-input type="url" formControlName="avatarUrl"></ion-input>
     </ion-item>

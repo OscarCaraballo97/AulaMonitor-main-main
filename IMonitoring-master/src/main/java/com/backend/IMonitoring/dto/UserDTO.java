@@ -32,12 +32,18 @@ public class UserDTO {
 
     @NotNull(message = "El rol es obligatorio")
     private Rol role;
+
     private String career;
     private String password;
     private String avatarUrl;
     private String profilePictureBase64;
     private String imageType;
     private Boolean enabled;
+
+    private String documentType;
+    private String documentNumber;
+    private String institution;
+    private String studentCode;
 
     public static UserDTO fromEntity(User user) {
         if (user == null) return null;
@@ -57,6 +63,10 @@ public class UserDTO {
                 .profilePictureBase64(base64Image)
                 .imageType(user.getImageType())
                 .enabled(user.isEnabled())
+                .documentType(user.getDocumentType())
+                .documentNumber(user.getDocumentNumber())
+                .institution(user.getInstitution())
+                .studentCode(user.getStudentCode())
                 .build();
     }
 
@@ -69,9 +79,16 @@ public class UserDTO {
         user.setCareer(this.career);
         user.setAvatarUrl(this.avatarUrl);
         user.setEnabled(this.enabled != null ? this.enabled : true);
+
         if (this.password != null && !this.password.isEmpty()) {
             user.setPassword(this.password);
         }
+
+        user.setDocumentType(this.documentType);
+        user.setDocumentNumber(this.documentNumber);
+        user.setInstitution(this.institution);
+        user.setStudentCode(this.studentCode);
+
         return user;
     }
 }

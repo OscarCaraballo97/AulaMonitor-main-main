@@ -89,9 +89,15 @@ export class MainLayoutPage implements OnInit, OnDestroy {
       { title: 'Mis Reservas', icon: 'calendar-outline', route: '/app/reservations/my-list', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
       { title: 'Nueva Reserva', icon: 'add-circle-outline', route: '/app/reservations/new', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
       { title: 'Disponibilidad', icon: 'time-outline', route: '/app/classrooms/availability', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
+
+      // --- SECCIÓN DE COORDINADOR ---
       { title: 'Estudiantes', icon: 'people-outline', route: '/app/users', roles: [Rol.COORDINADOR] },
       { title: 'Reservas Estudiantes', icon: 'documents-outline', route: '/app/reservations/all', roles: [Rol.COORDINADOR] },
-      { title: 'Auditoría (Logs)', icon: 'document-text-outline', route: '/app/admin/logs', roles: [Rol.ADMIN, Rol.COORDINADOR] },
+
+      { title: 'Estadísticas', icon: 'stats-chart-outline', route: '/app/admin/reports', roles: [Rol.ADMIN, Rol.COORDINADOR] },
+
+      // --- SECCIÓN DE ADMINISTRADOR ---
+      { title: 'Logs', icon: 'document-text-outline', route: '/app/admin/logs', roles: [Rol.ADMIN, Rol.COORDINADOR] },
       { title: 'Edificios', icon: 'business-outline', route: '/app/buildings', roles: [Rol.ADMIN] },
       { title: 'Aulas', icon: 'school-outline', route: '/app/classrooms', roles: [Rol.ADMIN] },
       { title: 'Usuarios', icon: 'people-circle-outline', route: '/app/users', roles: [Rol.ADMIN] },

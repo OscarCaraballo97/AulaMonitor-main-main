@@ -60,7 +60,6 @@ export const routes: Routes = [
         path: 'test-ionic',
         loadComponent: () => import('./pages/test-ionic/test-ionic.page').then( m => m.TestIonicPage)
       },
-
       {
         path: 'admin/logs',
         loadComponent: () => import('./pages/admin/logs/logs.page').then( m => m.LogsPage),
@@ -68,12 +67,16 @@ export const routes: Routes = [
       },
 
       {
+        path: 'admin/reports',
+        loadComponent: () => import('./pages/admin/reports/reports.page').then( m => m.ReportsPage),
+        canMatch: [canMatchAdminOrCoordinator]
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full',
-      },
+      }
     ],
   },
-
-  { path: '**', redirectTo: '/login', pathMatch: 'full' }
+  { path: '**', redirectTo: '/login', pathMatch: 'full' },
 ];

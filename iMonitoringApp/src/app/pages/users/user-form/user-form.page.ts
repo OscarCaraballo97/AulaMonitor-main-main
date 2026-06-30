@@ -30,6 +30,20 @@ export class UserFormPage implements OnInit, OnDestroy {
   public rolesForSelect: { key: string, value: Rol }[] = [];
   public RolEnum = Rol;
 
+  // --- SEPARACIÓN DE CARRERAS POR INSTITUCIÓN ---
+  private colomboCareers: string[] = [
+    'Taller de Lengua Inglesa'
+  ];
+
+  private unicolomboCareers: string[] = [
+    'Administración de Empresas', 'Contaduría Pública', 'Derecho',
+    'Ingeniería Industrial', 'Ingeniería de Sistemas', 'Administración de Empresas Turísticas y Hoteleras',
+    'Tecnología en Sistemas de Gestión de Calidad',
+    'Tecnología en Desarrollo de Sistemas de Información y de Software',
+    'Tecnología en Gestión de Servicios Turísticos y Hoteleros',
+    'Licenciatura en Bilingüismo con énfasis en Inglés' // <-- AÑADIDO AQUÍ
+  ];
+
   private careerGroups: { [key: string]: string[] } = {
     'SISTEMAS': ['Ingeniería de Sistemas', 'Tecnología en Desarrollo de Sistemas de Información y de Software'],
     'INDUSTRIAL': ['Ingeniería Industrial', 'Tecnología en Sistemas de Gestión de Calidad'],
@@ -37,17 +51,8 @@ export class UserFormPage implements OnInit, OnDestroy {
     'ADMINISTRACION': ['Administración de Empresas'],
     'CONTADURIA': ['Contaduría Pública'],
     'DERECHO': ['Derecho'],
-    'BILINGUISMO': ['Licenciatura en Bilingüismo con énfasis en Inglés']
+    'BILINGUISMO': ['Taller de Lengua Inglesa', 'Licenciatura en Bilingüismo con énfasis en Inglés']
   };
-
-  private allCareers: string[] = [
-    'Administración de Empresas', 'Contaduría Pública', 'Derecho',
-    'Licenciatura en Bilingüismo con énfasis en Inglés', 'Ingeniería Industrial',
-    'Ingeniería de Sistemas', 'Administración de Empresas Turísticas y Hoteleras',
-    'Tecnología en Sistemas de Gestión de Calidad',
-    'Tecnología en Desarrollo de Sistemas de Información y de Software',
-    'Tecnología en Gestión de Servicios Turísticos y Hoteleros'
-  ];
 
   public availableCareers: string[] = [];
 
@@ -63,20 +68,38 @@ export class UserFormPage implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // ELIMINADO EL CAMPO 'password' DEL FORMULARIO
     this.userForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
       role: [Rol.ESTUDIANTE, Validators.required],
+      documentType: [''],
+      documentNumber: [''],
+      institution: ['', Validators.required],
       career: ['', Validators.required],
+      studentCode: [''],
       avatarUrl: ['']
+    });
+
+    this.userForm.get('role')?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(role => {
+      if (role !== Rol.ESTUDIANTE) {
+        this.userForm.get('studentCode')?.setValue('');
+      }
+    });
+
+    this.userForm.get('institution')?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(institution => {
+      this.updateAvailableCareers(institution);
+
+      const currentCareer = this.userForm.get('career')?.value;
+      if (currentCareer && !this.availableCareers.includes(currentCareer)) {
+        this.userForm.get('career')?.setValue('');
+      }
     });
 
     this.authService.getCurrentUser().pipe(takeUntil(this.destroy$)).subscribe(user => {
         this.currentUser = user;
         this.loggedInUserRole = user?.role || null;
         this.setupRolesForSelect();
-        this.setupCareersForSelect();
+        this.updateAvailableCareers(this.userForm.get('institution')?.value);
         this.cdr.detectChanges();
     });
 
@@ -109,22 +132,36 @@ export class UserFormPage implements OnInit, OnDestroy {
     }
   }
 
-  setupCareersForSelect() {
+  updateAvailableCareers(institution: string) {
+    let allowedByInstitution: string[] = [];
+
+    if (institution === 'Colombo') {
+      allowedByInstitution = [...this.colomboCareers];
+    } else if (institution === 'Unicolombo') {
+      allowedByInstitution = [...this.unicolomboCareers];
+    } else {
+      allowedByInstitution = [...this.colomboCareers, ...this.unicolomboCareers];
+    }
+
     if (this.loggedInUserRole === Rol.ADMIN) {
-      this.availableCareers = [...this.allCareers];
+      this.availableCareers = allowedByInstitution;
     } else if (this.loggedInUserRole === Rol.COORDINADOR && this.currentUser?.career) {
       const coordinatorCareer = this.currentUser.career;
       let foundGroup: string[] | null = null;
+
       for (const groupKey in this.careerGroups) {
         if (this.careerGroups[groupKey].includes(coordinatorCareer)) {
           foundGroup = this.careerGroups[groupKey];
           break;
         }
       }
-      this.availableCareers = foundGroup ? foundGroup : [coordinatorCareer];
-      if (this.availableCareers.length === 1) {
-          this.userForm.patchValue({ career: this.availableCareers[0] });
-      }
+
+      const coordinatorAllowed = foundGroup ? foundGroup : [coordinatorCareer];
+      this.availableCareers = coordinatorAllowed.filter(c => allowedByInstitution.includes(c));
+    }
+
+    if (this.availableCareers.length === 1) {
+      this.userForm.patchValue({ career: this.availableCareers[0] });
     }
   }
 
@@ -137,6 +174,7 @@ export class UserFormPage implements OnInit, OnDestroy {
     this.isLoading = true;
     const loading = await this.loadingCtrl.create({ message: 'Cargando...' });
     await loading.present();
+
     this.userService.getUserById(id).pipe(takeUntil(this.destroy$), finalize(async () => {
         this.isLoading = false;
         await loading.dismiss();
@@ -146,9 +184,15 @@ export class UserFormPage implements OnInit, OnDestroy {
           name: user.name,
           email: user.email,
           role: user.role,
+          documentType: user.documentType,
+          documentNumber: user.documentNumber,
+          institution: user.institution,
           career: user.career,
+          studentCode: user.studentCode,
           avatarUrl: user.avatarUrl
         });
+
+        this.updateAvailableCareers(user.institution || '');
         this.cdr.detectChanges();
       },
       error: async (err) => {
@@ -161,9 +205,11 @@ export class UserFormPage implements OnInit, OnDestroy {
 
   async onSubmit() {
     if (this.userForm.invalid) {
-      await this.presentToast('Por favor, corrige los errores.', 'warning');
+      await this.presentToast('Por favor, completa todos los campos requeridos.', 'warning');
+      this.userForm.markAllAsTouched();
       return;
     }
+
     this.isLoading = true;
     const loading = await this.loadingCtrl.create({ message: this.isEditMode ? 'Guardando...' : 'Creando...' });
     await loading.present();
@@ -178,7 +224,7 @@ export class UserFormPage implements OnInit, OnDestroy {
         await loading.dismiss();
     })).subscribe({
       next: async () => {
-        await this.presentToast('Operación exitosa. Si es un nuevo usuario, recibirá su contraseña por correo.', 'success');
+        await this.presentToast('Operación exitosa.', 'success');
         this.navCtrl.navigateBack('/app/users');
       },
       error: async (err) => {

@@ -19,7 +19,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, String
     List<Reservation> findByUserId(String userId, Sort sort);
     List<Reservation> findByClassroomId(String classroomId, Sort sort);
     List<Reservation> findByGroupId(String groupId);
-
+    long countByClassroomId(String classroomId);
     List<Reservation> findByClassroomIdAndStartTimeBetween(String classroomId, LocalDateTime startTime, LocalDateTime endTime, Sort sort);
     List<Reservation> findByUserIdAndStartTimeBetween(String userId, LocalDateTime startTime, LocalDateTime endTime, Sort sort);
     List<Reservation> findByStatusAndStartTimeBetween(ReservationStatus status, LocalDateTime startTime, LocalDateTime endTime, Sort sort);

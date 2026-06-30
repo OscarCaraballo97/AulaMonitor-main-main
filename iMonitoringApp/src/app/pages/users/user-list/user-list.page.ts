@@ -1,13 +1,15 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { IonicModule, AlertController, LoadingController, ToastController, NavController, IonRefresher } from '@ionic/angular';
+import { IonicModule, AlertController, LoadingController, ToastController, NavController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { UserService } from '../../../services/user.service';
 import { User } from '../../../models/user.model';
 import { Rol } from '../../../models/rol.model';
 import { Subject, Observable, forkJoin, of } from 'rxjs';
-import { takeUntil, map, catchError } from 'rxjs/operators';
+import { takeUntil, map, catchError, finalize } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-user-list',
@@ -25,6 +27,11 @@ export class UserListPage implements OnInit, OnDestroy {
   public RolEnum = Rol;
   currentUserRole: Rol | null = null;
 
+  isModalOpen = false;
+  selectedUser: User | null = null;
+  selectedUserReservations: any[] = [];
+  isLoadingReservations = false;
+
   constructor(
     private userService: UserService,
     private authService: AuthService,
@@ -32,7 +39,8 @@ export class UserListPage implements OnInit, OnDestroy {
     private loadingCtrl: LoadingController,
     private toastCtrl: ToastController,
     private navCtrl: NavController,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private http: HttpClient
   ) {}
 
   ngOnInit() {
@@ -59,7 +67,15 @@ export class UserListPage implements OnInit, OnDestroy {
     this.users = this.allUsers.filter(user => {
       const name = user.name?.toLowerCase() || '';
       const email = user.email?.toLowerCase() || '';
-      return name.includes(searchTerm) || email.includes(searchTerm);
+      const doc = user.documentNumber?.toLowerCase() || '';
+      const inst = user.institution?.toLowerCase() || '';
+      const code = user.studentCode?.toLowerCase() || '';
+
+      return name.includes(searchTerm) ||
+             email.includes(searchTerm) ||
+             doc.includes(searchTerm) ||
+             inst.includes(searchTerm) ||
+             code.includes(searchTerm);
     });
   }
 
@@ -110,6 +126,30 @@ export class UserListPage implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  openUserDetails(user: User) {
+    this.selectedUser = user;
+    this.isModalOpen = true;
+    this.selectedUserReservations = [];
+    this.isLoadingReservations = true;
+
+    this.http.get<any[]>(`${environment.apiUrl}/reservations?userId=${user.id}`)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.isLoadingReservations = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          this.selectedUserReservations = Array.isArray(res) ? res : [];
+        },
+        error: (err) => {
+          console.error('Error cargando reservas de usuario', err);
+        }
+      });
   }
 
   canEditUser(userToList: User): boolean {

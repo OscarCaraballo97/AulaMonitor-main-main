@@ -33,6 +33,7 @@ public class User {
 
     @Column(name = "career")
     private String career;
+
     private String avatarUrl;
 
     @Column(name = "profile_picture", length = 1000000)
@@ -52,4 +53,16 @@ public class User {
     @EqualsAndHashCode.Exclude
     @JsonManagedReference("user-reservations")
     private List<Reservation> reservations;
+
+    @Column(name = "document_type")
+    private String documentType;
+
+    @Column(name = "document_number")
+    private String documentNumber;
+
+    @Column(name = "institution")
+    private String institution;
+
+    @Column(name = "student_code")
+    private String studentCode;
 }

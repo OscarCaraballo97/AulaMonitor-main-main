@@ -34,7 +34,7 @@
 
     <div class="mb-6">
       <ion-searchbar
-        placeholder="Buscar por nombre o correo..."
+        placeholder="Buscar por nombre, correo, cédula o institución..."
         [debounce]="250"
         (ionInput)="searchUsers($event)"
         animated="true"
@@ -67,6 +67,7 @@
           <tr>
             <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left dark:text-white text-blue-955 uppercase">Nombre</th>
             <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left dark:text-white text-blue-955 uppercase">Email</th>
+            <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left dark:text-white text-blue-955 uppercase">Institución</th>
             <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left dark:text-white text-blue-955 uppercase">Carrera</th>
             <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-left dark:text-white text-blue-955 uppercase">Rol</th>
             <th scope="col" class="px-6 py-3 text-xs font-bold tracking-wider text-right dark:text-white text-blue-955 uppercase">Acciones</th>
@@ -74,13 +75,16 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200 dark:bg-kwd-darker dark:divide-kwd-blue-800">
           <tr *ngFor="let user of users" class="hover:bg-gray-50 dark:hover:bg-kwd-dark">
-            <td class="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-kwd-light">{{ user.name || 'N/A' }}</td>
-            <td class="px-6 py-4 text-sm text-blue-955 whitespace-nowrap dark:text-white">{{ user.email }}</td>
 
-            <td class="px-6 py-4 text-sm text-blue-955 whitespace-nowrap dark:text-white">
-              {{ user.career || '-' }}
+            <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
+              <span (click)="openUserDetails(user)" class="text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer">
+                {{ user.name || 'N/A' }}
+              </span>
             </td>
 
+            <td class="px-6 py-4 text-sm text-blue-955 whitespace-nowrap dark:text-white">{{ user.email }}</td>
+            <td class="px-6 py-4 text-sm font-semibold text-gray-700 whitespace-nowrap dark:text-gray-300">{{ user.institution || '-' }}</td>
+            <td class="px-6 py-4 text-sm text-blue-955 whitespace-nowrap dark:text-white truncate max-w-[200px]" [title]="user.career">{{ user.career || '-' }}</td>
             <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-300">
               <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full"
                     [ngClass]="{
@@ -105,4 +109,91 @@
       </table>
     </div>
   </div>
+
+  <ion-modal [isOpen]="isModalOpen" (didDismiss)="isModalOpen = false" class="[--height:85vh] [--max-height:85vh] [--border-radius:12px]">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar color="primary">
+          <ion-title>Información del Usuario</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="isModalOpen = false" class="font-bold text-white">Cerrar</ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content class="bg-gray-50 dark:bg-kwd-dark ion-padding">
+        <div *ngIf="selectedUser" class="space-y-6">
+
+          <div class="bg-white dark:bg-kwd-darker p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-bold uppercase text-indigo-600 dark:text-indigo-400 tracking-wider mb-3">Información del Usuario</h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span class="text-xs text-gray-400 block font-medium">Nombre Completo:</span>
+                <span class="text-gray-900 dark:text-white font-bold text-base">{{ selectedUser.name || 'N/A' }}</span>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 block font-medium">Correo Electrónico:</span>
+                <span class="text-gray-900 dark:text-white font-semibold">{{ selectedUser.email }}</span>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 block font-medium">Documento de Identidad:</span>
+                <span class="text-gray-900 dark:text-white font-medium">
+                  {{ selectedUser.documentType || 'N/A' }} - {{ selectedUser.documentNumber || 'Sin número' }}
+                </span>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 block font-medium">Código Estudiantil:</span>
+                <span class="text-gray-900 dark:text-white font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-bold">
+                  {{ selectedUser.studentCode || 'N/A' }}
+                </span>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 block font-medium">Institución de Afiliación:</span>
+                <span class="text-gray-900 dark:text-white font-semibold">{{ selectedUser.institution || 'No especificada' }}</span>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 block font-medium">Programa Académico:</span>
+                <span class="text-gray-900 dark:text-white font-semibold">{{ selectedUser.career || 'Sin asignar' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-kwd-darker p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-bold uppercase text-indigo-600 dark:text-indigo-400 tracking-wider mb-3">Historial de Reservas Vinculadas</h3>
+
+            <div *ngIf="isLoadingReservations" class="text-center py-4">
+              <ion-spinner name="lines" color="primary"></ion-spinner>
+              <p class="text-xs text-gray-400 mt-1">Buscando cronograma en el sistema...</p>
+            </div>
+
+            <div *ngIf="!isLoadingReservations && selectedUserReservations.length === 0" class="text-center py-6 text-gray-400 italic text-sm">
+              Este usuario no registra ninguna reserva en el sistema actualmente.
+            </div>
+
+            <div *ngIf="!isLoadingReservations && selectedUserReservations.length > 0" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+              <div *ngFor="let res of selectedUserReservations" class="p-3 border dark:border-gray-700 bg-gray-50 dark:bg-kwd-dark rounded flex flex-col sm:flex-row justify-between sm:items-center text-xs">
+                <div class="space-y-0.5">
+                  <div class="font-bold text-gray-900 dark:text-white text-sm">Aula: {{ res.classroom?.name || 'Desconocida' }}</div>
+                  <div class="text-gray-600 dark:text-gray-300"><span class="font-semibold">Propósito:</span> {{ res.purpose }}</div>
+                  <div class="text-gray-500 font-mono">{{ res.startTime | date:'dd/MM/yyyy HH:mm' }} hasta {{ res.endTime | date:'HH:mm' }}</div>
+                </div>
+                <div class="mt-2 sm:mt-0">
+                  <span class="px-2 py-0.5 font-bold rounded-full text-[10px] uppercase tracking-wide"
+                        [ngClass]="{
+                          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': res.status === 'CONFIRMADA',
+                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': res.status === 'PENDIENTE',
+                          'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200': res.status === 'CANCELADA' || res.status === 'RECHAZADA'
+                        }">
+                    {{ res.status }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 </ion-content>
