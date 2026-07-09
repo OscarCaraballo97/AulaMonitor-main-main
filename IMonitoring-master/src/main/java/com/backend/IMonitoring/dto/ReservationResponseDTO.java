@@ -31,4 +31,5 @@ public class ReservationResponseDTO {
     private LocalDate semesterStartDate;
     private LocalDate semesterEndDate;
     private List<String> daysOfWeek;
+    private String institution;
 }

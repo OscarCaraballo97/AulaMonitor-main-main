@@ -27,4 +27,5 @@ public class ReservationRequestDTO {
     private String purpose;
     private ReservationStatus status;
     private List<String> daysOfWeek;
+    private String institution;
 }

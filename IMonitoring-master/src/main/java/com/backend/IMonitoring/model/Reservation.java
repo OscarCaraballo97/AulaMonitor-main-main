@@ -68,4 +68,5 @@ public class Reservation {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+    private String institution;
 }

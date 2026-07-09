@@ -358,14 +358,14 @@ public class UserService {
                 if (row.getRowNum() == 0) continue;
 
                 try {
-                    String name = formatter.formatCellValue(row.getCell(0)).trim();
-                    String email = formatter.formatCellValue(row.getCell(1)).trim();
-                    String roleStr = formatter.formatCellValue(row.getCell(2)).trim();
-                    String career = formatter.formatCellValue(row.getCell(3)).trim();
+                    String name = row.getCell(0) != null ? formatter.formatCellValue(row.getCell(0)).trim() : "";
+                    String email = row.getCell(1) != null ? formatter.formatCellValue(row.getCell(1)).trim() : "";
+                    String roleStr = row.getCell(2) != null ? formatter.formatCellValue(row.getCell(2)).trim() : "";
 
-                    String documentType = row.getCell(4) != null ? formatter.formatCellValue(row.getCell(4)).trim() : "";
-                    String documentNumber = row.getCell(5) != null ? formatter.formatCellValue(row.getCell(5)).trim() : "";
-                    String institution = row.getCell(6) != null ? formatter.formatCellValue(row.getCell(6)).trim() : "";
+                    String documentType = row.getCell(3) != null ? formatter.formatCellValue(row.getCell(3)).trim() : "";
+                    String documentNumber = row.getCell(4) != null ? formatter.formatCellValue(row.getCell(4)).trim() : "";
+                    String institution = row.getCell(5) != null ? formatter.formatCellValue(row.getCell(5)).trim() : "";
+                    String career = row.getCell(6) != null ? formatter.formatCellValue(row.getCell(6)).trim() : "";
                     String studentCode = row.getCell(7) != null ? formatter.formatCellValue(row.getCell(7)).trim() : "";
 
                     if (name.isEmpty() || email.isEmpty() || roleStr.isEmpty()) continue;
@@ -374,11 +374,10 @@ public class UserService {
                     dto.setName(name);
                     dto.setEmail(email);
                     dto.setRole(Rol.valueOf(roleStr.toUpperCase()));
-                    dto.setCareer(career.isEmpty() ? null : career);
-
                     dto.setDocumentType(documentType.isEmpty() ? null : documentType);
                     dto.setDocumentNumber(documentNumber.isEmpty() ? null : documentNumber);
                     dto.setInstitution(institution.isEmpty() ? null : institution);
+                    dto.setCareer(career.isEmpty() ? null : career);
                     dto.setStudentCode(studentCode.isEmpty() ? null : studentCode);
 
                     createUser(dto, performingUser);

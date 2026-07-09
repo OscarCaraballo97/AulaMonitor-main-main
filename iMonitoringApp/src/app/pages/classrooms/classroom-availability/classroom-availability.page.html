@@ -1,58 +1,123 @@
 <ion-header>
   <ion-toolbar color="primary">
-    <ion-buttons slot="start">
-      <ion-back-button defaultHref="/app/dashboard"></ion-back-button>
+    <ion-buttons slot="start"><ion-back-button defaultHref="/app/classrooms"></ion-back-button></ion-buttons>
+    <ion-title>Horarios y Disponibilidad</ion-title>
+
+    <ion-buttons slot="end">
+      <ion-button (click)="promptDownloadSchedule()" class="hidden md:flex items-center text-white font-bold bg-green-600 px-3 py-1 mr-2 rounded shadow-sm hover:bg-green-700">
+        <ion-icon name="download-outline" class="mr-1"></ion-icon> Exportar Excel
+      </ion-button>
+      <ion-button (click)="promptDownloadSchedule()" class="md:hidden">
+        <ion-icon name="download-outline"></ion-icon>
+      </ion-button>
     </ion-buttons>
-    <ion-title>Disponibilidad de Aulas</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="ion-padding bg-gray-100 dark:bg-kwd-dark">
-  <div class="sticky top-0 z-10 bg-gray-100 dark:bg-kwd-dark py-2 mb-4 shadow">
-    <div class="flex items-center justify-around max-w-md mx-auto mb-2">
-      <ion-button fill="clear" (click)="changeDay(-1)"><ion-icon name="chevron-back-outline" slot="icon-only"></ion-icon></ion-button>
-      <ion-button id="date-btn" fill="outline" class="flex-grow mx-2">{{ selectedDateYYYYMMDD | date:'dd/MM/yyyy' }}</ion-button>
-      <ion-popover trigger="date-btn" [keepContentsMounted]="true">
-        <ng-template>
-          <ion-datetime presentation="date" [(ngModel)]="selectedDateTimeISO" (ionChange)="onDateTimeChanged($event.detail.value)" [min]="minDate" [max]="maxDate" locale="es-CO"></ion-datetime>
-        </ng-template>
-      </ion-popover>
-      <ion-button fill="clear" (click)="changeDay(1)"><ion-icon name="chevron-forward-outline" slot="icon-only"></ion-icon></ion-button>
+<ion-content class="bg-gray-100 dark:bg-kwd-dark">
+  <div class="p-4 lg:p-8 max-w-7xl mx-auto">
+
+    <!-- BARRA DE CONTROLES PRINCIPAL -->
+    <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-kwd-darker p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 mb-6 gap-4">
+
+      <!-- Selector de Aula -->
+      <div class="w-full md:w-1/3">
+        <ion-label class="text-sm font-bold text-gray-600 dark:text-gray-400 mb-1 block">Selecciona un Aula</ion-label>
+        <div class="border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-kwd-dark">
+          <ion-select interface="popover" [(ngModel)]="selectedClassroomId" (ionChange)="onClassroomSelected($event)" placeholder="-- Elige aula --" class="w-full px-3 py-2">
+            <ion-select-option *ngFor="let c of allClassrooms" [value]="c.id">{{ c.name }} ({{ c.buildingName }})</ion-select-option>
+          </ion-select>
+        </div>
+      </div>
+
+      <!-- BOTONES DE MODO DE VISTA (Nuevo) -->
+      <div class="w-full md:w-auto flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700 shadow-inner">
+        <button (click)="setViewMode('WEEKLY')"
+                [ngClass]="viewMode === 'WEEKLY' ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all flex-1 text-center">
+          Semana Específica
+        </button>
+        <button (click)="setViewMode('GENERAL')"
+                [ngClass]="viewMode === 'GENERAL' ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-2 text-xs md:text-sm font-bold rounded-md transition-all flex-1 text-center">
+          Horario Base (Fijo)
+        </button>
+      </div>
+
+      <!-- Navegación de Semanas (Solo visible si está en modo WEEKLY) -->
+      <div *ngIf="viewMode === 'WEEKLY'" class="w-full md:w-auto flex items-center justify-center space-x-2 bg-gray-50 dark:bg-kwd-dark p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+        <button (click)="changeWeek(-7)" class="p-2 bg-white dark:bg-gray-800 rounded shadow-sm hover:bg-gray-100"><ion-icon name="chevron-back-outline"></ion-icon></button>
+        <div class="text-center px-4">
+          <button id="date-btn" class="font-bold text-blue-800 dark:text-blue-400 whitespace-nowrap">{{ weekLabel || 'Seleccionar' }}</button>
+          <ion-popover trigger="date-btn" [keepContentsMounted]="true">
+            <ng-template>
+              <ion-datetime presentation="date" [(ngModel)]="selectedDateTimeISO" (ionChange)="onDateTimeChanged($event.detail.value)" [min]="minDate" [max]="maxDate" locale="es-CO"></ion-datetime>
+            </ng-template>
+          </ion-popover>
+        </div>
+        <button (click)="changeWeek(7)" class="p-2 bg-white dark:bg-gray-800 rounded shadow-sm hover:bg-gray-100"><ion-icon name="chevron-forward-outline"></ion-icon></button>
+      </div>
     </div>
-    <p class="text-center text-sm text-gray-600">{{ selectedDateYYYYMMDD | date:'EEEE, d MMMM y' | titlecase }}</p>
+
+    <!-- CUADRÍCULA ESTILO EXCEL -->
+    <ng-container *ngIf="selectedClassroomId && getSelectedClassroomDetails() as room">
+
+      <div *ngIf="isLoadingSlots" class="text-center py-12"><ion-spinner name="crescent"></ion-spinner></div>
+
+      <div *ngIf="!isLoadingSlots && gridRows.length > 0" class="bg-white dark:bg-kwd-darker rounded-lg shadow border border-gray-200 dark:border-gray-800 overflow-hidden">
+
+        <div class="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+
+          <h2 class="text-lg font-bold text-gray-800 dark:text-white">
+            <ion-icon name="grid" class="mr-2 align-text-bottom text-blue-600"></ion-icon>
+            {{ viewMode === 'WEEKLY' ? 'Semana Actual:' : 'Plantilla Fija:' }} {{ room.name }}
+          </h2>
+
+          <div class="flex space-x-3 text-xs">
+            <span class="flex items-center"><div class="w-3 h-3 bg-white border border-gray-300 mr-1"></div> Libre</span>
+            <span class="flex items-center"><div class="w-3 h-3 bg-blue-50 border border-blue-300 mr-1"></div> Reservado</span>
+            <span class="flex items-center"><div class="w-3 h-3 bg-gray-200 border border-gray-300 mr-1"></div> Cerrado</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left border-collapse min-w-[900px]">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-900 dark:text-gray-300">
+              <tr>
+                <th class="px-4 py-3 border border-gray-200 dark:border-gray-700 text-center w-24">Hora</th>
+                <th *ngFor="let day of daysOfWeek" class="px-4 py-3 border border-gray-200 dark:border-gray-700 text-center w-1/6">{{ day }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of gridRows" class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+
+                <!-- Celda de la Hora -->
+                <td class="px-2 py-3 border border-gray-200 dark:border-gray-700 text-center font-bold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 text-xs">
+                  {{ row.timeLabel }}
+                </td>
+
+                <!-- Celdas de los Días -->
+                <td *ngFor="let cell of row.days"
+                    class="border border-gray-200 dark:border-gray-700 p-2 align-top h-20 transition-all"
+                    [ngClass]="{
+                      'bg-gray-200 dark:bg-gray-800 opacity-50': cell.isClosed,
+                      'bg-blue-50 dark:bg-blue-900/20 shadow-inner': cell.isReserved && !cell.isClosed,
+                      'bg-white dark:bg-kwd-darker': !cell.isReserved && !cell.isClosed
+                    }">
+
+                  <div *ngIf="cell.isReserved && !cell.isClosed" class="h-full flex flex-col justify-start">
+                    <span class="text-[10px] font-black uppercase text-blue-700 dark:text-blue-400 mb-1 leading-tight">{{ cell.institution || 'Inst.' }}</span>
+                    <span class="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-1"><ion-icon name="person" class="mr-1"></ion-icon>{{ cell.userName }}</span>
+                    <span class="text-[10px] text-gray-600 dark:text-gray-400 leading-tight italic">{{ cell.purpose }}</span>
+                  </div>
+
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
   </div>
-
-  <ion-item class="mb-4 rounded-md shadow-sm">
-    <ion-label position="stacked" style="font-size: 25px;">Selecciona un Aula</ion-label>
-    <ion-select interface="popover" [(ngModel)]="selectedClassroomId" (ionChange)="onClassroomSelected($event)" placeholder="Elige aula">
-      <ion-select-option *ngFor="let c of allClassrooms" [value]="c.id">{{ c.name }} ({{ c.buildingName }})</ion-select-option>
-    </ion-select>
-  </ion-item>
-
-  <ng-container *ngIf="selectedClassroomId && getSelectedClassroomDetails() as room">
-    <ion-card>
-      <ion-card-content>
-        <h2 class="text-lg font-bold text-blue-950 dark:text-white mb-2">{{ room.name }} ({{ room.buildingName }})</h2>
-
-        <div *ngIf="isLoadingSlots" class="text-center py-4"><ion-spinner></ion-spinner></div>
-
-        <div *ngIf="!isLoadingSlots && timeSlotsForSelectedClassroom.length > 0">
-           <div class="flex justify-center gap-4 text-xs mb-3">
-              <div class="flex items-center"><div class="w-3 h-3 bg-green-100 border border-green-200 mr-1 rounded"></div> Libre</div>
-              <div class="flex items-center"><div class="w-3 h-3 bg-red-200 border border-red-300 mr-1 rounded"></div> Ocupado</div>
-           </div>
-           <div class="grid grid-cols-4 gap-2">
-              <ion-chip *ngFor="let slot of timeSlotsForSelectedClassroom" [ngClass]="getSlotClass(slot)" (click)="onSlotClick(slot)" class="justify-center flex-col h-auto py-2">
-                 <ion-label class="text-xs font-bold">{{ slot.time }}</ion-label>
-                 <ion-label class="text-[0.65rem] opacity-75">- {{ slot.endTimeLabel }}</ion-label>
-              </ion-chip>
-           </div>
-        </div>
-
-        <div *ngIf="!isLoadingSlots && timeSlotsForSelectedClassroom.length === 0" class="text-center py-4 text-blue-950 dark:text-white">
-           No hay horarios disponibles (Cerrado).
-        </div>
-      </ion-card-content>
-    </ion-card>
-  </ng-container>
 </ion-content>

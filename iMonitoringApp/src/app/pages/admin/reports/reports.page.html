@@ -12,7 +12,28 @@
 
     <div class="mb-2">
       <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Estadística</h1>
+    </div>
 
+    <!-- GRÁFICO COMPARATIVO INSTITUCIONAL -->
+    <div class="bg-white dark:bg-kwd-darker rounded-xl shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+        <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center">
+          <ion-icon name="bar-chart-outline" class="mr-2 text-blue-600"></ion-icon>
+          Distribución de Uso por Institución
+        </h2>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Muestra la cantidad de veces que cada institución ha reservado un espacio específico.
+        </p>
+      </div>
+
+      <div *ngIf="isLoadingChart" class="flex justify-center items-center p-12">
+        <ion-spinner name="crescent"></ion-spinner>
+      </div>
+
+      <div class="p-4 w-full relative" style="height: 400px;" [class.hidden]="isLoadingChart">
+        <!-- El #institutionChart es crucial, es la referencia que lee el TypeScript -->
+        <canvas #institutionChart></canvas>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

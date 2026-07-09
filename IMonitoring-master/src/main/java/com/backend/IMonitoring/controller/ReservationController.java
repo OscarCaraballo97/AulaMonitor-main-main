@@ -21,7 +21,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
+import com.backend.IMonitoring.service.ScheduleExportService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -243,5 +246,25 @@ public class ReservationController {
             @AuthenticationPrincipal UserDetails currentUserDetails) {
         reservationService.deleteReservation(id, currentUserDetails);
         return ResponseEntity.noContent().build();
+    }
+
+    @Autowired
+    private ScheduleExportService scheduleExportService;
+
+    @GetMapping("/export-schedule")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
+    public ResponseEntity<byte[]> exportSchedule(
+            @RequestParam(defaultValue = "AMBAS") String institution,
+            @RequestParam(defaultValue = "LISTA") String format) {
+        try {
+            byte[] excelData = scheduleExportService.exportScheduleAsExcel(institution, format);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Horario_" + institution + "_" + format + ".xlsx")
+                    .header(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .body(excelData);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
