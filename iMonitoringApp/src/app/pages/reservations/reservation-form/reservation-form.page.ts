@@ -33,6 +33,7 @@ export class ReservationFormPage implements OnInit {
 
   classrooms: any[] = [];
   users: any[] = [];
+  currentUser: any = null; // <-- Añadido para guardar el usuario actual
 
   isAdminOrCoordinator = false;
   reservationType: 'single' | 'semester' = 'single';
@@ -81,7 +82,8 @@ export class ReservationFormPage implements OnInit {
       date: [new Date().toISOString()],
       semesterStartDate: [null],
       semesterEndDate: [null],
-      dayOfWeek: [[]]
+      dayOfWeek: [[]],
+      institution: [''] // <-- NUEVO CAMPO AÑADIDO
     });
   }
 
@@ -89,6 +91,11 @@ export class ReservationFormPage implements OnInit {
     this.checkUserRole();
     this.loadClassrooms();
     this.initTimeSlots();
+
+    // Cargar los datos completos del usuario logueado para verificar Bilingüismo/Institución
+    this.authService.getCurrentUser().subscribe(user => {
+      this.currentUser = user;
+    });
 
     this.reservationId = this.route.snapshot.paramMap.get('id');
     if (this.reservationId) {
@@ -118,6 +125,18 @@ export class ReservationFormPage implements OnInit {
     });
   }
 
+  // --- NUEVA LÓGICA DE INSTITUCIÓN ---
+  canSelectInstitution(): boolean {
+    if (!this.currentUser) return false;
+
+    const role = (this.currentUser.role || '').toUpperCase();
+    const inst = (this.currentUser.institution || '').toLowerCase();
+    const career = (this.currentUser.career || '').toLowerCase();
+
+    // Puede elegir si es ADMIN o de Bilingüismo
+    return role === 'ADMIN' || inst.includes('biling') || career.includes('biling');
+  }
+
   segmentChanged(ev: any) {
     if (!this.isAdminOrCoordinator && ev.detail.value === 'semester') {
       this.reservationType = 'single';
@@ -133,7 +152,7 @@ export class ReservationFormPage implements OnInit {
   loadReservation(id: string) {
     this.isLoadingAvailability = true;
     this.reservationService.getReservationById(id).subscribe({
-      next: (data: Reservation) => {
+      next: (data: any) => {
         this.currentGroupId = data.groupId || null;
         this.reservationType = this.currentGroupId ? 'semester' : 'single';
         const startDateObj = new Date(data.startTime);
@@ -147,7 +166,8 @@ export class ReservationFormPage implements OnInit {
           date: startDateObj.toISOString(),
           semesterStartDate: data.semesterStartDate,
           semesterEndDate: data.semesterEndDate,
-          dayOfWeek: data.daysOfWeek || []
+          dayOfWeek: data.daysOfWeek || [],
+          institution: data.institution || '' // Restaurar institución si existe
         });
 
         this.loadDayReservations(true);
@@ -302,7 +322,6 @@ export class ReservationFormPage implements OnInit {
   async onSubmit() {
     if (this.reservationForm.invalid) { this.reservationForm.markAllAsTouched(); return; }
 
-    // --- NUEVO: Validación de Aula en Mantenimiento ---
     const classroomId = this.reservationForm.get('classroomId')?.value;
     const selectedClassroom = this.classrooms.find(c => c.id === classroomId);
 
@@ -313,7 +332,6 @@ export class ReservationFormPage implements OnInit {
       );
       return;
     }
-    // ---------------------------------------------------
 
     if (this.reservationType === 'semester') {
       const selectedDays: string[] = this.reservationForm.get('dayOfWeek')?.value;
@@ -331,6 +349,11 @@ export class ReservationFormPage implements OnInit {
            return;
         }
       }
+    }
+
+    // --- NUEVO: AUTO-COMPLETAR INSTITUCIÓN ---
+    if (!this.canSelectInstitution()) {
+      this.reservationForm.patchValue({ institution: this.currentUser?.institution || 'Sin Especificar' });
     }
 
     const val = this.reservationForm.value;
@@ -362,7 +385,8 @@ export class ReservationFormPage implements OnInit {
           semesterStartDate: val.semesterStartDate.split('T')[0], semesterEndDate: val.semesterEndDate.split('T')[0],
           startTime: startTimeLocal.split('T')[1],
           endTime: endTimeLocal.split('T')[1],
-          purpose: val.purpose, daysOfWeek: val.dayOfWeek
+          purpose: val.purpose, daysOfWeek: val.dayOfWeek,
+          institution: val.institution // Aseguramos que la institución pase al payload semestral
         };
         this.reservationService.createSemesterReservation(payload).subscribe({
           next: () => { loading.dismiss(); this.handleSuccess('Semestre creado'); },

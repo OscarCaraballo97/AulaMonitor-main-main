@@ -57,6 +57,18 @@
       El propósito es obligatorio.
     </div>
 
+    <!-- NUEVO: Selector condicionado de Institución -->
+    <ion-item class="mb-2" *ngIf="canSelectInstitution()">
+      <ion-label position="stacked">Asignar a Institución</ion-label>
+      <ion-select formControlName="institution" placeholder="Seleccione Institución" [interfaceOptions]="customAlertOptions">
+        <ion-select-option value="Colombo">Colombo</ion-select-option>
+        <ion-select-option value="Unicolombo">Unicolombo</ion-select-option>
+      </ion-select>
+    </ion-item>
+    <div *ngIf="canSelectInstitution()" class="text-xs text-blue-300 px-4 mb-2">
+      Nota: Si no seleccionas una institución, se asignará automáticamente según el usuario.
+    </div>
+
     <div *ngIf="reservationType === 'single'">
       <ion-item class="mb-2 !bg-transparent" lines="none">
         <div class="flex flex-col w-full items-start">
@@ -85,14 +97,14 @@
 
     <div *ngIf="reservationType === 'semester'">
       <ion-item class="mb-2">
-    <ion-label position="stacked">Inicio Semestre</ion-label>
-    <ion-input type="date" formControlName="semesterStartDate" class="text-white [filter:invert(1)] dark:[filter:invert(0)]"></ion-input>
-  </ion-item>
-  
-  <ion-item class="mb-2">
-    <ion-label position="stacked">Fin Semestre</ion-label>
-    <ion-input type="date" formControlName="semesterEndDate" class="text-white [filter:invert(1)] dark:[filter:invert(0)]"></ion-input>
-  </ion-item>
+        <ion-label position="stacked">Inicio Semestre</ion-label>
+        <ion-input type="date" formControlName="semesterStartDate" class="text-white [filter:invert(1)] dark:[filter:invert(0)]"></ion-input>
+      </ion-item>
+
+      <ion-item class="mb-2">
+        <ion-label position="stacked">Fin Semestre</ion-label>
+        <ion-input type="date" formControlName="semesterEndDate" class="text-white [filter:invert(1)] dark:[filter:invert(0)]"></ion-input>
+      </ion-item>
 
       <ion-item class="mb-2 !bg-transparent">
         <ion-label position="stacked" class="text-black dark:text-white">Días de la Semana</ion-label>

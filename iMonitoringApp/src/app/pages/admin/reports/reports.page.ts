@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { IonicModule } from '@ionic/angular';
-import Chart from 'chart.js/auto'; // <-- Importación para el gráfico
+import Chart from 'chart.js/auto';
 
 @Component({
   selector: 'app-reports',
@@ -28,9 +28,8 @@ export class ReportsPage implements OnInit {
   isLoadingUsage = false;
   isLoadingCancellations = false;
   isLoadingStatus = false;
-  isLoadingChart = false; // <-- Nuevo indicador de carga
+  isLoadingChart = false;
 
-  // Referencia al lienzo del gráfico en el HTML
   @ViewChild('institutionChart') institutionChartCanvas!: ElementRef;
   chartInstance: any;
 
@@ -41,10 +40,8 @@ export class ReportsPage implements OnInit {
     this.loadSpaceUsageReport();
     this.loadCancellationReport();
     this.loadStatusDistribution();
-    // La carga del gráfico la llamaremos más adelante para asegurar que la vista esté lista
   }
 
-  // ionViewDidEnter asegura que el HTML ya se dibujó antes de intentar crear el gráfico
   ionViewDidEnter() {
       this.loadInstitutionComparison();
   }
@@ -98,7 +95,6 @@ export class ReportsPage implements OnInit {
   // --- LÓGICA DEL GRÁFICO ---
   loadInstitutionComparison() {
     this.isLoadingChart = true;
-    // Llamamos a tu endpoint general de reservas para extraer la data
     this.http.get<any[]>(`${environment.apiUrl}/reservations`).subscribe({
       next: (reservations) => {
         this.generateChart(reservations);
@@ -113,38 +109,43 @@ export class ReportsPage implements OnInit {
   }
 
   generateChart(reservations: any[]) {
-    // 1. Filtramos solo las reservas válidas
-    const validRes = reservations.filter(r => r.status === 'CONFIRMADA' && r.classroom && r.user);
+    // 1. ACEPTAR CONFIRMADAS Y PENDIENTES
+    const validRes = reservations.filter(r =>
+      (r.status === 'CONFIRMADA' || r.status === 'PENDIENTE') && r.classroom && r.user
+    );
 
-    // 2. Agrupamos los datos: { "Aula 101": { colombo: 5, unicolombo: 10 } }
     const usageMap = new Map<string, { colombo: number, unicolombo: number }>();
     let totalColombo = 0;
     let totalUnicolombo = 0;
 
     validRes.forEach(r => {
       const roomName = r.classroom.name;
-      const inst = r.user.institution?.toLowerCase() || 'otro';
+
+      // 2. LEER DE LA RESERVA PRIMERO, LUEGO DEL USUARIO
+      const rawInst = r.institution || r.user?.institution || '';
+      const inst = rawInst.toLowerCase().trim();
 
       if (!usageMap.has(roomName)) {
         usageMap.set(roomName, { colombo: 0, unicolombo: 0 });
       }
 
       const counts = usageMap.get(roomName)!;
-      if (inst === 'colombo') {
-        counts.colombo++;
-        totalColombo++;
-      } else if (inst === 'unicolombo') {
+
+
+      if (inst.includes('unicolombo')) {
         counts.unicolombo++;
         totalUnicolombo++;
+      } else if (inst.includes('colombo')) {
+        counts.colombo++;
+        totalColombo++;
       }
     });
 
-    // 3. Preparamos los arreglos para Chart.js
     const labels = Array.from(usageMap.keys()).sort();
     const colomboData = labels.map(label => usageMap.get(label)!.colombo);
     const unicolomboData = labels.map(label => usageMap.get(label)!.unicolombo);
 
-    // Destruir instancia anterior si existe
+
     if (this.chartInstance) {
       this.chartInstance.destroy();
     }
@@ -159,14 +160,14 @@ export class ReportsPage implements OnInit {
             {
               label: `Colombo (Total: ${totalColombo})`,
               data: colomboData,
-              backgroundColor: '#3b82f6', // Azul para Colombo
+              backgroundColor: '#3b82f6',
               borderRadius: 4,
               borderWidth: 1
             },
             {
               label: `Unicolombo (Total: ${totalUnicolombo})`,
               data: unicolomboData,
-              backgroundColor: '#f97316', // Naranja para Unicolombo
+              backgroundColor: '#f97316',
               borderRadius: 4,
               borderWidth: 1
             }
@@ -179,7 +180,7 @@ export class ReportsPage implements OnInit {
             legend: { position: 'top' },
             title: {
               display: true,
-              text: 'Comparativa de Uso de Espacios: Colombo vs Unicolombo',
+              text: 'Comparativa de Uso de Espacios',
               font: { size: 16 }
             },
             tooltip: {
