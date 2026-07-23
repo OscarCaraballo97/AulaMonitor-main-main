@@ -3,8 +3,12 @@
     <ion-header class="sticky top-0 z-50 print:hidden" role="banner">
 
       <ion-toolbar class="kwd-toolbar-main bg-white dark:bg-kwd-darker border-b border-gray-200 dark:border-gray-700">
+        
+        <!-- LOGO DINÁMICO DÍA / NOCHE -->
         <div slot="start" class="hidden lg:flex items-center pl-4">
-          <span class="text-xl font-semibold text-gray-800 dark:text-white ml-2">{{ appName }}</span>
+          <img [src]="themeService.isDarkMode() ? 'assets/images/logoN.png' : 'assets/images/logoD.png'" 
+               alt="Logo AulaMonitor" 
+               class="h-9 w-auto ml-2 object-contain transition-all duration-200" />
         </div>
 
         <ion-title class="lg:hidden text-center text-gray-800 dark:text-white font-semibold">

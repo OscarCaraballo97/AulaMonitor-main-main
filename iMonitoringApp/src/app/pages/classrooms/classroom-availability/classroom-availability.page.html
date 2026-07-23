@@ -22,9 +22,9 @@
 
       <!-- Selector de Aula -->
       <div class="w-full md:w-1/3">
-        <ion-label class="text-sm font-bold text-gray-600 dark:text-gray-400 mb-1 block">Selecciona un Aula</ion-label>
+        <ion-label class="text-sm font-bold text-gray-600 dark:text-white mb-1 block">Selecciona un Aula</ion-label>
         <div class="border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-kwd-dark">
-          <ion-select interface="popover" [(ngModel)]="selectedClassroomId" (ionChange)="onClassroomSelected($event)" placeholder="-- Elige aula --" class="w-full px-3 py-2">
+          <ion-select interface="popover" [(ngModel)]="selectedClassroomId" (ionChange)="onClassroomSelected($event)" placeholder="-- Elige aula --" class="text-blue-980 dark:text-white w-full px-3 py-2">
             <ion-select-option *ngFor="let c of allClassrooms" [value]="c.id">{{ c.name }} ({{ c.buildingName }})</ion-select-option>
           </ion-select>
         </div>
@@ -48,7 +48,7 @@
       <div *ngIf="viewMode === 'WEEKLY'" class="w-full md:w-auto flex items-center justify-center space-x-2 bg-gray-50 dark:bg-kwd-dark p-2 rounded-lg border border-gray-200 dark:border-gray-700">
         <button (click)="changeWeek(-7)" class="p-2 bg-white dark:bg-gray-800 rounded shadow-sm hover:bg-gray-100"><ion-icon name="chevron-back-outline"></ion-icon></button>
         <div class="text-center px-4">
-          <button id="date-btn" class="font-bold text-blue-800 dark:text-blue-400 whitespace-nowrap">{{ weekLabel || 'Seleccionar' }}</button>
+          <button id="date-btn" class="font-bold text-blue-800 dark:text-white whitespace-nowrap">{{ weekLabel || 'Seleccionar' }}</button>
           <ion-popover trigger="date-btn" [keepContentsMounted]="true">
             <ng-template>
               <ion-datetime presentation="date" [(ngModel)]="selectedDateTimeISO" (ionChange)="onDateTimeChanged($event.detail.value)" [min]="minDate" [max]="maxDate" locale="es-CO"></ion-datetime>
@@ -74,9 +74,9 @@
           </h2>
 
           <div class="flex space-x-3 text-xs">
-            <span class="flex items-center"><div class="w-3 h-3 bg-white border border-gray-300 mr-1"></div> Libre</span>
-            <span class="flex items-center"><div class="w-3 h-3 bg-blue-50 border border-blue-300 mr-1"></div> Reservado</span>
-            <span class="flex items-center"><div class="w-3 h-3 bg-gray-200 border border-gray-300 mr-1"></div> Cerrado</span>
+            <span class="flex items-center"><div class="w-3 h-3 bg-green-500 border border-gray-300 mr-1"></div> Libre</span>
+            <span class="flex items-center"><div class="w-3 h-3 bg-blue-500 border border-blue-300 mr-1"></div> Reservado</span>
+            <span class="flex items-center"><div class="w-3 h-3 bg-red-500 border border-gray-300 mr-1"></div> Cerrado</span>
           </div>
         </div>
 

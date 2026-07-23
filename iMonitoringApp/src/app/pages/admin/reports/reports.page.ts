@@ -160,14 +160,14 @@ export class ReportsPage implements OnInit {
             {
               label: `Colombo (Total: ${totalColombo})`,
               data: colomboData,
-              backgroundColor: '#3b82f6',
+              backgroundColor: '#3b82f6', // Azul para Colombo
               borderRadius: 4,
               borderWidth: 1
             },
             {
               label: `Unicolombo (Total: ${totalUnicolombo})`,
               data: unicolomboData,
-              backgroundColor: '#f97316',
+              backgroundColor: '#f97316', // Naranja para Unicolombo
               borderRadius: 4,
               borderWidth: 1
             }
