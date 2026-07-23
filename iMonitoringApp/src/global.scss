@@ -123,3 +123,40 @@ body .alerta-cancelar {
 .dark .btn-md {
   --color: #ffffff !important;
 }
+
+.btn-custom-primary {
+  --background: #2563eb !important;
+  --color: #ffffff !important;
+}
+.btn-custom-secondary {
+  --background: #16a34a !important;
+  --color: #ffffff !important;
+}
+.btn-custom-tertiary {
+  --background: #9333ea !important;
+  --color: #ffffff !important;
+}
+
+:host-context(.dark), body.dark {
+  .btn-custom-primary {
+    --background: transparent !important;
+    --color: var(--ion-color-primary) !important;
+    --border-color: var(--ion-color-primary) !important;
+    --border-style: solid !important;
+    --border-width: 1px !important;
+  }
+  .btn-custom-secondary {
+    --background: transparent !important;
+    --color: var(--ion-color-secondary) !important;
+    --border-color: var(--ion-color-secondary) !important;
+    --border-style: solid !important;
+    --border-width: 1px !important;
+  }
+  .btn-custom-tertiary {
+    --background: transparent !important;
+    --color: var(--ion-color-tertiary) !important;
+    --border-color: var(--ion-color-tertiary) !important;
+    --border-style: solid !important;
+    --border-width: 1px !important;
+  }
+}

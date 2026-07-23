@@ -10,7 +10,7 @@
 <ion-content class="bg-gray-100 dark:bg-kwd-dark">
   <div class="p-4 md:p-6 lg:p-8">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+      <h1 class="text-2xl font-bold text-white dark:text-white">
         Historial de Auditoría
       </h1>
 
@@ -25,26 +25,29 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="flex flex-col">
-          <label class="text-xs text-gray-500 dark:text-gray-400 mb-1">Buscar (Usuario o Detalles)</label>
+          <label class="text-xs text-gray-500 dark:text-gray-400 mb-2">Buscar (Usuario o Detalles)</label>
           <input type="text" [(ngModel)]="searchTerm" placeholder="Ej: admin@correo.com o Aula 101"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-kwd-dark dark:border-gray-700 dark:text-white">
-        </div>
-
-        <div class="flex flex-col">
-          <label class="text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo de Acción</label>
-          <select [(ngModel)]="selectedAction" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-kwd-dark dark:border-gray-700 dark:text-white">
-            <option value="ALL">Todas las acciones</option>
-            <option *ngFor="let action of actionTypes" [value]="action">{{ action.replace('_', ' ') }}</option>
-          </select>
-        </div>
-
-        <div class="flex flex-col">
-          <label class="text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha del Evento</label>
-          <input type="date" [(ngModel)]="selectedDate"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-kwd-dark dark:border-gray-700 dark:text-white">
-        </div>
+           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent dark:bg-kwd-dark dark:border-gray-700 dark:text-white">
+           </div>
+           
+      <div class="flex flex-col">
+        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo de Acción</label>
+        <select [(ngModel)]="selectedAction" 
+        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent dark:bg-kwd-dark dark:border-gray-700 dark:text-white">
+        <option value="ALL" class="text-gray-900 dark:text-white dark:bg-kwd-dark">Todas las acciones</option>
+        <option *ngFor="let action of actionTypes" [value]="action" class="text-gray-900 dark:text-white dark:bg-kwd-dark">
+          {{ action.replace('_', ' ') }}
+        </option>
+        </select>
       </div>
-
+      
+      <div class="flex flex-col">
+        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha del Evento</label>
+        <input type="date" [(ngModel)]="selectedDate"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent dark:bg-kwd-dark dark:border-gray-700 dark:text-white dark:[color-scheme:dark]">
+        </div>
+   </div>
+   
       <div class="mt-4 flex justify-end space-x-3 border-t dark:border-gray-700 pt-4">
         <button (click)="clearFilters()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 transition-colors">
           Limpiar

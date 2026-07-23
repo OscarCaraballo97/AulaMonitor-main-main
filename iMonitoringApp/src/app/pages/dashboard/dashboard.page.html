@@ -17,24 +17,26 @@
   <div *ngIf="!isLoadingRole && userRole" class="max-w-7xl mx-auto space-y-8">
 
     <div *ngIf="userRole === RolEnum.ADMIN">
-      <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">Dashboard del Administrador</h1>
+      <h1 class="text-2xl font-bold text-white dark:text-white mb-6">Dashboard del Administrador</h1>
       <div *ngIf="!isLoadingData" class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
         <div class="p-4 bg-white rounded-lg shadow-md dark:bg-kwd-darker flex items-center">
           <div class="p-3 mr-4 text-blue-500 bg-blue-100 rounded-full"><ion-icon name="business-outline" class="w-6 h-6"></ion-icon></div>
-          <div><p class="text-sm text-gray-500">Edificios Totales</p><p class="text-2xl font-bold text-gray-800 dark:text-white">{{ totalBuildings }}</p></div>
+          <div><p class="text-sm text-blue-980 dark:text-white">Edificios Totales</p><p class="text-2xl font-bold text-gray-800 dark:text-white">{{ totalBuildings }}</p></div>
         </div>
         <div *ngIf="classroomAvailability" class="p-4 bg-white rounded-lg shadow-md dark:bg-kwd-darker flex items-center">
           <div class="p-3 mr-4 text-green-500 bg-green-100 rounded-full"><ion-icon name="checkmark-circle-outline" class="w-6 h-6"></ion-icon></div>
-          <div><p class="text-sm text-gray-500">Aulas Disponibles Ahora</p><p class="text-2xl font-bold text-gray-800 dark:text-white">{{ classroomAvailability.availableNow }} / {{ classroomAvailability.total }}</p></div>
+          <div><p class="text-sm text-blue-980 dark:text-white">Aulas Disponibles Ahora</p><p class="text-2xl font-bold text-gray-800 dark:text-white">{{ classroomAvailability.availableNow }} / {{ classroomAvailability.total }}</p></div>
         </div>
       </div>
     </div>
 
     <div *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
-      <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-3">Reservas Pendientes de Aprobación</h2>
-      <div *ngIf="reservationsToApprove.length === 0" class="p-4 text-center text-gray-500 bg-white rounded-lg shadow-sm dark:bg-kwd-darker">
-        No hay reservas pendientes.
-      </div>
+      <h2 class="text-lg font-bold text-white dark:text-white mb-3">Reservas Pendientes de Aprobación</h2>
+      <div *ngIf="reservationsToApprove.length === 0" 
+     class="p-4 text-center text-blue-950 dark:text-white bg-white rounded-lg shadow-sm dark:bg-kwd-darker">
+     No hay reservas pendientes.
+    </div>
+
       <ion-list *ngIf="reservationsToApprove.length > 0" class="rounded-lg shadow-sm dark:bg-kwd-darker">
         <ion-item *ngFor="let res of reservationsToApprove" lines="full" class="dark:bg-kwd-darker dark:text-kwd-light">
           <ion-label>
@@ -52,7 +54,7 @@
 
     <div class="mt-8">
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Mi Horario (Próximas Reservas)</h2>
+        <h2 class="text-xl font-bold text-white dark:text-white">Mi Horario (Próximas Reservas)</h2>
         <ion-button size="small" color="tertiary" (click)="downloadMySchedule()" class="font-bold">
           <ion-icon name="download-outline" slot="start"></ion-icon> Exportar PDF
         </ion-button>
@@ -91,15 +93,21 @@
 
       <div *ngIf="!isLoadingMyReservations && myUpcomingReservations.length === 0" class="flex flex-col items-center justify-center py-12 text-gray-400 bg-white dark:bg-kwd-darker rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
         <ion-icon name="calendar-clear-outline" class="text-5xl mb-3"></ion-icon>
-        <p class="font-medium">No tienes clases ni reservas próximas en tu horario.</p>
+        <p class="p-4 text-center text-[#0b193c] dark:text-white bg-white rounded-lg shadow-sm dark:bg-kwd-darker">No tienes clases ni reservas próximas en tu horario.</p>
       </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-      <ion-button expand="block" routerLink="/app/reservations/new" color="primary">Nueva Reserva</ion-button>
-      <ion-button expand="block" routerLink="/app/reservations/my-list" color="secondary" fill="outline">Ver Historial</ion-button>
-      <ion-button expand="block" routerLink="/app/classrooms/availability" color="tertiary" fill="outline">Ver Disponibilidad</ion-button>
-    </div>
+  <ion-button expand="block" routerLink="/app/reservations/new" class="btn-custom-primary">
+    Nueva Reserva
+  </ion-button>
+  <ion-button expand="block" routerLink="/app/reservations/my-list" class="btn-custom-secondary">
+    Ver Historial
+  </ion-button>
+  <ion-button expand="block" routerLink="/app/classrooms/availability" class="btn-custom-tertiary">
+    Ver Disponibilidad
+  </ion-button>
+</div>
 
   </div>
 </ion-content>

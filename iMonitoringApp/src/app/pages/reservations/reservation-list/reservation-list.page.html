@@ -1,5 +1,5 @@
 <ion-header>
-  <ion-toolbar color="primary" class="dark:bg-kwd-darker">
+  <ion-toolbar class="bg-blue-700 dark:bg-blue-950 [--background:transparent]">
     <ion-buttons slot="start">
       <ion-menu-button class="text-white dark:text-kwd-light"></ion-menu-button>
     </ion-buttons>
@@ -7,6 +7,7 @@
       Gestión de Reservas
     </ion-title>
   </ion-toolbar>
+</ion-header>
 
   <ion-toolbar class="bg-white dark:bg-kwd-dark" *ngIf="userRole === RolEnum.ADMIN || userRole === RolEnum.COORDINADOR">
     <ion-segment [(ngModel)]="selectedView" (ionChange)="segmentChanged($event)" color="primary" class="dark:text-kwd-light">
@@ -27,7 +28,6 @@
       Historial completo de tus reservas
     </div>
   </ion-toolbar>
-</ion-header>
 
 <ion-content class="bg-gray-50 dark:bg-kwd-dark ion-padding">
   <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
@@ -40,17 +40,17 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Buscar</label>
-          <ion-input [(ngModel)]="searchTerm" (ionInput)="applyFilters()" placeholder="Motivo, usuario o aula..." clearInput class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-800"></ion-input>
+          <ion-input [(ngModel)]="searchTerm" (ionInput)="applyFilters()" placeholder="Motivo, usuario o aula..." clearInput class="text-blue-980 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-800"></ion-input>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
-          <ion-select [(ngModel)]="selectedStatusFilter" (ionChange)="applyFilters()" interface="popover" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]">
+          <ion-select [(ngModel)]="selectedStatusFilter" (ionChange)="applyFilters()" interface="popover" class="text-blue-980 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]">
             <ion-select-option *ngFor="let status of availableStatuses" [value]="status.value">{{ status.label }}</ion-select-option>
           </ion-select>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Aula</label>
-          <ion-select [(ngModel)]="selectedClassroomFilter" (ionChange)="applyFilters()" interface="popover" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]">
+          <ion-select [(ngModel)]="selectedClassroomFilter" (ionChange)="applyFilters()" interface="popover" class="text-blue-980 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 bg-gray-50 dark:bg-gray-800 w-full min-h-[42px]">
             <ion-select-option value="ALL">Todas las aulas</ion-select-option>
             <ion-select-option *ngFor="let c of classrooms" [value]="c.id">{{ c.name }} ({{c.building?.name}})</ion-select-option>
           </ion-select>

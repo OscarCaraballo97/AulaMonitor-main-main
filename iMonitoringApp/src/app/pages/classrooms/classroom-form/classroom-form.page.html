@@ -1,18 +1,18 @@
 <ion-header class="md:hidden">
-  <ion-toolbar color="primary">
+  <ion-toolbar class="bg-blue-900 dark:bg-slate-900 text-white dark:text-white [--background:transparent] [--color:#ffffff]">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/app/classrooms"></ion-back-button>
+      <ion-back-button defaultHref="/app/classrooms" class="text-white dark:text-white [--color:#ffffff]"></ion-back-button>
     </ion-buttons>
-    <ion-title>{{ pageTitle }}</ion-title>
+    <ion-title class="text-white dark:text-white font-semibold">{{ pageTitle }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-header class="hidden md:block sticky top-0 z-10">
-  <ion-toolbar color="light">
+  <ion-toolbar class="bg-blue-900 dark:bg-slate-900 text-white dark:text-white [--background:transparent] [--color:#ffffff]">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/app/classrooms"></ion-back-button>
+      <ion-back-button defaultHref="/app/classrooms" class="text-white dark:text-white [--color:#ffffff]"></ion-back-button>
     </ion-buttons>
-    <ion-title>{{ pageTitle }}</ion-title>
+    <ion-title class="text-white dark:text-white font-semibold">{{ pageTitle }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
@@ -32,18 +32,18 @@
           <ion-label position="stacked">Nombre del Aula <span class="text-red-500">*</span></ion-label>
           <ion-input formControlName="name" type="text" placeholder="Ej: Salón 101, Laboratorio B"></ion-input>
         </ion-item>
-        <div *ngIf="classroomForm.get('name')?.invalid && classroomForm.get('name')?.touched" class="text-xs text-red-500 px-4 py-1">
-            <small *ngIf="classroomForm.get('name')?.errors?.['required']">El nombre es requerido.</small>
-            <small *ngIf="classroomForm.get('name')?.errors?.['minlength']">Mínimo 3 caracteres.</small>
-        </div>
+        <div *ngIf="classroomForm.get('name')?.invalid && classroomForm.get('name')?.touched" class="text-sm text-red-500 px-4 py-1">
+          <small *ngIf="classroomForm.get('name')?.errors?.['required']" class="text-sm">El nombre es requerido.</small>
+          <small *ngIf="classroomForm.get('name')?.errors?.['minlength']" class="text-sm">Mínimo 3 caracteres.</small>
+          </div>
 
         <ion-item lines="full" class="rounded-md">
           <ion-label position="stacked">Capacidad <span class="text-red-500">*</span></ion-label>
           <ion-input formControlName="capacity" type="number" placeholder="Ej: 30"></ion-input>
         </ion-item>
-         <div *ngIf="classroomForm.get('capacity')?.invalid && classroomForm.get('capacity')?.touched" class="text-xs text-red-500 px-4 py-1">
-            <small *ngIf="classroomForm.get('capacity')?.errors?.['required']">La capacidad es requerida.</small>
-            <small *ngIf="classroomForm.get('capacity')?.errors?.['min']">La capacidad debe ser al menos 1.</small>
+         <div *ngIf="classroomForm.get('capacity')?.invalid && classroomForm.get('capacity')?.touched" class="text-sm text-red-500 px-4 py-1">
+          <small *ngIf="classroomForm.get('capacity')?.errors?.['required']" class="text-sm">La capacidad es requerida.</small>
+          <small *ngIf="classroomForm.get('capacity')?.errors?.['min']" class="text-sm">La capacidad debe ser al menos 1.</small>
         </div>
 
         <ion-item lines="full" class="rounded-md">
@@ -54,8 +54,8 @@
             </ion-select-option>
           </ion-select>
         </ion-item>
-        <div *ngIf="classroomForm.get('type')?.invalid && classroomForm.get('type')?.touched" class="text-xs text-red-500 px-4 py-1">
-            <small *ngIf="classroomForm.get('type')?.errors?.['required']">El tipo de aula es requerido.</small>
+        <div *ngIf="classroomForm.get('type')?.invalid && classroomForm.get('type')?.touched" class="text-sm text-red-500 px-4 py-1">
+          <small *ngIf="classroomForm.get('type')?.errors?.['required']" class="text-sm">El tipo de aula es requerido.</small>
         </div>
 
         <ion-item lines="full" class="rounded-md">
@@ -66,19 +66,20 @@
             </ion-select-option>
           </ion-select>
         </ion-item>
-        <div *ngIf="classroomForm.get('buildingId')?.invalid && classroomForm.get('buildingId')?.touched" class="text-xs text-red-500 px-4 py-1">
-            <small *ngIf="classroomForm.get('buildingId')?.errors?.['required']">El edificio es requerido.</small>
+        <div *ngIf="classroomForm.get('buildingId')?.invalid && classroomForm.get('buildingId')?.touched" class="text-sm text-red-500 px-4 py-1">
+          <small *ngIf="classroomForm.get('buildingId')?.errors?.['required']" class="text-sm">El edificio es requerido.</small>
         </div>
-        <div *ngIf="!isLoadingInitialData && buildings.length === 0 && userRole === RolEnum.ADMIN" class="text-xs text-orange-500 px-4 py-1">
+        <div *ngIf="!isLoadingInitialData && buildings.length === 0 && userRole === RolEnum.ADMIN" class="text-sm text-orange-500 px-4 py-1">
           <small>No hay edificios disponibles. Por favor, crea un edificio primero.</small>
         </div>
 
         <ion-item lines="full" class="rounded-md bg-red-50 dark:bg-red-900/20">
           <ion-label color="danger" class="font-semibold">
             ¿Aula en Mantenimiento?
-            <p class="text-xs text-gray-500 mt-1 font-normal">Si se activa, no podrá recibir reservas.</p>
+            <p class="text-xs text-white font-normal">Si se activa, no podrá recibir reservas.</p>
           </ion-label>
-          <ion-toggle formControlName="isUnderMaintenance" color="danger"></ion-toggle>
+          <ion-toggle formControlName="isUnderMaintenance" color="danger" class="dark:[--background:#374151] dark:[--background-checked:#4b5563] dark:[--handle-background:#9ca3af]">
+          </ion-toggle>
         </ion-item>
 
         <div class="mt-4 border border-gray-200 p-4 rounded-md bg-gray-50 dark:bg-kwd-dark dark:border-gray-700">
@@ -111,7 +112,7 @@
             </div>
           </div>
 
-          <div *ngIf="resourcesArray.length === 0" class="text-sm text-gray-500 italic text-center py-2">
+         <div *ngIf="resourcesArray.length === 0" class="text-sm text-blue-950 dark:text-white italic text-center py-2">
             No hay recursos en el inventario de esta aula.
           </div>
         </div>

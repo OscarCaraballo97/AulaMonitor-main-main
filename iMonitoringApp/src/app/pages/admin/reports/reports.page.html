@@ -11,7 +11,7 @@
   <div class="p-4 md:p-6 lg:p-8 space-y-6">
 
     <div class="mb-2">
-      <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Estadística</h1>
+      <h1 class="text-2xl font-bold text-white dark:text-white">Estadística</h1>
     </div>
 
     <!-- GRÁFICO COMPARATIVO INSTITUCIONAL -->
@@ -21,7 +21,7 @@
           <ion-icon name="bar-chart-outline" class="mr-2 text-blue-600"></ion-icon>
           Distribución de Uso por Institución
         </h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p class="text-xs text-blue-980 dark:text-white mt-1">
           Muestra la cantidad de veces que cada institución ha reservado un espacio específico.
         </p>
       </div>
@@ -41,7 +41,7 @@
       <!-- GRÁFICA 1: AULAS MÁS UTILIZADAS -->
       <div class="bg-white dark:bg-kwd-darker p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-1">Uso de Espacios</h2>
-        <p class="text-sm text-gray-500 mb-6">Aulas más utilizadas.</p>
+        <p class="text-sm text-blue-980 dark:text-white mb-6">Aulas más utilizadas.</p>
         <div *ngIf="isLoadingUsage" class="text-center p-6"><ion-spinner name="crescent"></ion-spinner></div>
         <div *ngIf="!isLoadingUsage" class="space-y-4 max-h-64 overflow-y-auto pr-2">
           <div *ngFor="let space of spaceUsageReport" class="space-y-1">
@@ -79,7 +79,7 @@
         </div>
 
         <!-- Tabla: A Quién y Por Qué -->
-        <h3 class="text-sm font-bold uppercase text-gray-400 mb-3 tracking-wider">Historial Detallado</h3>
+        <h3 class="text-sm font-bold uppercase text-blue-980 dark:text-white mb-3 tracking-wider">Historial Detallado</h3>
         <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm text-left">
             <thead class="bg-gray-50 dark:bg-kwd-dark text-gray-600 dark:text-gray-300">
@@ -94,18 +94,18 @@
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-kwd-darker">
               <tr *ngFor="let detail of cancellationReport.details" class="hover:bg-gray-50 dark:hover:bg-kwd-dark">
                 <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ detail.userName }}</td>
-                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ detail.classroomName }}</td>
+                <td class="px-4 py-3 text-blue-980 dark:text-white">{{ detail.classroomName }}</td>
                 <td class="px-4 py-3 text-center">
                   <span class="px-2 py-1 text-[10px] uppercase tracking-wide font-bold rounded-full"
                         [ngClass]="{'bg-red-100 text-red-700': detail.status === 'CANCELADA', 'bg-orange-100 text-orange-700': detail.status === 'RECHAZADA'}">
                     {{ detail.status }}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-xs truncate" [title]="detail.reason">{{ detail.reason }}</td>
-                <td class="px-4 py-3 text-gray-500 font-mono text-xs">{{ detail.date | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td class="px-4 py-3 text-blue-980 dark:text-white max-w-xs truncate" [title]="detail.reason">{{ detail.reason }}</td>
+                <td class="px-4 py-3 text-blue-980 dark:text-white font-mono text-xs">{{ detail.date | date:'dd/MM/yyyy HH:mm' }}</td>
               </tr>
               <tr *ngIf="cancellationReport.details?.length === 0">
-                <td colspan="5" class="px-4 py-6 text-center text-gray-400 italic">No hay registros de cancelaciones ni rechazos.</td>
+                <td colspan="5" class="px-4 py-6 text-center text-blue-980 dark:text-white italic">No hay registros de cancelaciones ni rechazos.</td>
               </tr>
             </tbody>
           </table>
@@ -121,12 +121,12 @@
           <h2 class="text-lg font-bold text-gray-800 dark:text-white">Contabilización de Recursos por Salón</h2>
         </div>
         <div class="mt-3 sm:mt-0">
-          <select [(ngModel)]="selectedFixedResource" (change)="loadResourceReport()"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none dark:bg-kwd-dark dark:border-gray-700 dark:text-white font-medium">
-            <option value="ALL">Todos los recursos</option>
-            <option *ngFor="let opt of fixedResourcesOptions" [value]="opt">{{ opt }}</option>
-          </select>
-        </div>
+  <select [(ngModel)]="selectedFixedResource" (change)="loadResourceReport()"
+          class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none bg-transparent dark:bg-kwd-dark dark:border-gray-700 dark:text-white font-medium">
+    <option value="ALL" class="text-gray-900 dark:text-white dark:bg-kwd-dark">Todos los recursos</option>
+    <option *ngFor="let opt of fixedResourcesOptions" [value]="opt" class="text-gray-900 dark:text-white dark:bg-kwd-dark">{{ opt }}</option>
+  </select>
+</div>
       </div>
       <div *ngIf="isLoadingResources" class="text-center p-6"><ion-spinner name="crescent"></ion-spinner></div>
       <div *ngIf="!isLoadingResources" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
