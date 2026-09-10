@@ -24,17 +24,42 @@
       </ion-segment>
     </div>
 
+    <!-- SECCIÓN DE FILTROS: Capacidad y Recursos (AHORA VISIBLE PARA AMBOS TIPOS DE RESERVA) -->
+    <div class="mb-4">
+      <ion-item class="mb-2">
+        <ion-label position="stacked">¿Qué capacidad necesitas? (Opcional)</ion-label>
+        <ion-input type="number" formControlName="requiredCapacity" placeholder="Ej. 30 alumnos"></ion-input>
+      </ion-item>
+
+      <ion-item class="mb-2">
+        <ion-label position="stacked">¿Qué recursos necesitas? (Opcional)</ion-label>
+        <ion-select multiple="true" formControlName="requiredResources" placeholder="Selecciona recursos" [interfaceOptions]="customAlertOptions">
+          <ion-select-option value="Computadoras">Computadoras</ion-select-option>
+          <ion-select-option value="Sillas">Sillas</ion-select-option>
+          <ion-select-option value="Televisor">Televisor</ion-select-option>
+          <ion-select-option value="Aire Acondicionado">Aire Acondicionado</ion-select-option>
+          <ion-select-option value="Tablero Digital">Tablero Digital</ion-select-option>
+        </ion-select>
+      </ion-item>
+    </div>
+
+    <!-- SECCIÓN AULA: Solo muestra las que cumplen los filtros -->
     <ion-item class="mb-2">
-      <ion-label position="stacked" class="text-white">Aula</ion-label>
+      <ion-label position="stacked" class="text-white">Aula Disponible</ion-label>
       <ion-select
         formControlName="classroomId"
         placeholder="Selecciona un aula"
         [interfaceOptions]="customAlertOptions">
-        <ion-select-option *ngFor="let room of classrooms" [value]="room.id">
+        <!-- AQUÍ APLICAMOS EL FILTRO EN TIEMPO REAL -->
+        <ion-select-option *ngFor="let room of filteredClassrooms" [value]="room.id">
           {{ room.name }} ({{ room.buildingName }})
         </ion-select-option>
       </ion-select>
     </ion-item>
+
+    <div *ngIf="filteredClassrooms.length === 0" class="text-yellow-400 text-[13px] px-4 mb-2">
+      Ninguna aula cumple con los requisitos seleccionados.
+    </div>
 
     <div *ngIf="reservationForm.get('classroomId')?.touched && reservationForm.get('classroomId')?.invalid" class="text-red-600 text-[15px] px-4" >
       El aula es obligatoria.
@@ -57,7 +82,6 @@
       El propósito es obligatorio.
     </div>
 
-    <!-- NUEVO: Selector condicionado de Institución -->
     <ion-item class="mb-2" *ngIf="canSelectInstitution()">
       <ion-label position="stacked">Asignar a Institución</ion-label>
       <ion-select formControlName="institution" placeholder="Seleccione Institución" [interfaceOptions]="customAlertOptions">
@@ -154,4 +178,25 @@
     </ion-button>
 
   </form>
+
+  <!-- SECCIÓN DE SUGERENCIAS DINÁMICAS (En caso de chocar horarios) -->
+  <div *ngIf="sugerenciasAulas.length > 0" class="mt-6 mb-4">
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+      <strong class="font-bold">¡Atención! </strong>
+      <span class="block sm:inline">El aula solicitada no está disponible en ese horario. Te sugerimos estas opciones:</span>
+    </div>
+
+    <ion-list class="bg-transparent">
+      <ion-item *ngFor="let aula of sugerenciasAulas" class="mb-2 border rounded shadow-sm">
+        <ion-label>
+          <h2 class="text-lg font-bold text-white">{{ aula.name }}</h2>
+          <p class="text-gray-300">Capacidad: {{ aula.capacity }}</p>
+          <p *ngIf="aula.resources" class="text-gray-300">Recursos: {{ aula.resources }}</p>
+        </ion-label>
+        <ion-button slot="end" color="success" (click)="seleccionarSugerencia(aula.id)">
+          Elegir
+        </ion-button>
+      </ion-item>
+    </ion-list>
+  </div>
 </ion-content>

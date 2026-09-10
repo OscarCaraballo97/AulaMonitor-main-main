@@ -28,4 +28,6 @@ public class ReservationRequestDTO {
     private ReservationStatus status;
     private List<String> daysOfWeek;
     private String institution;
+    private int requiredCapacity;
+    private List<String> requiredResources;
 }

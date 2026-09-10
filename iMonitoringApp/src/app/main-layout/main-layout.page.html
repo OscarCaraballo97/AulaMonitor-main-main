@@ -3,11 +3,10 @@
     <ion-header class="sticky top-0 z-50 print:hidden" role="banner">
 
       <ion-toolbar class="kwd-toolbar-main bg-white dark:bg-kwd-darker border-b border-gray-200 dark:border-gray-700">
-        
         <!-- LOGO DINÁMICO DÍA / NOCHE -->
         <div slot="start" class="hidden lg:flex items-center pl-4">
-          <img [src]="themeService.isDarkMode() ? 'assets/images/logoN.png' : 'assets/images/logoD.png'" 
-               alt="Logo AulaMonitor" 
+          <img [src]="themeService.isDarkMode() ? 'assets/images/logoN.png' : 'assets/images/logoD.png'"
+               alt="Logo AulaMonitor"
                class="h-9 w-auto ml-2 object-contain transition-all duration-200" />
         </div>
 
@@ -55,7 +54,6 @@
           <a *ngFor="let link of filteredNavLinks" [routerLink]="link.route" routerDirection="root"
              class="px-3 py-3 text-[15px] font-medium rounded-md transition-colors focus:outline-none"
              [ngClass]="{'text-white font-semibold bg-blue-900 shadow-sm': isLinkActive(link),'text-white hover:text-white hover:bg-gray-700 dark:text-white dark:hover:text-kwd-light dark:hover:bg-kwd-dark': !isLinkActive(link)}">
-
              <ion-icon *ngIf="link.icon" [name]="link.icon" class="w-5 h-5 mr-1 -ml-1 inline-block md:mr-2"></ion-icon>
              <span class="hidden md:inline">{{ link.title }}</span>
           </a>
@@ -87,4 +85,10 @@
       <ion-content class="ion-padding"><p>Buscar...</p></ion-content>
     </ng-template>
   </ion-modal>
+
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed" class="mb-4 mr-4">
+    <ion-fab-button (click)="openTicketModal()" style="--background: #5688ce; --color: white;">
+      <ion-icon name="help-buoy-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
 </ion-app>

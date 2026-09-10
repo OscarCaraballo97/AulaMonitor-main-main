@@ -29,11 +29,13 @@ export interface ReservationCreationData {
   endTime: string;
   purpose?: string;
   userId?: string;
+  requiredCapacity?: number;
+  requiredResources?: string[];
 }
 
 export interface Reservation {
   id: string;
-  groupId?: string; 
+  groupId?: string;
   recurrenceDetails?: string;
   purpose: string;
   startTime: string;

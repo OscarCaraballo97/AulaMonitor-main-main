@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.backend.IMonitoring.dto.ReservationRequestDTO;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -37,7 +38,6 @@ public class ReservationService {
     private final ClassroomRepository classroomRepository;
     private final UserService userService;
     private final EmailService emailService;
-
     private final AuditLogService auditLogService;
 
     public ReservationResponseDTO convertToDTO(Reservation reservation) {
@@ -76,7 +76,7 @@ public class ReservationService {
 
     private List<ReservationResponseDTO> convertToDTOList(List<Reservation> reservations) {
         if (reservations == null) return List.of();
-        return reservations.stream().map(this::convertToDTO).collect(Collectors.toList());
+        return reservations.stream().map(this::convertToDTO).toList();
     }
 
     public Reservation getReservationById(String id) {
@@ -104,7 +104,7 @@ public class ReservationService {
                 List<String> days = groupReservations.stream()
                         .map(r -> r.getStartTime().getDayOfWeek().name())
                         .distinct()
-                        .collect(Collectors.toList());
+                        .toList();
 
                 dto.setSemesterStartDate(minStart.toLocalDate());
                 dto.setSemesterEndDate(maxEnd.toLocalDate());
@@ -193,7 +193,7 @@ public class ReservationService {
 
         List<String> daysAsStrings = request.getDaysOfWeek().stream()
                 .map(DayOfWeek::name)
-                .collect(Collectors.toList());
+                .toList();
         String recurrenceText = generateRecurrenceString(daysAsStrings);
 
         List<Reservation> reservationsToSave = new ArrayList<>();
@@ -339,18 +339,20 @@ public class ReservationService {
 
             List<Reservation> futureReservations = groupReservations.stream()
                     .filter(r -> r.getEndTime().isAfter(now))
-                    .collect(Collectors.toList());
+                    .toList();
 
-            if (!futureReservations.contains(originalReservation) && originalReservation.getEndTime().isAfter(now)) {
+            List<Reservation> mutableFutureReservations = new ArrayList<>(futureReservations);
+
+            if (!mutableFutureReservations.contains(originalReservation) && originalReservation.getEndTime().isAfter(now)) {
                 if (reservationRepository.existsById(originalReservation.getId())) {
-                    futureReservations.add(originalReservation);
+                    mutableFutureReservations.add(originalReservation);
                 }
             }
 
             String newRecurrenceDetails = (newDaysOfWeek != null && !newDaysOfWeek.isEmpty()) ?
                     generateRecurrenceString(newDaysOfWeek) : originalReservation.getRecurrenceDetails();
 
-            for (Reservation res : futureReservations) {
+            for (Reservation res : mutableFutureReservations) {
                 applyChangesToReservation(res, updatedData, true);
                 res.setRecurrenceDetails(newRecurrenceDetails);
                 if (isCoordinatorOrAdmin) {
@@ -376,7 +378,6 @@ public class ReservationService {
             applyChangesToReservation(originalReservation, updatedData, false);
             Reservation saved = reservationRepository.save(originalReservation);
 
-            // --- LOG: EDICIÓN INDIVIDUAL ---
             auditLogService.logAction(
                     "RESERVA_ACTUALIZADA",
                     userUpdating.getEmail(),
@@ -390,7 +391,7 @@ public class ReservationService {
     private void syncSemesterDays(String groupId, List<Reservation> currentReservations, List<String> targetDays, Reservation baseData, LocalDateTime semesterEnd, LocalDateTime now) {
         List<Reservation> futureReservations = currentReservations.stream()
                 .filter(r -> r.getStartTime().isAfter(now))
-                .collect(Collectors.toList());
+                .toList();
 
         Set<LocalDate> coveredDates = new HashSet<>();
 
@@ -495,10 +496,10 @@ public class ReservationService {
             List<Reservation> conflicts = (excludeReservationId == null)
                     ? reservationRepository.findOverlappingReservations(classroomId, start, end)
                     : reservationRepository.findOverlappingReservations(classroomId, start, end).stream()
-                    .filter(r -> !r.getId().equals(excludeReservationId)).collect(Collectors.toList());
+                    .filter(r -> !r.getId().equals(excludeReservationId)).toList();
 
             if (!conflicts.isEmpty()) {
-                Reservation conflict = conflicts.get(0);
+                Reservation conflict = conflicts.getFirst();
 
                 DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM", Locale.forLanguageTag("es-ES"));
                 DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
@@ -578,7 +579,8 @@ public class ReservationService {
         reservation.setStatus(newStatus);
         Reservation savedReservation = reservationRepository.save(reservation);
 
-        sendReservationEmail(savedReservation, reason, newStatus);// --- LOG: CAMBIO DE ESTADO ---
+        sendReservationEmail(savedReservation, reason, newStatus);
+
         auditLogService.logAction(
                 "ESTADO_RESERVA_ACTUALIZADO",
                 user.getEmail(),
@@ -685,20 +687,25 @@ public class ReservationService {
     public List<ReservationResponseDTO> getReservationsByStatusDTO(ReservationStatus status) {
         return convertToDTOList(reservationRepository.findByStatus(status, Sort.by(Sort.Direction.DESC, "startTime")));
     }
+
     public List<ReservationResponseDTO> getUpcomingReservationsDTO(int limit) {
         return convertToDTOList(reservationRepository.findByStatusAndStartTimeAfter(ReservationStatus.CONFIRMADA, LocalDateTime.now(ZoneOffset.UTC), Sort.by(Sort.Direction.ASC, "startTime"))
-                .stream().limit(limit).collect(Collectors.toList()));
+                .stream().limit(limit).toList());
     }
+
     public List<ReservationResponseDTO> getMyUpcomingReservationsDTO(String userId, int limit) {
         return convertToDTOList(reservationRepository.findUpcomingConfirmedByUserId(userId, LocalDateTime.now(ZoneOffset.UTC), Sort.by(Sort.Direction.ASC, "startTime"))
-                .stream().limit(limit).collect(Collectors.toList()));
+                .stream().limit(limit).toList());
     }
+
     public List<ReservationResponseDTO> getCurrentReservationsDTO() {
         return convertToDTOList(reservationRepository.findCurrentReservations(LocalDateTime.now(ZoneOffset.UTC)));
     }
+
     public List<ReservationResponseDTO> getReservationsByUserIdDTO(String userId) {
         return convertToDTOList(reservationRepository.findByUserId(userId, Sort.by(Sort.Direction.DESC, "startTime")));
     }
+
     public List<UsageLogDTO> getUsageLogs() {
         List<Reservation> pastReservations = reservationRepository.findPastConfirmedReservationsAsLogs(LocalDateTime.now(ZoneOffset.UTC));
         return pastReservations.stream().map(r -> UsageLogDTO.builder()
@@ -709,6 +716,38 @@ public class ReservationService {
                 .startTime(r.getStartTime())
                 .endTime(r.getEndTime())
                 .purpose(r.getPurpose())
-                .build()).collect(Collectors.toList());
+                .build()).toList();
+    }
+
+    public ReservationResponseDTO realizarReserva(ReservationRequestDTO request) {
+        ReservationResponseDTO response = new ReservationResponseDTO();
+
+        //Verificamos si el espacio solicitado originalmente está disponible
+        boolean isAvailable = classroomRepository.isAvailableConsideringAllStatuses(
+                request.getClassroomId(), request.getStartTime(), request.getEndTime());
+
+        if (!isAvailable) {
+            response.setSuccess(false);
+            response.setMessage("El espacio está ocupado. Aquí tienes sugerencias con la capacidad y recursos que necesitas:");
+
+            //Buscamos aulas disponibles por fecha, hora y capacidad
+            List<Classroom> sugerencias = classroomRepository.findAvailableClassrooms(
+                    request.getRequiredCapacity(), request.getStartTime(), request.getEndTime());
+
+            //se filtra las sugerencias por los recursos requeridos
+            if (request.getRequiredResources() != null && !request.getRequiredResources().isEmpty()) {
+                sugerencias = sugerencias.stream()
+                        .filter(aula -> aula.getResources() != null &&
+                                request.getRequiredResources().stream()
+                                        .allMatch(req -> aula.getResources().toString().toLowerCase().contains(req.toLowerCase())))
+                        .toList();
+            }
+
+            response.setSuggestions(sugerencias);
+            return response;
+        }
+
+        response.setSuccess(true);
+        return response;
     }
 }

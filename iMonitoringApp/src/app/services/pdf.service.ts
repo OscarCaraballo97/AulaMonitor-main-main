@@ -36,18 +36,22 @@ export class PdfService {
   }
 
   exportProfessorSchedule(reservations: any[], userName: string) {
-    const datePipe = new DatePipe('es-ES'); // Se instancia aquí adentro
+    const datePipe = new DatePipe('es-ES');
     const doc = new jsPDF();
     doc.setFontSize(14);
     doc.text(`Horario de Clases - ${userName}`, 14, 15);
 
-    const body = reservations.map(res => [
-      datePipe.transform(res.rawReservation.startTime, 'EEEE') || '',
-      datePipe.transform(res.rawReservation.startTime, 'dd/MM/yyyy') || '',
-      (datePipe.transform(res.rawReservation.startTime, 'HH:mm') + ' - ' + datePipe.transform(res.rawReservation.endTime, 'HH:mm')),
-      res.rawReservation.classroom.name,
-      res.rawReservation.purpose
-    ]);
+    const body = reservations.map(res => {
+      const r = res.rawReservation ? res.rawReservation : res;
+
+      return [
+        datePipe.transform(r.startTime, 'EEEE') || 'N/A',
+        datePipe.transform(r.startTime, 'dd/MM/yyyy') || 'N/A',
+        (datePipe.transform(r.startTime, 'HH:mm') || '') + ' - ' + (datePipe.transform(r.endTime, 'HH:mm') || ''),
+        r.classroom ? r.classroom.name : 'N/A',
+        r.purpose || 'Sin propósito'
+      ];
+    });
 
     autoTable(doc, {
       head: [['Día', 'Fecha', 'Horario', 'Aula', 'Materia / Motivo']],

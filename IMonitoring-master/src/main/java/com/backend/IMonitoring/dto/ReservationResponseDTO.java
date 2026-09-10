@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.backend.IMonitoring.model.Classroom;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,10 +27,11 @@ public class ReservationResponseDTO {
     private ReservationStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
-    // --- NUEVOS CAMPOS PARA EDICIÓN DE SEMESTRE ---
     private LocalDate semesterStartDate;
     private LocalDate semesterEndDate;
     private List<String> daysOfWeek;
     private String institution;
+    private boolean success;
+    private String message;
+    private List<Classroom> suggestions;
 }

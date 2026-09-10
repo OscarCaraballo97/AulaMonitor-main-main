@@ -1,15 +1,16 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, RouterModule, NavigationEnd, IsActiveMatchOptions, ActivatedRoute } from '@angular/router';
-import { IonicModule, Platform, PopoverController, NavController, MenuController } from '@ionic/angular';
+import { IonicModule, Platform, PopoverController, NavController, MenuController, ModalController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
-import { ThemeService } from '../services/theme.service'
+import { ThemeService } from '../services/theme.service';
 import { Rol } from '../models/rol.model';
 import { User } from '../models/user.model';
 import { Subject } from 'rxjs';
 import { filter, takeUntil, take } from 'rxjs/operators';
 import { SettingsPanelComponent } from '../components/settings-panel/settings-panel.component';
 import { MobileActionsPopoverComponent } from '../components/mobile-actions-popover/mobile-actions-popover.component';
+import { TicketModalComponent } from '../components/ticket-modal/ticket-modal.component';
 
 interface NavLink {
   title: string;
@@ -56,7 +57,8 @@ export class MainLayoutPage implements OnInit, OnDestroy {
     private platform: Platform,
     private navCtrl: NavController,
     private cdr: ChangeDetectorRef,
-    private menuCtrl: MenuController
+    private menuCtrl: MenuController,
+    private modalCtrl: ModalController
   ) {}
 
   ngOnInit() {
@@ -90,10 +92,12 @@ export class MainLayoutPage implements OnInit, OnDestroy {
       { title: 'Nueva Reserva', icon: 'add-circle-outline', route: '/app/reservations/new', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
       { title: 'Disponibilidad', icon: 'time-outline', route: '/app/classrooms/availability', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
 
+      // --- SECCIÓN DE TICKETS / SOPORTE
+      { title: 'Soporte', icon: 'headset-outline', route: '/app/tickets', roles: [Rol.ADMIN, Rol.PROFESOR, Rol.TUTOR, Rol.ESTUDIANTE, Rol.COORDINADOR] },
+
       // --- SECCIÓN DE COORDINADOR ---
       { title: 'Estudiantes', icon: 'people-outline', route: '/app/users', roles: [Rol.COORDINADOR] },
       { title: 'Reservas Estudiantes', icon: 'documents-outline', route: '/app/reservations/all', roles: [Rol.COORDINADOR] },
-
       { title: 'Estadísticas', icon: 'stats-chart-outline', route: '/app/admin/reports', roles: [Rol.ADMIN, Rol.COORDINADOR] },
 
       // --- SECCIÓN DE ADMINISTRADOR ---
@@ -171,6 +175,16 @@ export class MainLayoutPage implements OnInit, OnDestroy {
     if (panelName === 'settings') this.isSettingsPanelOpen = false;
     else if (panelName === 'notifications') this.isNotificationsPanelOpen = false;
     else if (panelName === 'search') this.isSearchPanelOpen = false;
+  }
+
+  async openTicketModal() {
+    const modal = await this.modalCtrl.create({
+      component: TicketModalComponent,
+      breakpoints: [0, 0.75, 1],
+      initialBreakpoint: 0.75,
+      cssClass: 'ticket-modal'
+    });
+    await modal.present();
   }
 
   async openMobileSubMenu(ev: any) {

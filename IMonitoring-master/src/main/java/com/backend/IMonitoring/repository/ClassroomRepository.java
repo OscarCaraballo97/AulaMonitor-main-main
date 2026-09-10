@@ -52,4 +52,14 @@ public interface ClassroomRepository extends JpaRepository<Classroom, String> {
             @Param("endTime") LocalDateTime endTime,
             @Param("excludeReservationId") String excludeReservationId
     );
+
+    @Query("SELECT c FROM Classroom c WHERE c.capacity >= :capacidad AND c.id NOT IN " +
+            "(SELECT r.classroom.id FROM Reservation r WHERE " +
+            "(r.status = com.backend.IMonitoring.model.ReservationStatus.CONFIRMADA OR r.status = com.backend.IMonitoring.model.ReservationStatus.PENDIENTE) AND " +
+            "(r.startTime < :endTime AND r.endTime > :startTime))")
+    List<Classroom> findAvailableClassrooms(
+            @Param("capacidad") int capacidad,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
 }

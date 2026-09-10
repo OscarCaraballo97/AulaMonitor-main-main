@@ -43,6 +43,11 @@ export const routes: Routes = [
         loadChildren: () => import('./pages/classrooms/classrooms.routes').then(m => m.CLASSROOMS_ROUTES),
       },
       {
+        path: 'tickets',
+        loadComponent: () => import('./pages/tickets/tickets.page').then( m => m.TicketsPage)
+      },
+      // ------------------------------------------
+      {
         path: 'buildings',
         loadChildren: () => import('./pages/buildings/buildings.routes').then(m => m.BUILDING_ROUTES),
         canMatch: [canMatchAdminOrCoordinator]
@@ -65,7 +70,6 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/admin/logs/logs.page').then( m => m.LogsPage),
         canMatch: [canMatchAdminOrCoordinator]
       },
-
       {
         path: 'admin/reports',
         loadComponent: () => import('./pages/admin/reports/reports.page').then( m => m.ReportsPage),
@@ -78,5 +82,5 @@ export const routes: Routes = [
       }
     ],
   },
-  { path: '**', redirectTo: '/login', pathMatch: 'full' },
+  { path: '**', redirectTo: '/login', pathMatch: 'full' }
 ];

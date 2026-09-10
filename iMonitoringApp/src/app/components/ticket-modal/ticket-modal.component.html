@@ -1,0 +1,45 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Reportar Problema</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="cerrar()">
+        <ion-icon name="close-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <p class="text-sm text-gray-500 mb-4 dark:text-gray-300">
+    Describe el problema para que nuestro equipo técnico pueda solucionarlo lo antes posible.
+  </p>
+
+  <form [formGroup]="ticketForm" (ngSubmit)="enviarTicket()">
+    <ion-item class="mb-4">
+      <ion-label position="stacked">Problema principal</ion-label>
+      <ion-input type="text" formControlName="titulo" placeholder="Ej: Proyector dañado, sin internet..."></ion-input>
+    </ion-item>
+    <div *ngIf="ticketForm.get('titulo')?.touched && ticketForm.get('titulo')?.invalid" class="text-red-500 text-xs px-4 mb-2">Obligatorio</div>
+
+    <ion-item class="mb-4">
+      <ion-label position="stacked">Lugar / Aula afectada</ion-label>
+      <ion-select formControlName="lugar" placeholder="Selecciona">
+        <ion-select-option *ngFor="let room of classrooms" [value]="room.name">
+          {{ room.name }} ({{ room.buildingName || 'Sin edificio' }})
+        </ion-select-option>
+        <ion-select-option value="Otro">Otro lugar / No aplica</ion-select-option>
+      </ion-select>
+    </ion-item>
+    <div *ngIf="ticketForm.get('lugar')?.touched && ticketForm.get('lugar')?.invalid" class="text-red-500 text-xs px-4 mb-2">Obligatorio</div>
+
+    <ion-item class="mb-4">
+      <ion-label position="stacked">Descripción detallada</ion-label>
+      <ion-textarea formControlName="descripcion" rows="4" placeholder="Detalla el problema..."></ion-textarea>
+    </ion-item>
+    <div *ngIf="ticketForm.get('descripcion')?.touched && ticketForm.get('descripcion')?.invalid" class="text-red-500 text-xs px-4 mb-2">Obligatorio</div>
+
+    <ion-button expand="block" type="submit" [disabled]="ticketForm.invalid" class="mt-4" style="--background: #5688ce;">
+      Enviar Reporte
+    </ion-button>
+  </form>
+</ion-content>

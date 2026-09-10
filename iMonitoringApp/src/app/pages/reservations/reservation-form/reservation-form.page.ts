@@ -7,7 +7,6 @@ import { ReservationService } from 'src/app/services/reservation.service';
 import { ClassroomService } from 'src/app/services/classroom.service';
 import { UserService } from 'src/app/services/user.service';
 import { AuthService } from 'src/app/services/auth.service';
-import { Reservation } from 'src/app/models/reservation.model';
 
 interface TimeSlot {
   index: number;
@@ -32,8 +31,9 @@ export class ReservationFormPage implements OnInit {
   currentGroupId: string | null = null;
 
   classrooms: any[] = [];
+  filteredClassrooms: any[] = [];
   users: any[] = [];
-  currentUser: any = null; // <-- Añadido para guardar el usuario actual
+  currentUser: any = null;
 
   isAdminOrCoordinator = false;
   reservationType: 'single' | 'semester' = 'single';
@@ -41,6 +41,8 @@ export class ReservationFormPage implements OnInit {
   timeSlots: TimeSlot[] = [];
   currentDayReservations: any[] = [];
   isLoadingAvailability = false;
+
+  sugerenciasAulas: any[] = [];
 
   selectionStartIndex: number | null = null;
   selectionEndIndex: number | null = null;
@@ -74,6 +76,8 @@ export class ReservationFormPage implements OnInit {
     private alertController: AlertController
   ) {
     this.reservationForm = this.fb.group({
+      requiredCapacity: [0, Validators.min(0)],
+      requiredResources: [[]],
       classroomId: ['', Validators.required],
       userId: [''],
       purpose: ['', Validators.required],
@@ -83,7 +87,7 @@ export class ReservationFormPage implements OnInit {
       semesterStartDate: [null],
       semesterEndDate: [null],
       dayOfWeek: [[]],
-      institution: [''] // <-- NUEVO CAMPO AÑADIDO
+      institution: ['']
     });
   }
 
@@ -92,7 +96,6 @@ export class ReservationFormPage implements OnInit {
     this.loadClassrooms();
     this.initTimeSlots();
 
-    // Cargar los datos completos del usuario logueado para verificar Bilingüismo/Institución
     this.authService.getCurrentUser().subscribe(user => {
       this.currentUser = user;
     });
@@ -105,9 +108,19 @@ export class ReservationFormPage implements OnInit {
       this.loadDayReservations();
     }
 
+    this.reservationForm.get('requiredCapacity')?.valueChanges.subscribe(() => {
+      this.filterClassrooms();
+    });
+
+    this.reservationForm.get('requiredResources')?.valueChanges.subscribe(() => {
+      this.filterClassrooms();
+    });
+
     this.reservationForm.get('classroomId')?.valueChanges.subscribe(() => {
       if (!this.isLoadingAvailability) this.loadDayReservations();
+      this.sugerenciasAulas = [];
     });
+
     this.reservationForm.get('date')?.valueChanges.subscribe(() => {
       if (this.reservationType === 'single') this.loadDayReservations();
     });
@@ -125,15 +138,11 @@ export class ReservationFormPage implements OnInit {
     });
   }
 
-  // --- NUEVA LÓGICA DE INSTITUCIÓN ---
   canSelectInstitution(): boolean {
     if (!this.currentUser) return false;
-
     const role = (this.currentUser.role || '').toUpperCase();
     const inst = (this.currentUser.institution || '').toLowerCase();
     const career = (this.currentUser.career || '').toLowerCase();
-
-    // Puede elegir si es ADMIN o de Bilingüismo
     return role === 'ADMIN' || inst.includes('biling') || career.includes('biling');
   }
 
@@ -146,7 +155,44 @@ export class ReservationFormPage implements OnInit {
     this.initTimeSlots();
   }
 
-  loadClassrooms() { this.classroomService.getAllClassrooms().subscribe(data => this.classrooms = data); }
+  loadClassrooms() {
+    this.classroomService.getAllClassrooms().subscribe(data => {
+      this.classrooms = data;
+      this.filteredClassrooms = data;
+      this.filterClassrooms();
+    });
+  }
+
+  filterClassrooms() {
+    const requiredCap = Number(this.reservationForm.get('requiredCapacity')?.value || 0);
+    const requiredRes = this.reservationForm.get('requiredResources')?.value || [];
+
+    this.filteredClassrooms = this.classrooms.filter(room => {
+      const meetsCapacity = Number(room.capacity || 0) >= requiredCap;
+
+      let meetsResources = true;
+      if (requiredRes.length > 0) {
+        if (room.resources) {
+          const roomResources = typeof room.resources === 'string'
+            ? room.resources.toLowerCase()
+            : JSON.stringify(room.resources).toLowerCase();
+
+          meetsResources = requiredRes.every((req: string) => roomResources.includes(req.toLowerCase()));
+        } else {
+          meetsResources = false;
+        }
+      }
+
+      return meetsCapacity && meetsResources;
+    });
+
+    const currentClassroomId = this.reservationForm.get('classroomId')?.value;
+    if (currentClassroomId && !this.filteredClassrooms.find(c => c.id === currentClassroomId)) {
+      this.reservationForm.patchValue({ classroomId: '' });
+      this.showToast('El aula previamente seleccionada no cumple con los nuevos requisitos.', 'warning');
+    }
+  }
+
   loadUsers() { this.userService.getAllUsers().subscribe(data => this.users = data); }
 
   loadReservation(id: string) {
@@ -167,7 +213,7 @@ export class ReservationFormPage implements OnInit {
           semesterStartDate: data.semesterStartDate,
           semesterEndDate: data.semesterEndDate,
           dayOfWeek: data.daysOfWeek || [],
-          institution: data.institution || '' // Restaurar institución si existe
+          institution: data.institution || ''
         });
 
         this.loadDayReservations(true);
@@ -319,6 +365,12 @@ export class ReservationFormPage implements OnInit {
     return localDate.toISOString().split('.')[0];
   }
 
+  seleccionarSugerencia(aulaId: string) {
+    this.reservationForm.patchValue({ classroomId: aulaId });
+    this.sugerenciasAulas = [];
+    this.showToast('Sugerencia seleccionada, puedes crear tu reserva.', 'success');
+  }
+
   async onSubmit() {
     if (this.reservationForm.invalid) { this.reservationForm.markAllAsTouched(); return; }
 
@@ -351,7 +403,6 @@ export class ReservationFormPage implements OnInit {
       }
     }
 
-    // --- NUEVO: AUTO-COMPLETAR INSTITUCIÓN ---
     if (!this.canSelectInstitution()) {
       this.reservationForm.patchValue({ institution: this.currentUser?.institution || 'Sin Especificar' });
     }
@@ -377,8 +428,20 @@ export class ReservationFormPage implements OnInit {
         .subscribe({ next: () => { loading.dismiss(); this.handleSuccess('Reserva actualizada'); }, error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); } });
     } else {
       if (this.reservationType === 'single') {
-        this.reservationService.createReservation({ ...val, startTime: startTimeLocal, endTime: endTimeLocal, status: 'PENDIENTE' })
-          .subscribe({ next: () => { loading.dismiss(); this.handleSuccess('Reserva creada'); }, error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); } });
+        this.reservationService.realizarReservaInteligente({ ...val, startTime: startTimeLocal, endTime: endTimeLocal, status: 'PENDIENTE' })
+          .subscribe({
+            next: (res: any) => {
+              loading.dismiss();
+              if (res.success) {
+                this.handleSuccess('Reserva creada');
+                this.sugerenciasAulas = [];
+              } else {
+                this.sugerenciasAulas = res.suggestions || [];
+                this.showAlert('Atención', res.message || 'El aula solicitada está ocupada en ese horario.');
+              }
+            },
+            error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); }
+          });
       } else {
         const payload = {
           classroomId: val.classroomId, professorId: val.userId,
@@ -386,7 +449,7 @@ export class ReservationFormPage implements OnInit {
           startTime: startTimeLocal.split('T')[1],
           endTime: endTimeLocal.split('T')[1],
           purpose: val.purpose, daysOfWeek: val.dayOfWeek,
-          institution: val.institution // Aseguramos que la institución pase al payload semestral
+          institution: val.institution
         };
         this.reservationService.createSemesterReservation(payload).subscribe({
           next: () => { loading.dismiss(); this.handleSuccess('Semestre creado'); },

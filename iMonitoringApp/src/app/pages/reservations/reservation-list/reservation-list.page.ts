@@ -11,7 +11,7 @@ import {
   IonList, IonItem, IonIcon, IonLabel, IonButton, IonSpinner, IonInput, IonSelect, IonSelectOption,
   IonItemSliding, IonItemOptions, IonItemOption, IonRefresher, IonRefresherContent,
   ToastController, AlertController, NavController, LoadingController, IonMenuButton,
-  IonFab, IonFabButton // <-- CORREGIDO: Importados aquí
+  IonFab, IonFabButton
 } from '@ionic/angular/standalone';
 
 import { ReservationService } from '../../../services/reservation.service';
@@ -56,7 +56,7 @@ export interface ReservationViewItem {
     IonSegment, IonSegmentButton, IonList, IonItem, IonIcon, IonLabel, IonButton, IonSpinner,
     IonInput, IonSelect, IonSelectOption, IonItemSliding, IonItemOptions, IonItemOption,
     IonRefresher, IonRefresherContent, IonMenuButton, RouterLink,
-    IonFab, IonFabButton // <-- CORREGIDO: Registrados en el componente (IonCard eliminado)
+    IonFab, IonFabButton
   ],
   providers: [DatePipe]
 })
@@ -130,8 +130,14 @@ export class ReservationListPage implements OnInit, OnDestroy {
     });
   }
 
+  ionViewWillEnter() {
+    if (this.userRole && this.currentUser) {
+      this.loadReservations();
+    }
+  }
+
   ionViewDidEnter() {
-    if (this.userRole) {
+    if (this.userRole && this.currentUser) {
       this.loadReservations();
     }
   }
