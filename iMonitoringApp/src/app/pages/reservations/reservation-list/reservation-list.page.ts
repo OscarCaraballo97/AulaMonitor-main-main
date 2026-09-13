@@ -454,7 +454,7 @@ export class ReservationListPage implements OnInit, OnDestroy {
     switch (status) {
       case ReservationStatus.PENDIENTE: return '#FFC107';
       case ReservationStatus.CONFIRMADA: return '#28A745';
-      case ReservationStatus.RECHAZADA: return '#13205d';
+      case ReservationStatus.RECHAZADA: return '#d84ac5';
       case ReservationStatus.CANCELADA: return '#df2121';
       default: return '#007BFF';
     }
