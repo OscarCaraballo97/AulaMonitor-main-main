@@ -34,32 +34,69 @@ export class PdfService {
 
     doc.save('reporte_uso_aulas_logs.pdf');
   }
-
+  
   exportProfessorSchedule(reservations: any[], userName: string) {
     const datePipe = new DatePipe('es-ES');
     const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text(`Horario de Clases - ${userName}`, 14, 15);
+    doc.setFontSize(16);
 
-    const body = reservations.map(res => {
-      const r = res.rawReservation ? res.rawReservation : res;
+    doc.text(`Horario Mensual - ${userName}`, 14, 15);
 
-      return [
-        datePipe.transform(r.startTime, 'EEEE') || 'N/A',
-        datePipe.transform(r.startTime, 'dd/MM/yyyy') || 'N/A',
-        (datePipe.transform(r.startTime, 'HH:mm') || '') + ' - ' + (datePipe.transform(r.endTime, 'HH:mm') || ''),
-        r.classroom ? r.classroom.name : 'N/A',
-        r.purpose || 'Sin propósito'
-      ];
+    const groupedByMonth: { [key: string]: any[] } = {};
+
+    reservations.forEach(item => {
+      const raw = item.rawReservation ? item.rawReservation : item;
+      const date = new Date(raw.startTime);
+      const monthYear = datePipe.transform(date, 'MMMM yyyy') || 'Mes Desconocido';
+      const capitalizedMonth = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
+
+      if (!groupedByMonth[capitalizedMonth]) {
+        groupedByMonth[capitalizedMonth] = [];
+      }
+      groupedByMonth[capitalizedMonth].push(item);
     });
 
-    autoTable(doc, {
-      head: [['Día', 'Fecha', 'Horario', 'Aula', 'Materia / Motivo']],
-      body: body,
-      startY: 20,
-      styles: { fontSize: 10 }
-    });
+    let currentY = 25;
 
-    doc.save(`horario_calendario.pdf`);
+    for (const [month, itemList] of Object.entries(groupedByMonth)) {
+
+      if (currentY > 250) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setTextColor(60, 60, 60);
+      doc.setFont("helvetica", "bold");
+      doc.text(month, 14, currentY);
+      currentY += 5;
+
+      const body = itemList.map(item => {
+        const raw = item.rawReservation ? item.rawReservation : item;
+
+        const quantityStr = item.isGroup ? `${item.count} Clases` : '1 Clase';
+
+        return [
+          item.dateDescription || (datePipe.transform(raw.startTime, 'EEEE, dd/MM') || 'N/A'),
+          (item.startTimeLabel || datePipe.transform(raw.startTime, 'HH:mm')) + ' - ' + (item.endTimeLabel || datePipe.transform(raw.endTime, 'HH:mm')),
+          raw.classroom ? raw.classroom.name : 'N/A',
+          raw.purpose || 'Sin propósito',
+          quantityStr
+        ];
+      });
+
+      autoTable(doc, {
+        head: [['Días / Fechas', 'Horario', 'Aula', 'Materia / Motivo', 'Cantidad']],
+        body: body,
+        startY: currentY,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [86, 136, 206], textColor: [255, 255, 255] }, // Color Azul de Ionic
+        margin: { bottom: 15 }
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 15;
+    }
+
+    doc.save(`Horario_Mensual_${userName.replace(/\s+/g, '_')}.pdf`);
   }
 }

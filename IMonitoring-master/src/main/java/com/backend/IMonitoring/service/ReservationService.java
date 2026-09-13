@@ -719,10 +719,12 @@ public class ReservationService {
                 .build()).toList();
     }
 
-    public ReservationResponseDTO realizarReserva(ReservationRequestDTO request) {
+    // --- CORREGIDO: AHORA SÍ GUARDA LA RESERVA EN LA BD SI ESTÁ DISPONIBLE ---
+    @Transactional
+    public ReservationResponseDTO realizarReserva(ReservationRequestDTO request, UserDetails currentUserDetails) {
         ReservationResponseDTO response = new ReservationResponseDTO();
 
-        //Verificamos si el espacio solicitado originalmente está disponible
+        // 1. Verificamos si el espacio solicitado originalmente está disponible
         boolean isAvailable = classroomRepository.isAvailableConsideringAllStatuses(
                 request.getClassroomId(), request.getStartTime(), request.getEndTime());
 
@@ -730,11 +732,11 @@ public class ReservationService {
             response.setSuccess(false);
             response.setMessage("El espacio está ocupado. Aquí tienes sugerencias con la capacidad y recursos que necesitas:");
 
-            //Buscamos aulas disponibles por fecha, hora y capacidad
+            // Buscamos aulas disponibles por fecha, hora y capacidad
             List<Classroom> sugerencias = classroomRepository.findAvailableClassrooms(
                     request.getRequiredCapacity(), request.getStartTime(), request.getEndTime());
 
-            //se filtra las sugerencias por los recursos requeridos
+            // se filtra las sugerencias por los recursos requeridos
             if (request.getRequiredResources() != null && !request.getRequiredResources().isEmpty()) {
                 sugerencias = sugerencias.stream()
                         .filter(aula -> aula.getResources() != null &&
@@ -747,7 +749,32 @@ public class ReservationService {
             return response;
         }
 
+
+        Reservation reservationInput = new Reservation();
+
+        Classroom partialClassroom = new Classroom();
+        partialClassroom.setId(request.getClassroomId());
+        reservationInput.setClassroom(partialClassroom);
+
+        if (request.getUserId() != null && !request.getUserId().isEmpty()) {
+            User partialUser = new User();
+            partialUser.setId(request.getUserId());
+            reservationInput.setUser(partialUser);
+        }
+
+        reservationInput.setStartTime(request.getStartTime());
+        reservationInput.setEndTime(request.getEndTime());
+        reservationInput.setPurpose(request.getPurpose());
+        if (request.getStatus() != null) {
+            reservationInput.setStatus(request.getStatus());
+        }
+
+        Reservation savedReservation = createReservation(reservationInput, currentUserDetails);
+
+        response = convertToDTO(savedReservation);
         response.setSuccess(true);
+        response.setMessage("Reserva creada exitosamente.");
+
         return response;
     }
 }

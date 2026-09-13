@@ -1,6 +1,6 @@
 package com.backend.IMonitoring.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,24 +17,22 @@ public class Reservation {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    // Identificador para agrupar reservas de un mismo semestre
     @Column(name = "group_id")
     private String groupId;
 
-    // NUEVO: Detalle de recurrencia (Ej: "LUNES - MIERCOLES")
     @Column(name = "recurrence_details")
     private String recurrenceDetails;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classroom_id", nullable = false)
-    @JsonBackReference("classroom-reservations")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "reservations"})
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Classroom classroom;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonBackReference("user-reservations")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "reservations", "password"})
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private User user;
@@ -68,5 +66,6 @@ public class Reservation {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
     private String institution;
 }
