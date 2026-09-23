@@ -19,14 +19,6 @@
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Hola, {{ currentUser.name }}</span>
           </div>
 
-          <button aria-label="Cambiar Tema" class="relative focus:outline-none p-2 text-kwd-blue-DEFAULT dark:text-kwd-light hover:bg-gray-100 dark:hover:bg-kwd-dark rounded-full" (click)="themeService.toggleTheme()">
-            <div class="w-12 h-6 transition bg-kwd-blue-100 rounded-full outline-none dark:bg-kwd-blue-700"></div>
-            <div class="absolute top-1/2 left-1 transform -translate-y-1/2 inline-flex items-center justify-center w-5 h-5 transition-all duration-150 scale-110 rounded-full shadow-sm"
-                 [ngClass]="{ 'translate-x-0 bg-white text-kwd-blue-DEFAULT': !themeService.isDarkMode(), 'translate-x-5 bg-kwd-blue-800 text-kwd-blue-100': themeService.isDarkMode() }">
-              <ion-icon [name]="themeService.isDarkMode() ? 'moon-outline' : 'sunny-outline'" class="w-4 h-4"></ion-icon>
-            </div>
-          </button>
-
           <button (click)="triggerDesktopLogout()" aria-label="Cerrar Sesión" class="hidden md:inline-flex p-2 text-kwd-blue-DEFAULT transition-colors duration-200 rounded-full bg-blue-50 hover:text-kwd-blue-600 hover:bg-kwd-blue-100 dark:text-kwd-light dark:hover:text-kwd-blue-300 dark:hover:bg-kwd-blue-700 dark:bg-kwd-dark focus:outline-none">
             <ion-icon name="log-out-outline" class="w-7 h-7"></ion-icon>
           </button>
@@ -49,14 +41,15 @@
         </ion-buttons>
       </ion-toolbar>
 
-      <ion-toolbar class="kwd-toolbar-tabs toolbar-color dark:bg-kwd-darker border-b border-gray-700">
+      <ion-toolbar class="kwd-toolbar-tabs toolbar-color dark:bg-kwd-darker">
         <nav class="flex justify-start md:justify-center space-x-1 md:space-x-2 px-2 whitespace-nowrap overflow-x-auto" aria-label="Main navigation tabs">
           <a *ngFor="let link of filteredNavLinks" [routerLink]="link.route" routerDirection="root"
-             class="px-3 py-3 text-[15px] font-medium rounded-md transition-colors focus:outline-none"
-             [ngClass]="{'text-white font-semibold bg-blue-900 shadow-sm': isLinkActive(link),'text-white hover:text-white hover:bg-gray-700 dark:text-white dark:hover:text-kwd-light dark:hover:bg-kwd-dark': !isLinkActive(link)}">
-             <ion-icon *ngIf="link.icon" [name]="link.icon" class="w-5 h-5 mr-1 -ml-1 inline-block md:mr-2"></ion-icon>
-             <span class="hidden md:inline">{{ link.title }}</span>
-          </a>
+          class="px-3 py-3 text-[15px] font-medium rounded-md transition-colors focus:outline-none"
+          [ngClass]="{'text-white font-semibold bg-[#9C5491]': isLinkActive(link),
+          'text-white hover:text-white hover:bg-gray-700 dark:text-white dark:hover:text-kwd-light dark:hover:bg-kwd-dark': !isLinkActive(link)}">
+          <ion-icon *ngIf="link.icon" [name]="link.icon" class="w-5 h-5 mr-1 -ml-1 inline-block md:mr-2"></ion-icon>
+          <span class="hidden md:inline">{{ link.title }}</span>
+        </a>
         </nav>
       </ion-toolbar>
     </ion-header>

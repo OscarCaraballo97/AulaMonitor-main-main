@@ -27,6 +27,12 @@
   --color: var(--ion-color-warning-contrast, black);
 }
 
+/* Modo Día (Light Mode) */
+html, body, ion-app, .ion-page, ion-content {
+  --background: #C2A5BD !important;
+  background-color: #ffffff !important;
+}
+
 .white-text-alert {
   --background: #1e3a8a; 
 
@@ -86,7 +92,7 @@ body.dark .custom-date-input {
 
 body .alerta-cancelar {
   --color: #ffffff !important; 
-  --background: #246e8b !important;
+  --background: #ffffff !important;
 
   .alert-header {
     color: #ffffff !important;
@@ -107,11 +113,11 @@ body .alerta-cancelar {
 }
 
 .bg-custom {
-  --background: #000742 !important;
+  --background: #152851 !important;
 }
 
 .toolbar-color {
-  --background: #394582 !important;
+  --background: #64115B !important;
   --color: #ffffff !important;
 }
 
@@ -125,15 +131,15 @@ body .alerta-cancelar {
 }
 
 .btn-custom-primary {
-  --background: #2563eb !important;
+  --background: #00BB77!important;
   --color: #ffffff !important;
 }
 .btn-custom-secondary {
-  --background: #16a34a !important;
+  --background: #00674F !important;
   --color: #ffffff !important;
 }
 .btn-custom-tertiary {
-  --background: #9333ea !important;
+  --background: #008B8B !important;
   --color: #ffffff !important;
 }
 
