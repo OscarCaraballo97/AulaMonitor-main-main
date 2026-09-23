@@ -23,6 +23,7 @@ interface GridCell {
   userName?: string;
   purpose?: string;
   institution?: string;
+  count?: number;
 }
 
 interface TimeRow {
@@ -105,6 +106,12 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  private toLocalISOString(date: Date): string {
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - tzOffset);
+    return localDate.toISOString().split('.')[0];
+  }
+
   setViewMode(mode: 'WEEKLY' | 'GENERAL') {
     this.viewMode = mode;
     if (this.selectedClassroomId) {
@@ -169,7 +176,6 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
     if (this.selectedClassroomId) this.setViewMode('WEEKLY');
   }
 
-  // === 1. CARGA DE SEMANA ESPECÍFICA ===
   async loadWeeklyGrid() {
     this.isLoadingSlots = true;
     this.gridRows = [];
@@ -187,7 +193,11 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
 
     this.weekLabel = `Semana del ${formatDate(monday, 'dd/MM', 'en-US')} al ${formatDate(sunday, 'dd/MM', 'en-US')}`;
 
-    this.reservationService.getReservationsByClassroomAndDateRange(this.selectedClassroomId!, monday.toISOString(), sunday.toISOString())
+    this.reservationService.getReservationsByClassroomAndDateRange(
+      this.selectedClassroomId!,
+      this.toLocalISOString(monday),
+      this.toLocalISOString(sunday)
+    )
       .pipe(takeUntil(this.destroy$), finalize(() => { this.isLoadingSlots = false; this.cdr.detectChanges(); }), catchError(() => of([])))
       .subscribe(res => { this.buildGrid(res, monday); });
   }
@@ -221,8 +231,8 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
           isReserved: !!res,
           userName: res?.user?.name,
           purpose: res?.purpose,
-          // Corrección: Lee la institución de la reserva primero, si no, usa la del usuario
-          institution: (res as any)?.institution || (res?.user as any)?.institution
+          institution: (res as any)?.institution || (res?.user as any)?.institution,
+          count: res ? 1 : 0
         });
       }
       this.gridRows.push(row);
@@ -230,17 +240,22 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
     }
   }
 
-  // === 2. CARGA DE HORARIO FIJO (RECURRENTES) ===
   async loadGeneralGrid() {
     this.isLoadingSlots = true;
     this.gridRows = [];
     this.cdr.detectChanges();
 
     const start = new Date();
+    start.setHours(0,0,0,0);
     const end = new Date();
     end.setMonth(end.getMonth() + 4);
+    end.setHours(23,59,59,999);
 
-    this.reservationService.getReservationsByClassroomAndDateRange(this.selectedClassroomId!, start.toISOString(), end.toISOString())
+    this.reservationService.getReservationsByClassroomAndDateRange(
+      this.selectedClassroomId!,
+      this.toLocalISOString(start),
+      this.toLocalISOString(end)
+    )
       .pipe(takeUntil(this.destroy$), finalize(() => { this.isLoadingSlots = false; this.cdr.detectChanges(); }), catchError(() => of([])))
       .subscribe(res => { this.buildGeneralGrid(res); });
   }
@@ -276,10 +291,10 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
         let cellUser = '';
         let cellInst = '';
         let isReserved = false;
+        let maxCount = 0;
 
         if (matchingRes.length > 0) {
             const freqMap = new Map<string, number>();
-            let maxCount = 0;
             let dominantRes = matchingRes[0];
 
             for (const r of matchingRes) {
@@ -294,12 +309,18 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
 
             cellPurpose = dominantRes.purpose || 'Clase';
             cellUser = dominantRes.user?.name || 'Desconocido';
-            // Corrección: Lee la institución de la reserva dominante
             cellInst = (dominantRes as any)?.institution || (dominantRes.user as any)?.institution;
             isReserved = true;
         }
 
-        row.days.push({ isClosed, isReserved, userName: cellUser, purpose: cellPurpose, institution: cellInst });
+        row.days.push({
+          isClosed,
+          isReserved,
+          userName: cellUser,
+          purpose: cellPurpose,
+          institution: cellInst,
+          count: maxCount
+        });
       }
       this.gridRows.push(row);
       pointer = cellEnd;
@@ -308,42 +329,12 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
 
   public getSelectedClassroomDetails() { return this.allClassrooms.find(c => c.id === this.selectedClassroomId); }
 
-  async promptDownloadSchedule() {
-    const alertInst = await this.alertCtrl.create({
-      header: 'Descargar Horarios',
-      message: '¿De qué institución deseas generar el documento Excel?',
-      inputs: [
-        { type: 'radio', label: 'General', value: 'General', checked: true },
-        { type: 'radio', label: 'Solo Colombo', value: 'Colombo' },
-        { type: 'radio', label: 'Solo Unicolombo', value: 'Unicolombo' }
-      ],
-      buttons: [
-        { text: 'Cancelar', role: 'cancel' },
-        { text: 'Siguiente', handler: (inst) => this.promptFormatAndDownload(inst) }
-      ]
-    });
-    await alertInst.present();
-  }
-
-  async promptFormatAndDownload(institution: string) {
-    const alertFormat = await this.alertCtrl.create({
-      header: 'Formato del Documento',
-      message: 'Elige cómo organizar la información:',
-      inputs: [
-        { type: 'radio', label: '📆 Calendario Mensual (Almanaque)', value: 'ALMANAQUE', checked: true },
-        { type: 'radio', label: '📅 Matriz Semestral (Día a Día)', value: 'CUADRICULA' },
-        { type: 'radio', label: '🏫 Horario Fijo (Recurrentes)', value: 'PLANTILLA' }
-      ],
-      buttons: [
-        { text: 'Atrás', role: 'cancel', handler: () => this.promptDownloadSchedule() },
-        { text: 'Descargar', handler: (format) => this.downloadExcel(institution, format) }
-      ]
-    });
-    await alertFormat.present();
+  downloadSchedule() {
+    this.downloadExcel('AMBAS', 'ALMANAQUE');
   }
 
   async downloadExcel(institution: string, format: string) {
-    const loading = await this.loadingCtrl.create({ message: 'Generando Excel...' });
+    const loading = await this.loadingCtrl.create({ message: 'Generando Mensual...' });
     await loading.present();
 
     this.http.get(`${environment.apiUrl}/reservations/export-schedule?institution=${institution}&format=${format}`, {
@@ -354,7 +345,7 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Horario_${institution}_${format}.xlsx`;
+        a.download = `Horario_Mensual_General.xlsx`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

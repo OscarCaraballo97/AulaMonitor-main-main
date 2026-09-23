@@ -267,11 +267,13 @@ public class ReservationController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    //sugerencias
     @PostMapping("/smart-reserve")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReservationResponseDTO> realizarReservaInteligente(
-            @RequestBody ReservationRequestDTO request) {
-        ReservationResponseDTO response = reservationService.realizarReserva(request);
+            @RequestBody ReservationRequestDTO request,
+            @AuthenticationPrincipal UserDetails currentUserDetails) {
+
+        ReservationResponseDTO response = reservationService.realizarReserva(request, currentUserDetails);
         return ResponseEntity.ok(response);
     }
 }

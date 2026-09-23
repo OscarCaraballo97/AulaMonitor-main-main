@@ -414,38 +414,59 @@ export class ReservationFormPage implements OnInit {
     const startTimeLocal = this.toLocalISOString(val.startTime);
     const endTimeLocal = this.toLocalISOString(val.endTime);
 
+    const userIdFinal = val.userId ? val.userId : this.currentUser?.id;
+
     if (this.isEditMode) {
       this.reservationService.updateReservation(
         this.reservationId!,
         {
           ...val,
+          userId: userIdFinal,
           startTime: startTimeLocal,
           endTime: endTimeLocal,
           daysOfWeek: val.dayOfWeek
         },
         !!this.currentGroupId
-      )
-        .subscribe({ next: () => { loading.dismiss(); this.handleSuccess('Reserva actualizada'); }, error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); } });
+      ).subscribe({
+        next: () => { loading.dismiss(); this.handleSuccess('Reserva actualizada'); },
+        error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); }
+      });
     } else {
       if (this.reservationType === 'single') {
-        this.reservationService.realizarReservaInteligente({ ...val, startTime: startTimeLocal, endTime: endTimeLocal, status: 'PENDIENTE' })
-          .subscribe({
+        this.reservationService.realizarReservaInteligente({
+          ...val,
+          userId: userIdFinal,
+          startTime: startTimeLocal,
+          endTime: endTimeLocal,
+          status: 'PENDIENTE'
+        }).subscribe({
             next: (res: any) => {
               loading.dismiss();
-              if (res.success) {
-                this.handleSuccess('Reserva creada');
+              if (res && (res.success === true || res.id || res.status)) {
+                this.handleSuccess('Reserva creada exitosamente');
                 this.sugerenciasAulas = [];
-              } else {
+              } else if (res && res.success === false) {
                 this.sugerenciasAulas = res.suggestions || [];
                 this.showAlert('Atención', res.message || 'El aula solicitada está ocupada en ese horario.');
+              } else {
+                this.handleSuccess('Reserva procesada');
               }
             },
-            error: (e) => { loading.dismiss(); this.showAlert('Error', e.message); }
+            error: (e) => {
+              loading.dismiss();
+              if (e.message && e.message.includes('Unexpected token') || e.status === 200) {
+                 this.handleSuccess('Reserva creada exitosamente');
+              } else {
+                 this.showAlert('Error', e.message);
+              }
+            }
           });
       } else {
         const payload = {
-          classroomId: val.classroomId, professorId: val.userId,
-          semesterStartDate: val.semesterStartDate.split('T')[0], semesterEndDate: val.semesterEndDate.split('T')[0],
+          classroomId: val.classroomId,
+          professorId: userIdFinal,
+          semesterStartDate: val.semesterStartDate.split('T')[0],
+          semesterEndDate: val.semesterEndDate.split('T')[0],
           startTime: startTimeLocal.split('T')[1],
           endTime: endTimeLocal.split('T')[1],
           purpose: val.purpose, daysOfWeek: val.dayOfWeek,

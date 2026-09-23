@@ -4,10 +4,11 @@
     <ion-title>Horarios y Disponibilidad</ion-title>
 
     <ion-buttons slot="end">
-      <ion-button (click)="promptDownloadSchedule()" class="hidden md:flex items-center text-white font-bold bg-green-600 px-3 py-1 mr-2 rounded shadow-sm hover:bg-green-700">
+      <!-- Vuelve a llamar a promptDownloadSchedule -->
+      <ion-button (click)="downloadSchedule()" class="hidden md:flex items-center text-white font-bold bg-green-600 px-3 py-1 mr-2 rounded shadow-sm hover:bg-green-700">
         <ion-icon name="download-outline" class="mr-1"></ion-icon> Exportar Excel
       </ion-button>
-      <ion-button (click)="promptDownloadSchedule()" class="md:hidden">
+      <ion-button (click)="downloadSchedule()" class="md:hidden">
         <ion-icon name="download-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -30,7 +31,7 @@
         </div>
       </div>
 
-      <!-- BOTONES DE MODO DE VISTA (Nuevo) -->
+      <!-- BOTONES DE MODO DE VISTA -->
       <div class="w-full md:w-auto flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700 shadow-inner">
         <button (click)="setViewMode('WEEKLY')"
                 [ngClass]="viewMode === 'WEEKLY' ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
@@ -44,14 +45,14 @@
         </button>
       </div>
 
-      <!-- Navegación de Semanas (Solo visible si está en modo WEEKLY) -->
+      <!-- Navegación de Semanas -->
       <div *ngIf="viewMode === 'WEEKLY'" class="w-full md:w-auto flex items-center justify-center space-x-2 bg-gray-50 dark:bg-kwd-dark p-2 rounded-lg border border-gray-200 dark:border-gray-700">
         <button (click)="changeWeek(-7)" class="p-2 bg-white dark:bg-gray-800 rounded shadow-sm hover:bg-gray-100"><ion-icon name="chevron-back-outline"></ion-icon></button>
         <div class="text-center px-4">
           <button id="date-btn" class="font-bold text-blue-800 dark:text-white whitespace-nowrap">{{ weekLabel || 'Seleccionar' }}</button>
           <ion-popover trigger="date-btn" [keepContentsMounted]="true">
             <ng-template>
-              <ion-datetime presentation="date" [(ngModel)]="selectedDateTimeISO" (ionChange)="onDateTimeChanged($event.detail.value)" [min]="minDate" [max]="maxDate" locale="es-CO"></ion-datetime>
+              <ion-datetime presentation="date" [value]="selectedDateTimeISO" (ionChange)="onDateTimeChanged($event.detail.value)" [min]="minDate" [max]="maxDate" locale="es-CO"></ion-datetime>
             </ng-template>
           </ion-popover>
         </div>
@@ -106,7 +107,15 @@
                     }">
 
                   <div *ngIf="cell.isReserved && !cell.isClosed" class="h-full flex flex-col justify-start">
-                    <span class="text-[10px] font-black uppercase text-blue-700 dark:text-blue-400 mb-1 leading-tight">{{ cell.institution || 'Inst.' }}</span>
+
+                    <div class="flex justify-between items-start mb-1">
+                      <span class="text-[10px] font-black uppercase text-blue-700 dark:text-blue-400 leading-tight">{{ cell.institution || 'Inst.' }}</span>
+
+                      <span *ngIf="cell.count && cell.count > 1" class="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm" title="Cantidad de clases en el semestre">
+                        {{ cell.count }}
+                      </span>
+                    </div>
+
                     <span class="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-1"><ion-icon name="person" class="mr-1"></ion-icon>{{ cell.userName }}</span>
                     <span class="text-[10px] text-gray-600 dark:text-gray-400 leading-tight italic">{{ cell.purpose }}</span>
                   </div>
