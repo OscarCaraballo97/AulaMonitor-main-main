@@ -30,7 +30,6 @@ export class TicketsPage implements OnInit {
     });
   }
 
-  // Refrescar al entrar a la página (por si creó uno desde el botón flotante)
   ionViewWillEnter() {
     this.cargarTickets();
   }
@@ -38,8 +37,6 @@ export class TicketsPage implements OnInit {
   cargarTickets() {
     this.isLoading = true;
 
-    // Aquí usamos los métodos que deben existir en tu TicketService
-    // Si aún no los tienes en tu backend, te devolverán 404, pero la estructura ya queda lista.
     const peticion = this.isAdmin ? this.ticketService.getAllTickets() : this.ticketService.getMisTickets();
 
     peticion.subscribe({

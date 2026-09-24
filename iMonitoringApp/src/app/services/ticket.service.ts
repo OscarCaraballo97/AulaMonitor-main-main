@@ -3,7 +3,6 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { Ticket } from '../models/ticket.model';
 
 @Injectable({
   providedIn: 'root'
@@ -13,8 +12,8 @@ export class TicketService {
 
   constructor(private http: HttpClient) {}
 
-  crearTicket(ticket: Ticket): Observable<Ticket> {
-    return this.http.post<Ticket>(this.apiUrl, ticket).pipe(
+  crearTicket(ticket: any): Observable<any> {
+    return this.http.post<any>(this.apiUrl, ticket).pipe(
       catchError(this.handleError)
     );
   }
@@ -33,6 +32,12 @@ export class TicketService {
 
   actualizarEstado(id: number, estado: string): Observable<any> {
     return this.http.patch(`${this.apiUrl}/${id}/estado`, { estado }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getEstadisticasPorAula(): Observable<{ [key: string]: number }> {
+    return this.http.get<{ [key: string]: number }>(`${this.apiUrl}/stats`).pipe(
       catchError(this.handleError)
     );
   }

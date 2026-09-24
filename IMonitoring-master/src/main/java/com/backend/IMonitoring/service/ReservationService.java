@@ -118,20 +118,33 @@ public class ReservationService {
             String classroomId, String userId, ReservationStatus status,
             LocalDateTime startDate, LocalDateTime endDate,
             String sortField, String sortDirection) {
+
         Sort sort = (sortField != null && !sortField.isEmpty()) ?
                 Sort.by((sortDirection != null && sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC), sortField) :
                 Sort.by(Sort.Direction.DESC, "startTime");
 
-        List<Reservation> reservationsList;
+        List<Reservation> reservationsList = reservationRepository.findAll(sort);
+
         if (status != null) {
-            reservationsList = reservationRepository.findByStatus(status, sort);
-        } else if (classroomId != null && !classroomId.isEmpty() && startDate != null && endDate != null) {
-            reservationsList = reservationRepository.findByClassroomIdAndStartTimeBetween(classroomId, startDate, endDate, sort);
-        } else if (userId != null && !userId.isEmpty()) {
-            reservationsList = reservationRepository.findByUserId(userId, sort);
-        } else {
-            reservationsList = reservationRepository.findAll(sort);
+            reservationsList = reservationsList.stream().filter(r -> r.getStatus() == status).toList();
         }
+        if (classroomId != null && !classroomId.trim().isEmpty()) {
+            reservationsList = reservationsList.stream()
+                    .filter(r -> r.getClassroom() != null && r.getClassroom().getId().equals(classroomId)).toList();
+        }
+        if (userId != null && !userId.trim().isEmpty()) {
+            reservationsList = reservationsList.stream()
+                    .filter(r -> r.getUser() != null && r.getUser().getId().equals(userId)).toList();
+        }
+        if (startDate != null) {
+            reservationsList = reservationsList.stream()
+                    .filter(r -> !r.getStartTime().isBefore(startDate)).toList();
+        }
+        if (endDate != null) {
+            reservationsList = reservationsList.stream()
+                    .filter(r -> !r.getStartTime().isAfter(endDate)).toList();
+        }
+
         return convertToDTOList(reservationsList);
     }
 
@@ -719,61 +732,57 @@ public class ReservationService {
                 .build()).toList();
     }
 
-    // --- CORREGIDO: AHORA SÍ GUARDA LA RESERVA EN LA BD SI ESTÁ DISPONIBLE ---
     @Transactional
     public ReservationResponseDTO realizarReserva(ReservationRequestDTO request, UserDetails currentUserDetails) {
         ReservationResponseDTO response = new ReservationResponseDTO();
 
-        // 1. Verificamos si el espacio solicitado originalmente está disponible
+        // Verificar disponibilidad de horario
         boolean isAvailable = classroomRepository.isAvailableConsideringAllStatuses(
                 request.getClassroomId(), request.getStartTime(), request.getEndTime());
 
-        if (!isAvailable) {
+        // Verificar capacidad del aula solicitada
+        Classroom originalClassroom = classroomRepository.findById(request.getClassroomId()).orElse(null);
+        boolean hasEnoughCapacity = originalClassroom != null && originalClassroom.getCapacity() >= request.getRequiredCapacity();
+
+        // Si falla la disponibilidad o la capacidad, buscamos sugerencias y NO guardamos
+        if (!isAvailable || !hasEnoughCapacity) {
             response.setSuccess(false);
-            response.setMessage("El espacio está ocupado. Aquí tienes sugerencias con la capacidad y recursos que necesitas:");
 
-            // Buscamos aulas disponibles por fecha, hora y capacidad
-            List<Classroom> sugerencias = classroomRepository.findAvailableClassrooms(
-                    request.getRequiredCapacity(), request.getStartTime(), request.getEndTime());
-
-            // se filtra las sugerencias por los recursos requeridos
-            if (request.getRequiredResources() != null && !request.getRequiredResources().isEmpty()) {
-                sugerencias = sugerencias.stream()
-                        .filter(aula -> aula.getResources() != null &&
-                                request.getRequiredResources().stream()
-                                        .allMatch(req -> aula.getResources().toString().toLowerCase().contains(req.toLowerCase())))
-                        .toList();
+            if (!isAvailable) {
+                response.setMessage("El espacio está ocupado. Aquí tienes opciones disponibles con la capacidad requerida:");
+            } else {
+                response.setMessage("El aula tiene capacidad para " + originalClassroom.getCapacity() + " personas, pero requieres " + request.getRequiredCapacity() + ". Opciones sugeridas:");
             }
 
+            // Filtrado estricto por la capacidad solicitada en las sugerencias
+            List<Classroom> sugerencias = classroomRepository.findAvailableClassrooms(
+                    request.getRequiredCapacity(), request.getStartTime(), request.getEndTime());
             response.setSuggestions(sugerencias);
+
             return response;
         }
 
+        Reservation nuevaReserva = new Reservation();
+        nuevaReserva.setClassroom(originalClassroom);
+        nuevaReserva.setStartTime(request.getStartTime());
+        nuevaReserva.setEndTime(request.getEndTime());
+        nuevaReserva.setPurpose(request.getPurpose());
 
-        Reservation reservationInput = new Reservation();
-
-        Classroom partialClassroom = new Classroom();
-        partialClassroom.setId(request.getClassroomId());
-        reservationInput.setClassroom(partialClassroom);
+        if (request.getStatus() != null) {
+            nuevaReserva.setStatus(request.getStatus());
+        }
 
         if (request.getUserId() != null && !request.getUserId().isEmpty()) {
-            User partialUser = new User();
-            partialUser.setId(request.getUserId());
-            reservationInput.setUser(partialUser);
+            User targetUser = new User();
+            targetUser.setId(request.getUserId());
+            nuevaReserva.setUser(targetUser);
         }
 
-        reservationInput.setStartTime(request.getStartTime());
-        reservationInput.setEndTime(request.getEndTime());
-        reservationInput.setPurpose(request.getPurpose());
-        if (request.getStatus() != null) {
-            reservationInput.setStatus(request.getStatus());
-        }
+        Reservation reservaGuardada = this.createReservation(nuevaReserva, currentUserDetails);
 
-        Reservation savedReservation = createReservation(reservationInput, currentUserDetails);
-
-        response = convertToDTO(savedReservation);
+        response = this.convertToDTO(reservaGuardada);
         response.setSuccess(true);
-        response.setMessage("Reserva creada exitosamente.");
+        response.setMessage("Reserva creada y guardada exitosamente.");
 
         return response;
     }

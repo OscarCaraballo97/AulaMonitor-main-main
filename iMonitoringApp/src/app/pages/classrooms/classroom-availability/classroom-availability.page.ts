@@ -11,6 +11,8 @@ import { Reservation, ReservationStatus } from '../../../models/reservation.mode
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
+import { PdfService } from '../../../services/pdf.service';
+
 import {
   IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent, IonButton, IonIcon,
   IonSpinner, IonLabel, IonSelect, IonSelectOption,
@@ -74,7 +76,8 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
     private toastCtrl: ToastController,
     private loadingCtrl: LoadingController,
     private alertCtrl: AlertController,
-    private http: HttpClient
+    private http: HttpClient,
+    private pdfService: PdfService
   ) {
     const todayLocal = new Date();
     this.minDate = formatDate(todayLocal, 'yyyy-MM-dd', 'en-US', 'local');
@@ -329,31 +332,128 @@ export class ClassroomAvailabilityPage implements OnInit, OnDestroy {
 
   public getSelectedClassroomDetails() { return this.allClassrooms.find(c => c.id === this.selectedClassroomId); }
 
-  downloadSchedule() {
-    this.downloadExcel('AMBAS', 'ALMANAQUE');
+
+  async promptDownloadScope() {
+    const room = this.getSelectedClassroomDetails();
+
+    const options: any[] = [
+      { type: 'radio', label: 'General (Todas las aulas)', value: 'ALL', checked: !room }
+    ];
+
+    if (room) {
+      options.push({ type: 'radio', label: `Solo ${room.name}`, value: room.id, checked: true });
+    }
+
+    const alertScope = await this.alertCtrl.create({
+      header: 'Alcance del Reporte',
+      message: '¿Qué información deseas incluir en el reporte?',
+      inputs: options,
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Siguiente',
+          handler: (scopeVal) => {
+            this.promptDownloadFormat(scopeVal);
+          }
+        }
+      ]
+    });
+    await alertScope.present();
   }
 
-  async downloadExcel(institution: string, format: string) {
-    const loading = await this.loadingCtrl.create({ message: 'Generando Mensual...' });
+  async promptDownloadFormat(scopeValue: string) {
+    const alertFormat = await this.alertCtrl.create({
+      header: 'Formato de Archivo',
+      message: '¿En qué formato deseas descargar el horario?',
+      inputs: [
+        { type: 'radio', label: '📊 Excel (Almanaque)', value: 'EXCEL', checked: true },
+        { type: 'radio', label: '📄 PDF (Diseño Almanaque)', value: 'PDF_ALMANAQUE' },
+        { type: 'radio', label: '📄 PDF (Diseño Lista)', value: 'PDF_LISTA' }
+      ],
+      buttons: [
+        { text: 'Atrás', role: 'cancel', handler: () => this.promptDownloadScope() },
+        {
+          text: 'Descargar',
+          handler: (formatVal) => {
+            const classId = scopeValue === 'ALL' ? null : scopeValue;
+            if (formatVal === 'EXCEL') {
+              this.downloadExcel('AMBAS', 'ALMANAQUE', classId);
+            } else {
+              this.downloadPDF(classId, formatVal);
+            }
+          }
+        }
+      ]
+    });
+    await alertFormat.present();
+  }
+
+
+  async downloadExcel(institution: string, format: string, classroomId: string | null = null) {
+    const loading = await this.loadingCtrl.create({ message: 'Generando Excel...' });
     await loading.present();
 
-    this.http.get(`${environment.apiUrl}/reservations/export-schedule?institution=${institution}&format=${format}`, {
-      responseType: 'blob'
-    }).subscribe({
+    let url = `${environment.apiUrl}/reservations/export-schedule?institution=${institution}&format=${format}`;
+    if (classroomId) {
+      url += `&classroomId=${classroomId}`;
+    }
+
+    this.http.get(url, { responseType: 'blob' }).subscribe({
       next: async (blob) => {
         await loading.dismiss();
-        const url = window.URL.createObjectURL(blob);
+        const urlObj = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `Horario_Mensual_General.xlsx`;
+        a.href = urlObj;
+
+        const fileName = classroomId ? `Horario_Aula_${this.getSelectedClassroomDetails()?.name || 'Especifica'}.xlsx` : `Horario_General.xlsx`;
+        a.download = fileName;
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        window.URL.revokeObjectURL(urlObj);
       },
       error: async () => {
         await loading.dismiss();
         const toast = await this.toastCtrl.create({ message: 'Error al generar el archivo.', duration: 3000, color: 'danger' });
+        toast.present();
+      }
+    });
+  }
+
+  // DESCARGA DE PDF
+  async downloadPDF(classId: string | null, pdfFormat: string) {
+    const loading = await this.loadingCtrl.create({ message: 'Construyendo PDF...' });
+    await loading.present();
+
+    // Filtramos los próximos 4 meses
+    const start = new Date();
+    start.setHours(0,0,0,0);
+    const end = new Date();
+    end.setMonth(end.getMonth() + 4);
+
+    let url = `${environment.apiUrl}/reservations/filter?status=CONFIRMADA&startDate=${this.toLocalISOString(start)}&endDate=${this.toLocalISOString(end)}`;
+    if (classId) {
+      url += `&classroomId=${classId}`;
+    }
+
+    this.http.get<any[]>(url).subscribe({
+      next: async (data) => {
+        await loading.dismiss();
+        const roomName = classId ? this.getSelectedClassroomDetails()?.name : 'General (Todas las aulas)';
+
+        if (pdfFormat === 'PDF_ALMANAQUE') {
+           this.pdfService.exportProfessorSchedule(data, roomName || 'General');
+        } else {
+           this.pdfService.exportGeneralSchedule(data, roomName || 'General');
+        }
+
+        const toast = await this.toastCtrl.create({ message: 'PDF descargado con éxito.', duration: 3000, color: 'success' });
+        toast.present();
+      },
+      error: async () => {
+        await loading.dismiss();
+        const toast = await this.toastCtrl.create({ message: 'Error al obtener datos para el PDF.', duration: 3000, color: 'danger' });
         toast.present();
       }
     });

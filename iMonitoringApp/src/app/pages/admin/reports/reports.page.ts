@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { IonicModule } from '@ionic/angular';
+import { TicketService } from 'src/app/services/ticket.service';
 import Chart from 'chart.js/auto';
 
 @Component({
@@ -21,6 +22,9 @@ export class ReportsPage implements OnInit {
   statusDistribution: any = null;
   totalReservationsForStatus = 0;
 
+  // Nueva propiedad para las estadísticas de tickets
+  estadisticasTickets: { aula: string, cantidad: number }[] = [];
+
   selectedFixedResource: string = 'ALL';
   fixedResourcesOptions: string[] = ['Proyector', 'Computadores', 'Sillas', 'Tablero Digital', 'Aire Acondicionado'];
 
@@ -29,21 +33,46 @@ export class ReportsPage implements OnInit {
   isLoadingCancellations = false;
   isLoadingStatus = false;
   isLoadingChart = false;
+  isLoadingTicketsStats = false; 
 
   @ViewChild('institutionChart') institutionChartCanvas!: ElementRef;
   chartInstance: any;
 
-  constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef,
+    private ticketService: TicketService
+  ) {}
 
   ngOnInit() {
     this.loadResourceReport();
     this.loadSpaceUsageReport();
     this.loadCancellationReport();
     this.loadStatusDistribution();
+    this.loadTicketsStats();
   }
 
   ionViewDidEnter() {
       this.loadInstitutionComparison();
+  }
+
+  loadTicketsStats() {
+    this.isLoadingTicketsStats = true;
+    this.ticketService.getEstadisticasPorAula().subscribe({
+      next: (statsMap) => {
+        this.estadisticasTickets = Object.keys(statsMap).map(key => ({
+          aula: key,
+          cantidad: statsMap[key]
+        })).sort((a, b) => b.cantidad - a.cantidad);
+
+        this.isLoadingTicketsStats = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error cargando estadísticas de tickets:', err);
+        this.isLoadingTicketsStats = false;
+      }
+    });
   }
 
   loadResourceReport() {
@@ -92,7 +121,6 @@ export class ReportsPage implements OnInit {
     return (value / this.totalReservationsForStatus) * 100;
   }
 
-  // --- LÓGICA DEL GRÁFICO ---
   loadInstitutionComparison() {
     this.isLoadingChart = true;
     this.http.get<any[]>(`${environment.apiUrl}/reservations`).subscribe({
@@ -109,7 +137,6 @@ export class ReportsPage implements OnInit {
   }
 
   generateChart(reservations: any[]) {
-    // 1. ACEPTAR CONFIRMADAS Y PENDIENTES
     const validRes = reservations.filter(r =>
       (r.status === 'CONFIRMADA' || r.status === 'PENDIENTE') && r.classroom && r.user
     );
@@ -120,8 +147,6 @@ export class ReportsPage implements OnInit {
 
     validRes.forEach(r => {
       const roomName = r.classroom.name;
-
-      // 2. LEER DE LA RESERVA PRIMERO, LUEGO DEL USUARIO
       const rawInst = r.institution || r.user?.institution || '';
       const inst = rawInst.toLowerCase().trim();
 
@@ -130,7 +155,6 @@ export class ReportsPage implements OnInit {
       }
 
       const counts = usageMap.get(roomName)!;
-
 
       if (inst.includes('unicolombo')) {
         counts.unicolombo++;
@@ -150,7 +174,6 @@ export class ReportsPage implements OnInit {
       this.chartInstance.destroy();
     }
 
-    // 4. Dibujamos el gráfico
     if (this.institutionChartCanvas && this.institutionChartCanvas.nativeElement) {
       this.chartInstance = new Chart(this.institutionChartCanvas.nativeElement, {
         type: 'bar',
@@ -160,14 +183,14 @@ export class ReportsPage implements OnInit {
             {
               label: `Colombo (Total: ${totalColombo})`,
               data: colomboData,
-              backgroundColor: '#3b82f6', // Azul para Colombo
+              backgroundColor: '#3b82f6',
               borderRadius: 4,
               borderWidth: 1
             },
             {
               label: `Unicolombo (Total: ${totalUnicolombo})`,
               data: unicolomboData,
-              backgroundColor: '#f97316', // Naranja para Unicolombo
+              backgroundColor: '#f97316',
               borderRadius: 4,
               borderWidth: 1
             }

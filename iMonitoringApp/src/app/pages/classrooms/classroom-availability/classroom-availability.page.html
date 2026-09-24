@@ -4,11 +4,10 @@
     <ion-title>Horarios y Disponibilidad</ion-title>
 
     <ion-buttons slot="end">
-      <!-- Vuelve a llamar a promptDownloadSchedule -->
-      <ion-button (click)="downloadSchedule()" class="hidden md:flex items-center text-white font-bold bg-green-600 px-3 py-1 mr-2 rounded shadow-sm hover:bg-green-700">
-        <ion-icon name="download-outline" class="mr-1"></ion-icon> Exportar Excel
+      <!-- Cambiamos el evento a promptDownloadScope() y el texto -->      <ion-button (click)="promptDownloadScope()" class="hidden md:flex items-center text-white font-bold bg-green-600 px-3 py-1 mr-2 rounded shadow-sm hover:bg-green-700">
+        <ion-icon name="download-outline" class="mr-1"></ion-icon> Exportar Horario
       </ion-button>
-      <ion-button (click)="downloadSchedule()" class="md:hidden">
+      <ion-button (click)="promptDownloadScope()" class="md:hidden">
         <ion-icon name="download-outline"></ion-icon>
       </ion-button>
     </ion-buttons>

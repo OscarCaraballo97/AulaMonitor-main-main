@@ -8,7 +8,6 @@ import java.util.List;
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
-
     List<Ticket> findByUsuarioIdOrderByFechaCreacionDesc(String usuarioId);
 
     List<Ticket> findAllByOrderByFechaCreacionDesc();

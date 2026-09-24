@@ -24,8 +24,14 @@ public class ScheduleExportService {
 
     private final ReservationRepository reservationRepository;
 
-    public byte[] exportScheduleAsExcel(String institution, String format) throws IOException {
+    public byte[] exportScheduleAsExcel(String institution, String format, String classroomId) throws IOException {
         List<Reservation> allDatabaseReservations = reservationRepository.findAll();
+
+        if (classroomId != null && !classroomId.trim().isEmpty()) {
+            allDatabaseReservations = allDatabaseReservations.stream()
+                    .filter(r -> r.getClassroom() != null && r.getClassroom().getId().equals(classroomId))
+                    .collect(Collectors.toList());
+        }
 
         List<Classroom> allClassrooms = allDatabaseReservations.stream()
                 .map(Reservation::getClassroom)
@@ -39,15 +45,12 @@ public class ScheduleExportService {
                 .filter(r -> r.getStartTime() != null && !r.getStartTime().isBefore(startOfToday))
                 .collect(Collectors.toList());
 
-        // --- FILTRO MEJORADO (Soporta múltiples instituciones y lee la de la reserva) ---
         if (institution != null && !institution.equalsIgnoreCase("AMBAS")) {
             activeReservations = activeReservations.stream()
                     .filter(r -> {
-                        // 1. Prioriza la institución guardada directamente en la reserva
                         if (r.getInstitution() != null && !r.getInstitution().isEmpty()) {
                             return r.getInstitution().toLowerCase().contains(institution.toLowerCase());
                         }
-                        // 2. Si es antigua y no tiene, busca en el usuario (soporta "Colombo, Unicolombo")
                         if (r.getUser() != null && r.getUser().getInstitution() != null) {
                             return r.getUser().getInstitution().toLowerCase().contains(institution.toLowerCase());
                         }
@@ -161,7 +164,6 @@ public class ScheduleExportService {
         }
     }
 
-    // --- HORARIO FIJO SEMANAL (CLASES RECURRENTES) ---
     private void buildWeeklyTemplateSheet(Workbook workbook, List<Reservation> reservations, List<Classroom> classrooms, String institution) {
         String sheetName = "Horario Base Fijo";
         Sheet sheet = workbook.createSheet(sheetName);

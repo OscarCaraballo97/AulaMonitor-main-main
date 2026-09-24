@@ -14,7 +14,6 @@
       <h1 class="text-2xl font-bold text-white dark:text-white">Estadística</h1>
     </div>
 
-    <!-- GRÁFICO COMPARATIVO INSTITUCIONAL -->
     <div class="bg-white dark:bg-kwd-darker rounded-xl shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden">
       <div class="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
         <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center">
@@ -31,14 +30,12 @@
       </div>
 
       <div class="p-4 w-full relative" style="height: 400px;" [class.hidden]="isLoadingChart">
-        
         <canvas #institutionChart></canvas>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-      <!-- GRÁFICA 1: AULAS MÁS UTILIZADAS -->
       <div class="bg-white dark:bg-kwd-darker p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-1">Uso de Espacios</h2>
         <p class="text-sm text-blue-980 dark:text-white mb-6">Aulas más utilizadas.</p>
@@ -56,9 +53,26 @@
         </div>
       </div>
 
+      <div class="bg-white dark:bg-kwd-darker p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+        <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-1">Incidencias (Tickets)</h2>
+        <p class="text-sm text-blue-980 dark:text-white mb-6">Cantidad de reportes por espacio.</p>
+
+        <div *ngIf="isLoadingTicketsStats" class="text-center p-6"><ion-spinner name="crescent"></ion-spinner></div>
+
+        <div *ngIf="!isLoadingTicketsStats" class="space-y-4 max-h-64 overflow-y-auto pr-2">
+          <div *ngFor="let stat of estadisticasTickets" class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+            <span class="font-semibold text-gray-700 dark:text-gray-200">{{ stat.aula }}</span>
+            <ion-badge color="danger" class="px-2 py-1">{{ stat.cantidad }} reportes</ion-badge>
+          </div>
+          <div *ngIf="estadisticasTickets.length === 0" class="text-center py-8 text-gray-500 italic">
+            <ion-icon name="checkmark-done-circle-outline" class="text-4xl text-gray-300 dark:text-gray-600 mb-2"></ion-icon>
+            <p>No hay incidencias registradas en los espacios.</p>
+          </div>
+        </div>
+      </div>
+
     </div>
 
-    <!-- SECCIÓN 3: REPORTES DE CANCELACIÓN DETALLADO -->
     <div class="bg-white dark:bg-kwd-darker p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
       <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Detalle de Cancelaciones y Rechazos</h2>
 
@@ -66,7 +80,6 @@
 
       <div *ngIf="!isLoadingCancellations && cancellationReport">
 
-        <!-- Tarjetas de Métricas -->
         <div class="grid grid-cols-2 gap-4 mb-6">
           <div class="p-4 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/10 flex flex-col items-center text-center">
             <span class="text-3xl font-black text-red-600 font-mono">{{ cancellationReport.totalCancellations }}</span>
@@ -78,7 +91,6 @@
           </div>
         </div>
 
-        <!-- Tabla: A Quién y Por Qué -->
         <h3 class="text-sm font-bold uppercase text-blue-980 dark:text-white mb-3 tracking-wider">Historial Detallado</h3>
         <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm text-left">
@@ -114,7 +126,6 @@
       </div>
     </div>
 
-    <!-- SECCIÓN 4: INVENTARIO DE RECURSOS CON SELECT -->
     <div class="bg-white dark:bg-kwd-darker p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>

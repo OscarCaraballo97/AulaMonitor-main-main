@@ -255,18 +255,22 @@ public class ReservationController {
     @PreAuthorize("hasAnyRole('ADMIN', 'COORDINADOR')")
     public ResponseEntity<byte[]> exportSchedule(
             @RequestParam(defaultValue = "AMBAS") String institution,
-            @RequestParam(defaultValue = "LISTA") String format) {
+            @RequestParam(defaultValue = "ALMANAQUE") String format,
+            @RequestParam(required = false) String classroomId) {
         try {
-            byte[] excelData = scheduleExportService.exportScheduleAsExcel(institution, format);
+            byte[] excelData = scheduleExportService.exportScheduleAsExcel(institution, format, classroomId);
+
+            String fileName = classroomId != null ? "Horario_Aula.xlsx" : "Horario_General.xlsx";
 
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Horario_" + institution + "_" + format + ".xlsx")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
                     .header(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                     .body(excelData);
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
+
     @PostMapping("/smart-reserve")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReservationResponseDTO> realizarReservaInteligente(

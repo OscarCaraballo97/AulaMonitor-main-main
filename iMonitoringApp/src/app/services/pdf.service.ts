@@ -34,13 +34,13 @@ export class PdfService {
 
     doc.save('reporte_uso_aulas_logs.pdf');
   }
-  
-  exportProfessorSchedule(reservations: any[], userName: string) {
+
+  exportProfessorSchedule(reservations: any[], scopeName: string) {
     const datePipe = new DatePipe('es-ES');
     const doc = new jsPDF();
     doc.setFontSize(16);
 
-    doc.text(`Horario Mensual - ${userName}`, 14, 15);
+    doc.text(`Horario Mensual - ${scopeName}`, 14, 15);
 
     const groupedByMonth: { [key: string]: any[] } = {};
 
@@ -73,7 +73,6 @@ export class PdfService {
 
       const body = itemList.map(item => {
         const raw = item.rawReservation ? item.rawReservation : item;
-
         const quantityStr = item.isGroup ? `${item.count} Clases` : '1 Clase';
 
         return [
@@ -90,13 +89,44 @@ export class PdfService {
         body: body,
         startY: currentY,
         styles: { fontSize: 10 },
-        headStyles: { fillColor: [86, 136, 206], textColor: [255, 255, 255] }, // Color Azul de Ionic
+        headStyles: { fillColor: [86, 136, 206], textColor: [255, 255, 255] },
         margin: { bottom: 15 }
       });
 
       currentY = (doc as any).lastAutoTable.finalY + 15;
     }
 
-    doc.save(`Horario_Mensual_${userName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Horario_Mensual_${scopeName.replace(/\s+/g, '_')}.pdf`);
+  }
+
+  exportGeneralSchedule(reservations: any[], scopeName: string) {
+    const datePipe = new DatePipe('es-ES');
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+
+    const title = `Horario de Reservas (Lista) - ${scopeName}`;
+    doc.text(title, 14, 15);
+
+    const sorted = [...reservations].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+    const body = sorted.map(r => {
+      return [
+        datePipe.transform(r.startTime, 'dd/MM/yyyy') || '',
+        (datePipe.transform(r.startTime, 'HH:mm') || '') + ' - ' + (datePipe.transform(r.endTime, 'HH:mm') || ''),
+        r.classroom && r.classroom.name ? r.classroom.name : 'N/A',
+        r.user && r.user.name ? r.user.name : 'N/A',
+        r.purpose || 'Sin propósito'
+      ];
+    });
+
+    autoTable(doc, {
+      head: [['Fecha', 'Horario', 'Aula', 'Usuario', 'Motivo']],
+      body: body,
+      startY: 22,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [86, 136, 206], textColor: [255, 255, 255] }
+    });
+
+    doc.save(`Horario_Lista_${scopeName.replace(/\s+/g, '_')}.pdf`);
   }
 }

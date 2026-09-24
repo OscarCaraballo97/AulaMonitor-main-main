@@ -31,11 +31,10 @@
       <ion-card-header class="pb-2">
         <div class="flex justify-between items-start">
           <ion-card-title class="text-lg font-bold text-gray-800 dark:text-white">{{ ticket.titulo }}</ion-card-title>
-          <!-- Vista de usuario: Badge estático -->
           <ion-badge *ngIf="!isAdmin" [color]="getColorEstado(ticket.estado)">{{ ticket.estado || 'PENDIENTE' }}</ion-badge>
         </div>
         <ion-card-subtitle class="mt-1 flex items-center gap-2">
-          <ion-icon name="location-outline"></ion-icon> {{ ticket.lugar }}
+          <ion-icon name="business-outline"></ion-icon> {{ ticket.classroom?.name || 'General' }}
           <span class="mx-1">•</span>
           <ion-icon name="calendar-outline"></ion-icon> {{ ticket.fechaCreacion | date:'dd/MM/yyyy' }}
         </ion-card-subtitle>
@@ -47,7 +46,6 @@
         <div *ngIf="isAdmin" class="mt-2 pt-3 border-t border-gray-100 dark:border-gray-700">
           <p class="text-sm text-gray-500 mb-2"><ion-icon name="person-outline" class="mr-1"></ion-icon> Reportado por: <strong>{{ ticket.usuario?.name || 'Desconocido' }}</strong></p>
 
-          <!-- Vista de Admin: Selector interactivo para cambiar estado -->
           <ion-item lines="none" class="bg-gray-50 dark:bg-gray-700 rounded-md">
             <ion-label class="text-sm font-semibold">Estado actual:</ion-label>
             <ion-select [value]="ticket.estado || 'PENDIENTE'" (ionChange)="cambiarEstado(ticket.id, $event)" interface="popover">
